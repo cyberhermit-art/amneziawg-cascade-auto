@@ -1,0 +1,27 @@
+AmneziaWG Cascade
+Copyright (c) 2026 AACH
+Licensed under the MIT License (see LICENSE).
+
+Authorship
+----------
+The source code of this application was written by Claude, an AI model
+by Anthropic, at the request and under the direction of AACH,
+who defined the requirements, tested the program on real servers and
+maintains the project.
+
+Код приложения написан Claude — ИИ-моделью компании Anthropic — по заданию
+и под руководством AACH, который сформулировал требования,
+проверял программу на реальных серверах и сопровождает проект.
+
+Third-party components
+----------------------
+This product includes software from:
+  * amneziawg-installer — Copyright (c) 2025-2026 Ivan Bondarev, MIT License
+    https://github.com/bivlked/amneziawg-installer
+  * golang.org/x/crypto, golang.org/x/sys and the Go standard library —
+    Copyright 2009 The Go Authors, BSD-3-Clause License
+
+Full license texts: THIRD_PARTY_NOTICES.md
+
+This project is not affiliated with or endorsed by the AmneziaVPN project
+or the author of amneziawg-installer.

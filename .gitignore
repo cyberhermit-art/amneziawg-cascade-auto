@@ -1,0 +1,22 @@
+# Сборка
+*.exe
+/dist/
+/build/
+
+# Локальные подмены зависимостей для офлайн-сборки
+/third_party/
+go.work
+go.work.sum
+
+# Данные пользователя (никогда не коммитить!)
+profiles.json
+*.conf
+*.vpnuri
+*.tar.gz
+log.txt
+
+# Системное
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
