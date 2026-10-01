@@ -6,7 +6,7 @@
 # Пакеты только обновляются и доустанавливаются, ничего не удаляется
 # (full-upgrade и autoremove на VPS иногда сносят netplan и сервер теряет сеть).
 export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a NEEDRESTART_SUSPEND=1 APT_LISTCHANGES_FRONTEND=none
-DONE=/root/.awgc-update-done
+DONE=${AWGC_DONE:-/root/.awgc-update-done}
 APT="apt-get -q -o DPkg::Lock::Timeout=1800 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
 
 echo "== Проверяю, не прервана ли прошлая установка пакетов"
@@ -29,7 +29,9 @@ if ! $APT -y upgrade --with-new-pkgs; then
 fi
 
 touch "$DONE"
-if [ -f /run/reboot-required ]; then
+if [ -f /run/reboot-required ] && [ "${AWGC_NO_REBOOT:-0}" = 1 ]; then
+    echo "== Обновление завершено. Для применения обновлений ядра нужна перезагрузка сервера"
+elif [ -f /run/reboot-required ]; then
     echo "== Обновление завершено, нужна перезагрузка — перезагружаю сервер"
     systemd-run --quiet --on-active=5 /bin/systemctl reboot
 else

@@ -900,4 +900,5 @@ func registerManage(mux *http.ServeMux) {
 	mux.HandleFunc("/api/m/backups", mapi(mBackups))
 	mux.HandleFunc("/api/m/restore", mapi(mRestore))
 	mux.HandleFunc("/api/m/open-backups", mapi(mOpenBackups))
+	registerTasks(mux)
 }

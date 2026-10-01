@@ -153,6 +153,23 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
 .pform .actions .grow{flex:1}
 .foot{max-width:1140px;margin:0 auto;padding:18px 20px 26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line)}
 .foot a{color:inherit}
+
+.sect{font-size:15px;margin:22px 0 10px}
+.maint{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){.maint{grid-template-columns:1fr}}
+.mcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.mcard h3{margin:0 0 4px;font-size:13.5px;display:flex;align-items:center;gap:7px}
+.mrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line)}
+.mcard h3+.mrow{border-top:0}
+.mrow b,.dzone b{display:block;font-size:13px;font-weight:600}
+.mrow span,.dzone span{display:block;color:var(--muted);font-size:12px}
+.mrow button{flex:none}
+.dzone{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;border:1px solid color-mix(in srgb,var(--err) 45%,var(--line));border-radius:10px;padding:12px 14px;background:color-mix(in srgb,var(--err) 5%,var(--card))}
+.dzone button{flex:none}
+.tasklog{background:var(--log-bg);color:var(--log-ink);border-radius:8px;height:300px;overflow:auto;padding:8px 10px;font:11.5px/1.45 Consolas,"Cascadia Mono",monospace;white-space:pre-wrap;word-break:break-word;margin:10px 0 0}
+.mbox.wide{max-width:760px}
+.tstat{display:flex;align-items:center;gap:8px;font-size:13px}
+.tstat.ok{color:var(--ok)} .tstat.err{color:var(--err)}
 </style>
 </head>
 <body>
@@ -309,11 +326,25 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
       <div class="toolbar">
         <button class="btn ghost small" id="vRefresh">Проверить</button>
         <button class="btn ghost small" id="vRestart">Перезапустить VPN</button>
-        <button class="btn ghost small danger" id="vReboot">Перезагрузить сервер RU</button>
         <span class="note" id="vInfo"></span>
       </div>
       <div id="vProblems"></div>
       <div class="scards" id="vCards"></div>
+
+      <h2 class="sect">Обслуживание серверов</h2>
+      <div class="maint">
+        <div class="mcard"><h3><span class="tag ru">RU</span> Входной сервер <span class="note" id="mtRuHost"></span></h3>
+          <div class="mrow"><div><b>Обновить пакеты</b><span>apt update + upgrade. VPN продолжает работать; перезагрузка — только если вы разрешите.</span></div><button class="btn ghost small" data-mt="update" data-s="ru">Обновить</button></div>
+          <div class="mrow"><div><b>Перезагрузить сервер</b><span>VPN будет недоступен 1–3 минуты.</span></div><button class="btn ghost small" data-mt="reboot" data-s="ru">Перезагрузить</button></div>
+          <div class="mrow"><div><b>Удалить VPN с сервера</b><span>Отключает каскад и полностью удаляет AmneziaWG, пользователей и ключи.</span></div><button class="btn ghost small danger" data-mt="uninstall" data-s="ru">Удалить…</button></div>
+        </div>
+        <div class="mcard"><h3><span class="tag eu">EU</span> Выходной сервер <span class="note" id="mtEuHost"></span></h3>
+          <div class="mrow"><div><b>Обновить пакеты</b><span>apt update + upgrade. Перезагрузка — только если вы разрешите.</span></div><button class="btn ghost small" data-mt="update" data-s="eu">Обновить</button></div>
+          <div class="mrow"><div><b>Перезагрузить сервер</b><span>Каскад будет недоступен 1–3 минуты.</span></div><button class="btn ghost small" data-mt="reboot" data-s="eu">Перезагрузить</button></div>
+          <div class="mrow"><div><b>Удалить VPN с сервера</b><span>Полностью удаляет AmneziaWG. Каскад перестанет работать.</span></div><button class="btn ghost small danger" data-mt="uninstall" data-s="eu">Удалить…</button></div>
+        </div>
+      </div>
+      <div class="dzone"><div><b>Удалить весь каскад</b><span>VPN будет удалён с обоих серверов (сначала RU, затем EU). Серверы вернутся к состоянию до установки, сами VPS останутся.</span></div><button class="btn small danger solid" id="mtAll">Удалить каскад…</button></div>
     </div>
 
     <div class="mtab hidden" id="t-backup">
@@ -546,7 +577,7 @@ function showTab(t, force){
   document.querySelectorAll(".mtab").forEach(x=>x.classList.toggle("hidden", x.id!=="t-"+t));
   if (t==="users") loadClients();
   if (t==="stats") loadStats();
-  if (t==="server") renderStatus(lastStatus);
+  if (t==="server") { renderStatus(lastStatus); renderMaint(); }
   if (t==="backup") loadBackups();
   if (t==="profile") renderProfileForm($("t-profile"), cur);
 }
@@ -590,18 +621,124 @@ $("vRefresh").onclick = async () => { $("vProblems").innerHTML='<p class="note">
 $("vRestart").onclick = () => confirmBox("Перезапустить VPN?", "Службы VPN и туннеля перезапустятся. У пользователей связь пропадёт на несколько секунд и восстановится сама.", "Перезапустить", async () => {
   await call("/api/m/restart-vpn",{id:cur.id}); toast("VPN перезапущен"); refreshStatus(false);
 });
-$("vReboot").onclick = () => confirmBox("Перезагрузить сервер RU?", "Сервер перезагрузится, VPN будет недоступен 1–3 минуты. Программа дождётся, пока он снова станет доступен.", "Перезагрузить", async () => {
-  await call("/api/m/reboot",{id:cur.id});
-  toast("Сервер перезагружается…");
-  const pill=$("mPill"); pill.className="pill warn"; pill.querySelector("span").textContent="перезагрузка…";
-  $("vProblems").innerHTML='<p class="note"><span class="spin"></span> Жду, пока сервер RU загрузится…</p>'; $("vCards").textContent="";
-  const id=cur.id; await new Promise(r=>setTimeout(r,25000));
-  for (let i=0;i<30 && cur && cur.id===id;i++){
-    try { const st=await call("/api/m/status",{id}); if (st.ruReachable){ lastStatus=st; toast("Сервер RU снова на связи"); refreshStatus(false); renderStatus(st); return; } } catch(e){}
+// ================= обслуживание серверов =================
+const SRV = t => t==="ru" ? "RU" : "EU";
+const hostOf = t => t==="ru" ? cur.ruHost : cur.euHost;
+function hasCreds(t){ return t==="ru" || !!(cur && cur.euHost); }
+function renderMaint(){ if(!cur) return; $("mtRuHost").textContent=cur.ruHost; $("mtEuHost").textContent=cur.euHost||"не указан в профиле";
+  document.querySelectorAll('[data-s="eu"]').forEach(b=>b.disabled=!cur.euHost); }
+document.querySelector(".maint").onclick = e => {
+  const b=e.target.closest("button[data-mt]"); if(!b||!cur) return;
+  const t=b.dataset.s, act=b.dataset.mt;
+  if (act==="update") askUpdate(t);
+  if (act==="reboot") askReboot(t);
+  if (act==="uninstall") askUninstall([t]);
+};
+$("mtAll").onclick = () => askUninstall(cur.euHost ? ["ru","eu"] : ["ru"]);
+
+async function waitBack(t){
+  const id=cur.id;
+  if (t==="ru"){ const pill=$("mPill"); pill.className="pill warn"; pill.querySelector("span").textContent="перезагрузка…";
+    $("vProblems").innerHTML='<p class="note"><span class="spin"></span> Жду, пока сервер RU загрузится…</p>'; $("vCards").textContent=""; }
+  await new Promise(r=>setTimeout(r,25000));
+  for (let i=0;i<36 && cur && cur.id===id;i++){
+    try { const st=await call("/api/m/status",{id});
+      if (t==="ru" && st.ruReachable){ lastStatus=st; toast("Сервер RU снова на связи"); refreshStatus(false); renderStatus(st); return; }
+      if (t==="eu" && st.euReachable && st.tunnelAge>=0 && st.tunnelAge<200){ lastStatus=st; toast("Сервер EU снова на связи"); refreshStatus(false); return; }
+    } catch(e){}
     await new Promise(r=>setTimeout(r,10000));
   }
-  toast("Сервер пока не отвечает — проверьте позже", true);
-}, true);
+  toast("Сервер "+SRV(t)+" пока не отвечает — проверьте позже", true);
+}
+function askReboot(t){
+  confirmBox("Перезагрузить сервер "+SRV(t)+"?", t==="ru" ? "VPN будет недоступен 1–3 минуты. Программа дождётся, пока сервер снова станет доступен." : "Каскад (зарубежный трафик) будет недоступен 1–3 минуты.", "Перезагрузить", async()=>{
+    await call("/api/m/server-reboot",{id:cur.id,target:t}); toast("Сервер "+SRV(t)+" перезагружается…"); waitBack(t);
+  }, true);
+}
+function askUpdate(t){
+  modal('<h2>Обновить пакеты на сервере '+SRV(t)+'</h2><p class="note">'+esc(hostOf(t))+'</p><p>Будут выполнены <code>apt update</code> и <code>apt upgrade</code>. Пакеты только обновляются, ничего не удаляется. VPN во время обновления продолжает работать. На медленном канале это может занять до часа.</p>'+
+    '<label class="check"><input type="checkbox" id="uReboot"> Перезагрузить сервер автоматически, если обновления этого потребуют</label>'+
+    '<p class="note">Если не отмечать — после обновления программа скажет, нужна ли перезагрузка, и вы сможете выбрать удобное время.</p>'+
+    '<div class="actions"><button class="btn" id="uGo">Начать обновление</button><button class="btn ghost" id="uNo">Отмена</button></div>');
+  $("uNo").onclick=closeModal;
+  $("uGo").onclick=()=>runTasks([{target:t,task:"update",reboot:$("uReboot").checked}], "Обновление пакетов");
+}
+function askUninstall(targets){
+  const both=targets.length>1, names=targets.map(SRV).join(" и ");
+  const word = both ? "УДАЛИТЬ" : hostOf(targets[0]);
+  modal('<h2>'+(both?"Удалить весь каскад":"Удалить VPN с сервера "+names)+'</h2>'+
+    '<p>С сервер'+(both?"ов RU и EU":"а "+esc(hostOf(targets[0])))+' будут удалены AmneziaWG, все пользователи и их ключи, настройки каскада и статистика. Подключения на устройствах перестанут работать. Сами VPS и их система останутся.</p>'+
+    (!both && targets[0]==="eu" ? '<p class="note">Сервер RU продолжит работать, но весь зарубежный трафик пропадёт, пока не будет нового сервера EU.</p>' : '')+
+    (!both && targets[0]==="ru" ? '<p class="note">Сервер EU останется с установленным AmneziaWG — его можно удалить отдельно.</p>' : '')+
+    '<label class="check"><input type="checkbox" id="xBak" checked> Сначала создать резервную копию на этом компьютере</label>'+
+    '<label>Для подтверждения введите <b>'+esc(word)+'</b></label><input type="text" id="xWord" autocomplete="off">'+
+    '<div class="err" id="xErr"></div><div class="actions"><button class="btn danger solid" id="xGo" disabled>Удалить</button><button class="btn ghost" id="xNo">Отмена</button></div>');
+  $("xNo").onclick=closeModal;
+  $("xWord").oninput=e=>$("xGo").disabled = e.target.value.trim()!==word;
+  $("xGo").onclick=async()=>{ const b=$("xGo"); b.disabled=true;
+    if ($("xBak").checked){ b.innerHTML='<span class="spin"></span> Создаю резервную копию…';
+      try { const r=await call("/api/m/backup",{id:cur.id}); if (r.note && targets.includes("eu")) throw new Error(r.note+". Удаление отменено — снимите галочку резервной копии, если она не нужна."); }
+      catch(e){ $("xErr").textContent=e.message; $("xErr").classList.add("on"); b.disabled=false; b.textContent="Удалить"; return; } }
+    runTasks(targets.map(t=>({target:t,task:"uninstall"})), both?"Удаление каскада":"Удаление VPN с сервера "+names);
+  };
+}
+
+// Окно с живым журналом задачи на сервере. Несколько задач выполняются по очереди.
+let taskRun = 0;
+async function runTasks(list, title){
+  const my=++taskRun, id=cur.id;
+  modal('<h2>'+esc(title)+'</h2><div class="tstat" id="tStat"><span class="spin"></span><span>Запускаю…</span></div><pre class="tasklog" id="tLog"></pre>'+
+    '<div class="actions" id="tAct"><button class="btn ghost" id="tHide">Свернуть</button></div><p class="note" id="tNote">Задача выполняется на сервере: окно можно закрыть, она не прервётся. Чтобы снова увидеть журнал, нажмите ту же кнопку ещё раз.</p>');
+  $("mBody").parentElement.classList.add("wide");
+  $("tHide").onclick=closeModal;
+  const alive=()=>taskRun===my && $("tLog");
+  const stat=(cls,txt,spin)=>{ if(!alive()) return; const s=$("tStat"); s.className="tstat "+cls; s.innerHTML=(spin?'<span class="spin"></span>':'')+'<span>'+esc(txt)+'</span>'; };
+  const log=txt=>{ if(!alive()) return; const l=$("tLog"); const stick=l.scrollTop+l.clientHeight>=l.scrollHeight-30; l.textContent+=txt; if(stick) l.scrollTop=l.scrollHeight; };
+  let results=[];
+  for (const t of list){
+    const S=SRV(t.target);
+    log((results.length?"\n":"")+"──── Сервер "+S+" ("+hostOf(t.target)+") ────\n");
+    stat("", (t.task==="update"?"Обновляю пакеты":"Удаляю VPN")+" на сервере "+S+"…", true);
+    try { await call("/api/m/task-start",{id,target:t.target,task:t.task,reboot:!!t.reboot}); }
+    catch(e){ stat("err","Сервер "+S+": "+e.message); log("ОШИБКА: "+e.message+"\n"); results.push({t,ok:false}); break; }
+    let off=0, st=null, offlineSince=0;
+    while (taskRun===my){
+      await new Promise(r=>setTimeout(r,3000));
+      try { st=await call("/api/m/task-poll",{id,target:t.target,task:t.task,offset:off}); } catch(e){ st={offline:true}; }
+      if (st.offline){ if(!offlineSince) offlineSince=Date.now(); stat("", "Сервер "+S+" сейчас недоступен (перезагрузка?) — жду…", true);
+        if (Date.now()-offlineSince>20*60000){ stat("err","Сервер "+S+" не отвечает больше 20 минут"); break; } continue; }
+      offlineSince=0;
+      if (st.chunk) log(st.chunk);
+      off=st.size;
+      if (st.finished) break;
+      stat("", (t.task==="update"?"Обновляю пакеты":"Удаляю VPN")+" на сервере "+S+"…", true);
+    }
+    if (taskRun!==my) return;
+    const ok = st && st.finished && st.rc===0;
+    results.push({t,ok,st});
+    if (!ok){ stat("err","Сервер "+S+": задача завершилась с ошибкой"+(st&&st.rc>0?" (код "+st.rc+")":"")+" — подробности в журнале"); break; }
+  }
+  if (!alive()) return;
+  const act=$("tAct"); act.innerHTML=""; $("tNote").textContent="";
+  const close=document.createElement("button"); close.className="btn ghost"; close.textContent="Закрыть"; close.onclick=closeModal;
+  const last=results[results.length-1];
+  if (results.length===list.length && results.every(r=>r.ok)){
+    if (list[0].task==="update"){
+      const need=results.filter(r=>r.st.rebootPending && !r.t.reboot);
+      if (need.length){ stat("ok","Обновление завершено. Нужна перезагрузка сервера "+need.map(r=>SRV(r.t.target)).join(", ")+", чтобы применить обновления ядра");
+        for (const r of need){ const b=document.createElement("button"); b.className="btn"; b.textContent="Перезагрузить "+SRV(r.t.target)+" сейчас";
+          b.onclick=async()=>{ b.disabled=true; try{ await call("/api/m/server-reboot",{id,target:r.t.target}); toast("Сервер "+SRV(r.t.target)+" перезагружается…"); closeModal(); waitBack(r.t.target);}catch(e){ toast(e.message,true); b.disabled=false; } }; act.appendChild(b); }
+      } else stat("ok", results[0].t.reboot && results[0].st.rebootPending ? "Обновление завершено, сервер перезагружается" : "Обновление завершено, перезагрузка не нужна");
+    } else {
+      const all = list.length>1 || (list[0].target==="ru" && !cur.euHost);
+      stat("ok", all ? "VPN удалён с серверов. Каскад больше не существует." : "VPN удалён с сервера "+SRV(list[0].target)+".");
+      if (all){ const b=document.createElement("button"); b.className="btn"; b.textContent="Удалить профиль из программы";
+        b.onclick=async()=>{ await call("/api/profile-delete",{id}); cur=null; closeModal(); await loadProfiles(); toast("Профиль удалён"); if(profiles.length) openProfile(profiles[0].id); else go("welcome"); }; act.appendChild(b); }
+    }
+  }
+  act.appendChild(close);
+  refreshStatus(false);
+}
 
 // ================= пользователи =================
 let clientsNow = 0;
@@ -650,7 +787,7 @@ $("uTable").onclick = e => {
 };
 
 // ---- модальные окна ----
-function modal(html){ $("mBody").innerHTML=html; $("modal").classList.remove("hidden"); const f=$("mBody").querySelector("input:not([type=hidden])"); if(f) setTimeout(()=>f.focus(),30); }
+function modal(html){ $("mBody").parentElement.classList.remove("wide"); $("mBody").innerHTML=html; $("modal").classList.remove("hidden"); const f=$("mBody").querySelector("input:not([type=hidden])"); if(f) setTimeout(()=>f.focus(),30); }
 function closeModal(){ $("modal").classList.add("hidden"); $("mBody").textContent=""; }
 $("mClose").onclick = closeModal;
 $("modal").onclick = e => { if (e.target.id==="modal") closeModal(); };

@@ -24,8 +24,8 @@ var indexHTML string
 
 const appPort = 47821
 
-// version задаётся при сборке: -ldflags "-X main.version=1.2.0"
-var version = "1.2.0"
+// version задаётся при сборке: -ldflags "-X main.version=1.3.0"
+var version = "1.3.0"
 
 var (
 	token   string
