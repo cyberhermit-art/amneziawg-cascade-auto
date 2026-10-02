@@ -30,6 +30,7 @@ One connection on the device, and both local and international services behave a
 - **Statistics:** traffic per day and per user for 1/7/30/90 days, collected on the server every 5 minutes and kept across reboots.
 - **Server:** health of the RU server, the tunnel to EU, routing, EU reachability; restart VPN.
 - **Maintenance:** routing update on a running cascade, package updates, reboot and VPN removal for RU and EU separately, plus removal of the whole cascade (with a backup first).
+- **Bypass VPN:** sites that block hosting IPs (e.g. **Gosuslugi**, the Russian public services portal) are reached from the device directly — a ready preset plus custom networks; a site check from the RU server (which path it takes and whether it opens).
 - **Backups** of both servers stored on your PC, with restore.
 - **Profiles:** several cascades in one app; an already running cascade can be attached.
 
@@ -70,6 +71,7 @@ The UI is a local web page: the app listens on `127.0.0.1` only and every reques
 
 - IPv4 only; IPv6 is disabled on the servers.
 - Traffic is split by destination IP, not by domain: a `.ru` site on a foreign CDN goes via EU (add such IPs to `EXTRA_RU_NETS` in `/root/awg/awg-routing.sh`).
+- Some Russian sites (Gosuslugi etc.) block hosting/datacenter IPs and won't open via the RU server; use the "Мимо VPN" (bypass) tab to send them directly from the device. Re-import the connection on devices after changing the list.
 - Restore targets the same server; moving to a server with another IP requires re-issuing client files.
 
 ## Building
@@ -78,7 +80,7 @@ Go 1.24+:
 
 ```bash
 go mod tidy
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.4.0" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.5.0" -o AmneziaWG-Cascade.exe .
 ```
 
 `rsrc_windows_amd64.syso` (icon and version info) is built from [`winres/`](winres) with `x86_64-w64-mingw32-windres -O coff -o ../rsrc_windows_amd64.syso app.rc`.

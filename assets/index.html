@@ -170,6 +170,19 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
 .mbox.wide{max-width:760px}
 .tstat{display:flex;align-items:center;gap:8px;font-size:13px}
 .tstat.ok{color:var(--ok)} .tstat.err{color:var(--err)}
+.bintro{max-width:880px;margin:0 0 14px;line-height:1.5}
+.bgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;align-items:start}
+.bta{width:100%;height:96px;font:12.5px Consolas,monospace;border:1px solid var(--line);border-radius:7px;background:var(--field);color:var(--ink);padding:7px 9px;resize:vertical;box-sizing:border-box}
+.blabel{display:block;font-size:12.5px;color:var(--muted);margin:12px 0 5px}
+.bpreset{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.bpreset input{margin-top:3px}
+.bpreset span{display:block;font-size:12px;color:var(--muted);font-family:Consolas,monospace;margin-top:2px}
+.xres{margin-top:12px;font-size:13px}
+.xres table{width:100%;border-collapse:collapse;margin:6px 0 10px}
+.xres td{padding:5px 6px;border-bottom:1px solid var(--line)}
+.xres .verdict{padding:9px 11px;border-radius:8px;border:1px solid var(--line);line-height:1.45}
+.xres .verdict.bad{border-color:color-mix(in srgb,var(--err) 50%,var(--line));background:color-mix(in srgb,var(--err) 7%,transparent)}
+.xres .verdict.good{border-color:color-mix(in srgb,var(--ok) 50%,var(--line));background:color-mix(in srgb,var(--ok) 7%,transparent)}
 .hintbox{background:color-mix(in srgb,var(--accent) 9%,transparent);border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:13px}
 </style>
 </head>
@@ -295,6 +308,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
       <button data-t="users" class="on">Пользователи</button>
       <button data-t="stats">Статистика</button>
       <button data-t="server">Сервер</button>
+      <button data-t="bypass">Мимо VPN</button>
       <button data-t="backup">Резервные копии</button>
       <button data-t="profile">Профиль</button>
     </nav>
@@ -347,6 +361,28 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
         </div>
       </div>
       <div class="dzone"><div><b>Удалить весь каскад</b><span>VPN будет удалён с обоих серверов (сначала RU, затем EU). Серверы вернутся к состоянию до установки, сами VPS останутся.</span></div><button class="btn small danger solid" id="mtAll">Удалить каскад…</button></div>
+    </div>
+
+    <div class="mtab hidden" id="t-bypass">
+      <p class="note bintro">Некоторые российские сайты не пускают адреса хостингов и дата-центров — например, <b>Госуслуги</b> (вход через ЕСИА). Через каскад такой сайт видит IP сервера RU и не отвечает. Выход — открывать эти сайты с устройства <b>напрямую, мимо VPN</b>, с обычным домашним или мобильным IP. Сервер при этом не меняется: программа пересчитывает файлы подключения пользователей.</p>
+      <div class="bgrid">
+        <div class="card">
+          <h2>Сети мимо VPN</h2>
+          <p class="hint">Готовые наборы и свои адреса. Действует на всех пользователей и на новых, которых вы добавите потом.</p>
+          <div id="xPresets"></div>
+          <label class="blabel" for="xNets">Свои адреса и сети</label>
+          <textarea id="xNets" class="bta" placeholder="по одному на строку, например&#10;212.193.156.0/23&#10;46.235.184.0/21" spellcheck="false"></textarea>
+          <div class="err" id="xErr"></div>
+          <div class="toolbar" style="margin:10px 0 0"><button class="btn small" id="xApply">Применить ко всем пользователям</button><span class="note" id="xInfo"></span></div>
+          <div class="hintbox" style="margin-top:12px"><b>После применения</b> на устройствах нужно заново импортировать подключение — QR-код или файл .conf из вкладки «Пользователи». Ключи не меняются; пока подключение не обновлено, устройство работает по-старому.</div>
+        </div>
+        <div class="card">
+          <h2>Проверить сайт с сервера RU</h2>
+          <p class="hint">Покажет адреса сайта, каким путём каскад отправляет к ним трафик и открывается ли сайт с сервера RU.</p>
+          <div class="toolbar" style="margin:0"><input type="text" id="xHost" class="search" style="flex:1;min-width:0" placeholder="esia.gosuslugi.ru" spellcheck="false"><button class="btn ghost small" id="xCheck">Проверить</button></div>
+          <div id="xRes"></div>
+        </div>
+      </div>
     </div>
 
     <div class="mtab hidden" id="t-backup">
@@ -581,6 +617,7 @@ function showTab(t, force){
   if (t==="stats") loadStats();
   if (t==="server") { renderStatus(lastStatus); renderMaint(); }
   if (t==="backup") loadBackups();
+  if (t==="bypass") loadBypass();
   if (t==="profile") renderProfileForm($("t-profile"), cur);
 }
 function stopTimers(){ clearInterval(statusTimer); statusTimer=null; }
@@ -931,6 +968,63 @@ $("bTable").onclick=e=>{ const b=e.target.closest("button[data-b]"); if(!b) retu
     try { const r=await call("/api/m/restore",{id:cur.id,backup:name,target:$("rT").value}); closeModal(); toast("Восстановлено: "+r.restored.join(" и ")); refreshStatus(false); }
     catch(e){ $("rErr").textContent=e.message; $("rErr").classList.add("on"); bt.disabled=false; bt.textContent="Восстановить"; } };
 };
+
+
+// ================= мимо VPN =================
+let xPresets=[];
+function netsOf(text){ return text.split(/[\s,;]+/).map(x=>x.trim()).filter(x=>x&&!x.startsWith("#")); }
+async function loadBypass(){
+  if (!cur) return; const id=cur.id; $("xErr").classList.remove("on"); $("xInfo").textContent="загружаю…";
+  try {
+    const r=await call("/api/m/excl-get",{id}); if(!cur||cur.id!==id) return;
+    xPresets=r.presets||[]; let nets=netsOf(r.nets||"");
+    $("xPresets").innerHTML=xPresets.map(p=>{ const on=p.nets.every(n=>nets.includes(n)); if(on) nets=nets.filter(n=>!p.nets.includes(n));
+      return '<label class="bpreset"><input type="checkbox" data-p="'+esc(p.id)+'"'+(on?' checked':'')+'><div><b>'+esc(p.title)+'</b><span>'+p.nets.map(esc).join(", ")+'</span></div></label>'; }).join("");
+    $("xNets").value=nets.join("\n");
+    $("xInfo").textContent = r.nets.trim() ? "Сейчас мимо VPN: "+plural(netsOf(r.nets).length,"сеть","сети","сетей") : "Сейчас всё идёт через VPN";
+  } catch(e){ $("xInfo").textContent=""; $("xErr").textContent=e.message; $("xErr").classList.add("on"); }
+}
+function plural(n,a,b,c){ const m=n%10, h=n%100; return n+" "+(m===1&&h!==11?a:(m>=2&&m<=4&&(h<12||h>14)?b:c)); }
+function bypassNets(){
+  let nets=[]; document.querySelectorAll("#xPresets input:checked").forEach(c=>{ const p=xPresets.find(x=>x.id===c.dataset.p); if(p) nets.push(...p.nets); });
+  for (const n of netsOf($("xNets").value)) if(!nets.includes(n)) nets.push(n);
+  return nets;
+}
+$("xApply").onclick=()=>{
+  const nets=bypassNets();
+  const text = nets.length ? "Мимо VPN пойдут: "+nets.join(", ")+". Файлы подключения и QR-коды всех пользователей будут пересчитаны. Чтобы изменения заработали, на каждом устройстве заново импортируйте подключение (QR-код или .conf). Ключи не меняются."
+                           : "Исключений нет — весь трафик снова пойдёт через VPN. Файлы подключения всех пользователей будут пересчитаны; на устройствах нужно заново импортировать подключение.";
+  confirmBox("Применить ко всем пользователям?", text, "Применить", async()=>{
+    $("xErr").classList.remove("on");
+    const r=await call("/api/m/excl-set",{id:cur.id,nets:nets.join("\n")});
+    let msg="Обновлено подключений: "+r.updated; if(r.failed&&r.failed.length) msg+=". Не удалось: "+r.failed.join("; ");
+    toast(msg, !!(r.failed&&r.failed.length)); loadBypass();
+    if (r.noQR&&r.noQR.length) setTimeout(()=>toast("QR-код не создан для: "+r.noQR.join(", ")+" (используйте файл .conf)", true), 3500);
+  });
+};
+async function checkSite(){
+  const h=$("xHost").value.trim()||$("xHost").placeholder, out=$("xRes"), b=$("xCheck");
+  b.disabled=true; b.innerHTML='<span class="spin"></span>'; out.innerHTML='<div class="xres note">Проверяю с сервера RU — до 15 секунд…</div>';
+  try {
+    const r=await call("/api/m/check-site",{id:cur.id,host:h});
+    const ru=r.ips.filter(x=>x.path==="ru");
+    let v;
+    if (r.reachable) v='<div class="verdict good">С сервера RU сайт открывается (ответ '+esc(r.code)+'). Блокировки адреса сервера нет — если на устройстве сайт не работает, причина в другом.</div>';
+    else if (ru.length && ru.every(x=>coveredBy(x.ip,bypassNets()))) v='<div class="verdict">С сервера RU сайт не отвечает, но его адреса <b>уже в списке мимо VPN</b>. Если на устройстве сайт всё равно не открывается — убедитесь, что список применён, и заново импортируйте подключение на устройстве (QR-код или .conf).</div>';
+    else if (ru.length) v='<div class="verdict bad"><b>С сервера RU сайт не отвечает.</b> Скорее всего, он не пускает адреса хостингов. Пустите его мимо VPN: <button class="btn small" id="xAddIps" style="margin-top:8px">Добавить сети сайта мимо VPN</button></div>';
+    else v='<div class="verdict">С сервера RU сайт не ответил, но его адреса идут через EU — проверьте сайт с устройства.</div>';
+    out.innerHTML='<div class="xres"><table>'+r.ips.map(x=>'<tr><td style="font-family:Consolas,monospace">'+esc(x.ip)+'</td><td>'+(x.path==="ru"?'<span class="tag ru">RU</span> напрямую с сервера RU':'<span class="tag eu">EU</span> через сервер EU')+'</td></tr>').join("")+'</table>'+v+'</div>';
+    const add=$("xAddIps"); if (add) add.onclick=()=>{
+      const cur24=new Set(netsOf($("xNets").value)); const covered=bypassNets();
+      for (const x of ru){ const n=x.ip.split(".").slice(0,3).join(".")+".0/24"; if(!covered.includes(n)&&!coveredBy(x.ip,covered)) cur24.add(n); }
+      $("xNets").value=[...cur24].join("\n"); toast("Сети добавлены в список — нажмите «Применить ко всем пользователям»"); $("xNets").focus(); };
+  } catch(e){ out.innerHTML='<div class="xres"><div class="verdict bad">'+esc(e.message)+'</div></div>'; }
+  finally { b.disabled=false; b.textContent="Проверить"; }
+}
+function ipNum(ip){ return ip.split(".").reduce((a,o)=>a*256+(+o),0); }
+function coveredBy(ip, nets){ const v=ipNum(ip); return nets.some(n=>{ const [a,bits]=n.split("/"); const m=+(bits||32); const size=2**(32-m); const base=Math.floor(ipNum(a)/size)*size; return v>=base&&v<base+size; }); }
+$("xCheck").onclick=checkSite;
+$("xHost").onkeydown=e=>{ if(e.key==="Enter") checkSite(); };
 
 // ================= форма профиля =================
 function renderProfileForm(host, p){

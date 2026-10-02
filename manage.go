@@ -560,7 +560,8 @@ func mAdd(m *mctx) (any, error) {
 		opt = " --expires=" + m.req.Expires
 	}
 	out, se, code, err := m.ruCmd(fmt.Sprintf(`grep -qxF '#_Name = %[1]s' /etc/amnezia/amneziawg/awg0.conf && { echo "Клиент с таким именем уже есть" >&2; exit 4; }
-bash %[2]s --yes --no-color%[3]s add %[1]s`, n, manageSh, opt), nil, 3*time.Minute)
+%[4]s
+bash %[2]s --yes --no-color%[3]s ${AIP:+"$AIP"} add %[1]s`, n, manageSh, opt, allowedPre), nil, 3*time.Minute)
 	if err != nil {
 		return nil, err
 	}
@@ -637,7 +638,8 @@ func mReissue(m *mctx) (any, error) {
 		return nil, err
 	}
 	out, se, code, err := m.ruCmd(fmt.Sprintf(`bash %[1]s --yes --no-color remove %[2]s || exit 6
-bash %[1]s --yes --no-color add %[2]s || exit 7`, manageSh, n), nil, 4*time.Minute)
+%[3]s
+bash %[1]s --yes --no-color ${AIP:+"$AIP"} add %[2]s || exit 7`, manageSh, n, allowedPre), nil, 4*time.Minute)
 	if err != nil {
 		return nil, err
 	}
@@ -904,5 +906,6 @@ func registerManage(mux *http.ServeMux) {
 	mux.HandleFunc("/api/m/restore", mapi(mRestore))
 	mux.HandleFunc("/api/m/open-backups", mapi(mOpenBackups))
 	registerTasks(mux)
+	registerExclude(mux)
 	mux.HandleFunc("/api/m/routing-update", mapi(mRoutingUpdate))
 }
