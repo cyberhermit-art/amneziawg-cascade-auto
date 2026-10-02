@@ -25,7 +25,7 @@ var indexHTML string
 const appPort = 47821
 
 // version задаётся при сборке: -ldflags "-X main.version=1.4.0"
-var version = "1.5.0"
+var version = "1.5.1"
 
 var (
 	token   string
@@ -44,9 +44,22 @@ func main() {
 	}
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		// Программа уже запущена — просто открываем её окно ещё раз.
-		openBrowser("http://" + addr + "/")
-		return
+		// Программа уже запущена. Та же версия — просто открываем её окно ещё раз;
+		// другая (например, старая после обновления) — закрываем её и запускаемся сами.
+		if rv := runningVersion(addr); (rv != "" && !versionLess(rv, version)) || !stopOldInstance(appPort) {
+			openBrowser("http://" + addr + "/")
+			return
+		}
+		for i := 0; i < 50; i++ {
+			if ln, err = net.Listen("tcp", addr); err == nil {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		if err != nil {
+			openBrowser("http://" + addr + "/")
+			return
+		}
 	}
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
@@ -56,6 +69,10 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleIndex)
+	// Версия без токена: новая копия программы узнаёт, какая версия уже запущена.
+	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]string{"app": "AmneziaWG-Cascade", "version": version})
+	})
 	mux.HandleFunc("/api/start", api(handleStart))
 	mux.HandleFunc("/api/cancel", api(handleCancel))
 	mux.HandleFunc("/api/events", handleEvents)
@@ -84,6 +101,39 @@ func main() {
 		}
 	}()
 	_ = srv.Serve(ln)
+}
+
+// runningVersion — версия уже запущенной копии ("" — старая, до 1.5.1, или не ответила).
+func runningVersion(addr string) string {
+	c := http.Client{Timeout: 2 * time.Second}
+	resp, err := c.Get("http://" + addr + "/api/version")
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	var v struct{ App, Version string }
+	if resp.StatusCode != 200 || json.NewDecoder(resp.Body).Decode(&v) != nil || v.App != "AmneziaWG-Cascade" {
+		return ""
+	}
+	return v.Version
+}
+
+// versionLess: a < b для версий вида 1.5.1.
+func versionLess(a, b string) bool {
+	pa, pb := strings.Split(a, "."), strings.Split(b, ".")
+	for i := 0; i < len(pa) || i < len(pb); i++ {
+		var x, y int
+		if i < len(pa) {
+			fmt.Sscan(pa[i], &x)
+		}
+		if i < len(pb) {
+			fmt.Sscan(pb[i], &y)
+		}
+		if x != y {
+			return x < y
+		}
+	}
+	return false
 }
 
 func setupLogFile() {
