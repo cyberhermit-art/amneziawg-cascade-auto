@@ -303,6 +303,7 @@ type statusResp struct {
 	Peers       int      `json:"peers"`
 	Endpoint    string   `json:"endpoint"`
 	Reboot      bool     `json:"rebootRequired"`
+	ExtraList   bool     `json:"extraList"` // скрипт маршрутизации с дополнительным списком RU-сетей
 	Problems    []string `json:"problems"`
 }
 
@@ -340,7 +341,8 @@ echo "@@NOW $(date +%s)"
 echo "@@NETS $(ipset list ru 2>/dev/null | awk -F': ' '/Number of entries/{print $2}')"
 echo "@@PEERS $(grep -c '^\[Peer\]' /etc/amnezia/amneziawg/awg0.conf 2>/dev/null)"
 echo "@@EP $(grep -oP '^AWG1_ENDPOINT="\K[^"]+' /root/awg/awg-routing.sh 2>/dev/null)"
-echo "@@RB $([ -f /run/reboot-required ] && echo 1)"`, nil, 60*time.Second)
+echo "@@RB $([ -f /run/reboot-required ] && echo 1)"
+echo "@@XL $(grep -q '^RU_ZONE_EXTRA_URL=' /root/awg/awg-routing.sh 2>/dev/null && echo 1)"`, nil, 60*time.Second)
 	st.PingMs = int(time.Since(t0).Milliseconds())
 	wg.Wait()
 	if err != nil {
@@ -377,6 +379,7 @@ echo "@@RB $([ -f /run/reboot-required ] && echo 1)"`, nil, 60*time.Second)
 	st.Peers, _ = strconv.Atoi(kv["PEERS"])
 	st.Endpoint = kv["EP"]
 	st.Reboot = kv["RB"] == "1"
+	st.ExtraList = kv["XL"] == "1"
 
 	if st.AWG0 != "active" {
 		st.Problems = append(st.Problems, "VPN-сервер на RU не запущен (awg-quick@awg0: "+st.AWG0+")")
@@ -901,4 +904,5 @@ func registerManage(mux *http.ServeMux) {
 	mux.HandleFunc("/api/m/restore", mapi(mRestore))
 	mux.HandleFunc("/api/m/open-backups", mapi(mOpenBackups))
 	registerTasks(mux)
+	mux.HandleFunc("/api/m/routing-update", mapi(mRoutingUpdate))
 }

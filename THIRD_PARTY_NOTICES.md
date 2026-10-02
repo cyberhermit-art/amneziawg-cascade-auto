@@ -40,6 +40,17 @@ SOFTWARE.
 
 ---
 
+## 1a. Russian IPv4 network list (downloaded at runtime, not distributed)
+
+- Source: https://github.com/antonme/GeoIP — `russia.ipv4.cidr.txt`
+- Used: the routing script on the RU server downloads this list and merges it with
+  the ipdeny.com list. The list is **not** included in this repository or in the program.
+- The list is derived from MaxMind GeoLite2 data; use of the data is subject to the
+  GeoLite2 End User License Agreement: https://www.maxmind.com/en/geolite2/eula
+  This product includes GeoLite2 data created by MaxMind, available from https://www.maxmind.com.
+
+---
+
 ## 2. Go supplementary libraries: golang.org/x/crypto, golang.org/x/sys
 
 - Projects: https://go.googlesource.com/crypto, https://go.googlesource.com/sys

@@ -2,8 +2,9 @@
 # Copyright (c) 2026 AACH
 # SPDX-License-Identifier: MIT
 #
-# Встроенный ниже скрипт маршрутизации (между маркерами ROUTING_EOF) взят без изменений
-# из CASCADE.md проекта https://github.com/bivlked/amneziawg-installer
+# Встроенный ниже скрипт маршрутизации (между маркерами ROUTING_EOF) взят из CASCADE.md проекта
+# https://github.com/bivlked/amneziawg-installer. Изменения AmneziaWG Cascade помечены «[AmneziaWG Cascade]»:
+# дополнительный список RU-сетей (MaxMind GeoLite2) объединяется с основным, загрузка через ipset restore.
 # Copyright (c) 2025-2026 Ivan Bondarev, лицензия MIT (см. THIRD_PARTY_NOTICES.md).
 # cascade-setup.sh — настройка каскада AmneziaWG одной командой на ВХОДНОМ сервере (RU).
 # Делает шаги 3–5 из CASCADE.md (bivlked/amneziawg-installer):
@@ -158,6 +159,10 @@ FWMARK="0x1"                            # метка для трафика, ух
 RULE_PRIO=10000                        # приоритет правила ip rule (нестандартный, чтобы не конфликтовать)
 RU_ZONE_URL="https://www.ipdeny.com/ipblocks/data/aggregated/ru-aggregated.zone"
 RU_ZONE_FALLBACK_URL="https://raw.githubusercontent.com/bivlked/amneziawg-installer/v5.37.0/cascade/ru.zone"
+# [AmneziaWG Cascade] Дополнительный список, объединяется с основным. Собран по базе MaxMind GeoLite2
+# (где адрес находится физически), поэтому содержит узлы зарубежных CDN, стоящие в России, которых нет
+# в списке ipdeny (тот собран по регистрационным данным RIR). Пустая строка - отключить.
+RU_ZONE_EXTRA_URL="https://raw.githubusercontent.com/antonme/GeoIP/master/russia.ipv4.cidr.txt"
 AWG_DIR="/root/awg"
 EXTRA_RU_NETS=""                        # свои адреса/сети, которые вести через РФ (через пробел),
                                         # напр. "203.0.113.7 198.51.100.0/24". Нужно для .ru-сайтов
@@ -224,15 +229,28 @@ else
     echo "WARN: не удалось скачать список ни с ipdeny, ни из репозитория - использую прежний локальный" >&2
 fi
 # Без списка не продолжаем: пустой ipset отправит ВЕСЬ трафик за границу (деление молча сломается).
-[ -s "$RU_ZONE" ] || { echo "ERROR: список RU-сетей пуст и нигде не найден - прерываюсь, чтобы не сломать деление" >&2; exit 1; }
+# [AmneziaWG Cascade] Дополнительный список. Не скачался - используем прежнюю копию, если есть.
+if [ -n "${RU_ZONE_EXTRA_URL:-}" ]; then
+    if fetch_ru_zone "$RU_ZONE_EXTRA_URL"; then
+        mv -f "$RU_ZONE.tmp" "$RU_ZONE.extra"
+    else
+        echo "WARN: дополнительный список RU-сетей не скачался - использую прежний локальный (если есть)" >&2
+    fi
+else
+    rm -f "$RU_ZONE.extra"
+fi
+[ -s "$RU_ZONE" ] || [ -s "$RU_ZONE.extra" ] || { echo "ERROR: список RU-сетей пуст и нигде не найден - прерываюсь, чтобы не сломать деление" >&2; exit 1; }
 
 # 2) Загрузить RU-сети в ipset через временный сет (атомарная замена, без "пустого окна").
 ipset create ru hash:net -exist
 ipset create ru_tmp hash:net -exist
 ipset flush ru_tmp
-while read -r net; do
-    [ -n "$net" ] && ipset add ru_tmp "$net" -exist
-done < "$RU_ZONE"
+# [AmneziaWG Cascade] Загрузка одним вызовом ipset restore: на объединённом списке (~20 тыс. сетей)
+# это секунды вместо минуты. Пересекающиеся сети hash:net принимает, -exist гасит дубликаты.
+for _z in "$RU_ZONE" "$RU_ZONE.extra"; do
+    [ -s "$_z" ] || continue
+    { grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}/[0-9]{1,2}$' "$_z" || true; } | sed 's/^/add ru_tmp /'
+done | ipset restore -exist
 # Свои адреса добавляем в тот же временный набор ДО подмены - тогда они переживают запуск скрипта.
 # Дописывать в готовый ru бесполезно: следующий запуск соберёт набор заново и затрёт добавленное.
 # set -f отключает раскрытие шаблонов: без него звёздочка в переменной превратилась бы в имена файлов.

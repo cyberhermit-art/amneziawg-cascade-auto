@@ -29,7 +29,7 @@ One connection on the device, and both local and international services behave a
 - **Users:** online status, traffic, expiry; add, QR code and key, rename without changing the key, re-issue key, delete.
 - **Statistics:** traffic per day and per user for 1/7/30/90 days, collected on the server every 5 minutes and kept across reboots.
 - **Server:** health of the RU server, the tunnel to EU, routing, EU reachability; restart VPN.
-- **Maintenance:** package updates, reboot and VPN removal for RU and EU separately, plus removal of the whole cascade (with a backup first).
+- **Maintenance:** routing update on a running cascade, package updates, reboot and VPN removal for RU and EU separately, plus removal of the whole cascade (with a backup first).
 - **Backups** of both servers stored on your PC, with restore.
 - **Profiles:** several cascades in one app; an already running cascade can be attached.
 
@@ -53,7 +53,8 @@ The app connects over SSH and performs the steps from [CASCADE.md](https://githu
 
 - `install_amneziawg.sh` is downloaded from the project's official releases and run with `--yes --disallow-ipv6 --route-all --subnet=…`;
 - long operations (system update, installer) run on the server as `systemd-run` units; the app only follows their logs, so disconnects and reboots don't break them;
-- for the cascade, [`assets/cascade-setup.sh`](assets/cascade-setup.sh) is placed on the RU server: it creates the `awg1` tunnel to EU and installs the unmodified `awg-routing.sh` from CASCADE.md;
+- for the cascade, [`assets/cascade-setup.sh`](assets/cascade-setup.sh) is placed on the RU server: it creates the `awg1` tunnel to EU and installs `awg-routing.sh` from CASCADE.md with two marked changes;
+- the list of Russian networks merges [ipdeny](https://www.ipdeny.com) (registry data) and [antonme/GeoIP](https://github.com/antonme/GeoIP) (MaxMind GeoLite2, physical location), which catches foreign CDN nodes located in Russia;
 - users are managed through the stock `manage_amneziawg.sh`.
 
 The UI is a local web page: the app listens on `127.0.0.1` only and every request carries a random token.
@@ -77,7 +78,7 @@ Go 1.24+:
 
 ```bash
 go mod tidy
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.3.0" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.4.0" -o AmneziaWG-Cascade.exe .
 ```
 
 `rsrc_windows_amd64.syso` (icon and version info) is built from [`winres/`](winres) with `x86_64-w64-mingw32-windres -O coff -o ../rsrc_windows_amd64.syso app.rc`.

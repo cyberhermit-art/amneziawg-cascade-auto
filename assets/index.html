@@ -170,6 +170,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
 .mbox.wide{max-width:760px}
 .tstat{display:flex;align-items:center;gap:8px;font-size:13px}
 .tstat.ok{color:var(--ok)} .tstat.err{color:var(--err)}
+.hintbox{background:color-mix(in srgb,var(--accent) 9%,transparent);border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:13px}
 </style>
 </head>
 <body>
@@ -336,6 +337,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
         <div class="mcard"><h3><span class="tag ru">RU</span> Входной сервер <span class="note" id="mtRuHost"></span></h3>
           <div class="mrow"><div><b>Обновить пакеты</b><span>apt update + upgrade. VPN продолжает работать; перезагрузка — только если вы разрешите.</span></div><button class="btn ghost small" data-mt="update" data-s="ru">Обновить</button></div>
           <div class="mrow"><div><b>Перезагрузить сервер</b><span>VPN будет недоступен 1–3 минуты.</span></div><button class="btn ghost small" data-mt="reboot" data-s="ru">Перезагрузить</button></div>
+          <div class="mrow"><div><b>Обновить маршрутизацию</b><span>Свежий скрипт и объединённый список российских сетей (ipdeny + MaxMind). Настройки и свои сети сохраняются.</span></div><button class="btn ghost small" data-mt="routing" data-s="ru">Обновить</button></div>
           <div class="mrow"><div><b>Удалить VPN с сервера</b><span>Отключает каскад и полностью удаляет AmneziaWG, пользователей и ключи.</span></div><button class="btn ghost small danger" data-mt="uninstall" data-s="ru">Удалить…</button></div>
         </div>
         <div class="mcard"><h3><span class="tag eu">EU</span> Выходной сервер <span class="note" id="mtEuHost"></span></h3>
@@ -604,7 +606,8 @@ async function refreshStatus(first){
 function renderStatus(st){
   const box=$("vCards"), pr=$("vProblems");
   if (!st){ pr.innerHTML='<p class="note"><span class="spin"></span> Проверяю серверы…</p>'; box.textContent=""; return; }
-  pr.innerHTML = st.problems.length ? st.problems.map(p=>'<div class="problem">'+esc(p)+'</div>').join("") : '<div class="allgood">Всё в порядке: VPN работает, туннель до EU активен, раздельная маршрутизация включена.</div>';
+  const upd = (st.ruReachable && st.routing==="active" && !st.extraList) ? '<div class="hintbox">Доступно обновление маршрутизации: объединённый список российских сетей (ipdeny + MaxMind GeoLite2) — точнее определяет российские сервисы на зарубежных CDN. Кнопка «Обновить маршрутизацию» — ниже, в карточке сервера RU.</div>' : '';
+  pr.innerHTML = upd + (st.problems.length ? st.problems.map(p=>'<div class="problem">'+esc(p)+'</div>').join("") : '<div class="allgood">Всё в порядке: VPN работает, туннель до EU активен, раздельная маршрутизация включена.</div>');
   $("vInfo").textContent = "Проверено в "+new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})+" · обновляется каждые 30 с";
   if (!st.ruReachable){ box.textContent=""; return; }
   const card=(cls,title,rows)=>'<div class="scard '+cls+'"><h3><i class="dot"></i>'+esc(title)+'</h3><dl>'+rows.map(r=>'<dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd>').join("")+'</dl></div>';
@@ -614,7 +617,7 @@ function renderStatus(st){
     card("ok","Сервер RU",[["Адрес",cur.ruHost],["Отклик SSH",st.pingMs+" мс"],["Работает",fmtUptime(st.uptime)],["Нагрузка",st.load],["Память",mem],["Диск",st.disk],["Система",st.os]].concat(st.rebootRequired?[["Обновления","ждут перезагрузки"]]:[])) +
     card(st.awg0==="active"?"ok":"err","VPN для пользователей",[["Служба awg0",st.awg0==="active"?"работает":st.awg0],["Пользователей",String(st.peers)]]) +
     card(st.awg1!=="active"?"err":(st.tunnelAge<0||st.tunnelAge>300?"warn":"ok"),"Туннель RU → EU",[["Служба awg1",st.awg1==="active"?"работает":st.awg1],["Связь с EU",tun],["Сервер EU",st.endpoint||cur.euHost||"—"]]) +
-    card(st.routing!=="active"?"err":(st.ruNets<1000?"warn":"ok"),"Раздельная маршрутизация",[["Состояние",st.routing==="active"?"включена":st.routing],["Российских сетей",String(st.ruNets)]]) +
+    card(st.routing!=="active"?"err":(st.ruNets<1000?"warn":"ok"),"Раздельная маршрутизация",[["Состояние",st.routing==="active"?"включена":st.routing],["Российских сетей",String(st.ruNets)],["Источники",st.extraList?"ipdeny + MaxMind":"только ipdeny"]]) +
     (cur.euHost ? card(st.euReachable?"ok":"err","Сервер EU",[["Адрес",cur.euHost],["SSH с этого ПК",st.euReachable?"доступен, "+st.euPingMs+" мс":"не отвечает"]]) : "");
 }
 $("vRefresh").onclick = async () => { $("vProblems").innerHTML='<p class="note"><span class="spin"></span> Проверяю…</p>'; await refreshStatus(false); renderStatus(lastStatus); };
@@ -632,6 +635,8 @@ document.querySelector(".maint").onclick = e => {
   const t=b.dataset.s, act=b.dataset.mt;
   if (act==="update") askUpdate(t);
   if (act==="reboot") askReboot(t);
+  if (act==="routing") confirmBox("Обновить маршрутизацию?", "На сервер RU будет записан свежий скрипт маршрутизации (прежний сохранится рядом как .bak) и загружен объединённый список российских сетей. Подсеть, адрес EU и ваши EXTRA_RU_NETS сохраняются. Связь у пользователей не прервётся.", "Обновить", async()=>{
+    const r=await call("/api/m/routing-update",{id:cur.id}); toast("Маршрутизация обновлена: российских сетей — "+r.nets); refreshStatus(false); });
   if (act==="uninstall") askUninstall([t]);
 };
 $("mtAll").onclick = () => askUninstall(cur.euHost ? ["ru","eu"] : ["ru"]);

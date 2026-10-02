@@ -21,6 +21,10 @@ This product includes software from:
   * golang.org/x/crypto, golang.org/x/sys and the Go standard library —
     Copyright 2009 The Go Authors, BSD-3-Clause License
 
+At runtime the RU server also downloads a list of Russian IPv4 networks from
+https://github.com/antonme/GeoIP (derived from MaxMind GeoLite2 data, subject to the
+GeoLite2 EULA). The list itself is not distributed with this product.
+
 Full license texts: THIRD_PARTY_NOTICES.md
 
 This project is not affiliated with or endorsed by the AmneziaVPN project
