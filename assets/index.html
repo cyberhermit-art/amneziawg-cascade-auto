@@ -364,11 +364,13 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
           <div class="mrow"><div><b>Обновить пакеты</b><span>apt update + upgrade. VPN продолжает работать; перезагрузка — только если вы разрешите.</span></div><button class="btn ghost small" data-mt="update" data-s="ru">Обновить</button></div>
           <div class="mrow"><div><b>Перезагрузить сервер</b><span>VPN будет недоступен 1–3 минуты.</span></div><button class="btn ghost small" data-mt="reboot" data-s="ru">Перезагрузить</button></div>
           <div class="mrow"><div><b>Обновить маршрутизацию</b><span>Свежий скрипт и объединённый список российских сетей (ipdeny + MaxMind). Настройки и свои сети сохраняются.</span></div><button class="btn ghost small" data-mt="routing" data-s="ru">Обновить</button></div>
+          <div class="mrow"><div><b>Сервер сменил IP-адрес</b><span>Хостер поменял адрес или его пришлось сменить из-за блокировки. Ключи сохраняются, пользователям нужно заново импортировать подключение.</span></div><button class="btn ghost small" data-mt="ip" data-s="ru">Сменить IP…</button></div>
           <div class="mrow"><div><b>Удалить VPN с сервера</b><span>Отключает каскад и полностью удаляет AmneziaWG, пользователей и ключи.</span></div><button class="btn ghost small danger" data-mt="uninstall" data-s="ru">Удалить…</button></div>
         </div>
         <div class="mcard"><h3><span class="tag eu">EU</span> Выходной сервер <span class="note" id="mtEuHost"></span></h3>
           <div class="mrow"><div><b>Обновить пакеты</b><span>apt update + upgrade. Перезагрузка — только если вы разрешите.</span></div><button class="btn ghost small" data-mt="update" data-s="eu">Обновить</button></div>
           <div class="mrow"><div><b>Перезагрузить сервер</b><span>Каскад будет недоступен 1–3 минуты.</span></div><button class="btn ghost small" data-mt="reboot" data-s="eu">Перезагрузить</button></div>
+          <div class="mrow"><div><b>Сервер сменил IP-адрес</b><span>Программа перенастроит туннель с сервера RU. Пользователям ничего делать не нужно.</span></div><button class="btn ghost small" data-mt="ip" data-s="eu">Сменить IP…</button></div>
           <div class="mrow"><div><b>Удалить VPN с сервера</b><span>Полностью удаляет AmneziaWG. Каскад перестанет работать.</span></div><button class="btn ghost small danger" data-mt="uninstall" data-s="eu">Удалить…</button></div>
         </div>
       </div>
@@ -693,7 +695,42 @@ document.querySelector(".maint").onclick = e => {
   if (act==="routing") confirmBox("Обновить маршрутизацию?", "На сервер RU будет записан свежий скрипт маршрутизации (прежний сохранится рядом как .bak) и загружен объединённый список российских сетей. Подсеть, адрес EU и ваши EXTRA_RU_NETS сохраняются. Связь у пользователей не прервётся.", "Обновить", async()=>{
     const r=await call("/api/m/routing-update",{id:cur.id}); toast("Маршрутизация обновлена: российских сетей — "+r.nets); refreshStatus(false); });
   if (act==="uninstall") askUninstall([t]);
+  if (act==="ip") askIPChange(t);
 };
+function askIPChange(t){
+  const ru = t==="ru";
+  modal('<h2>Сервер '+SRV(t)+' сменил IP-адрес</h2><p class="note">Сейчас в профиле: '+esc(hostOf(t)||"—")+'</p>'+
+    (ru ? '<p>Программа подключится к серверу по новому адресу (с теми же логином и паролем), проверит, что это тот же сервер RU, пропишет на нём новый адрес и перевыпустит <b>файлы подключения</b> всех пользователей. <b>Ключи, имена и сроки не меняются</b>, но на каждом устройстве подключение нужно импортировать заново (QR-код или .conf) — старое смотрит на прежний адрес.</p>'
+        : '<p>Программа пропишет новый адрес в туннеле RU → EU и в маршрутизации на сервере RU и проверит связь. Если по новому адресу не ответит именно ваш сервер EU (ключи не совпадут), прежние настройки вернутся. <b>Пользователям ничего делать не нужно.</b></p>')+
+    '<label>Новый IP-адрес сервера '+SRV(t)+'</label><input type="text" id="ipNew" placeholder="например, 203.0.113.25" spellcheck="false">'+
+    '<label class="check hidden" id="ipForceRow"><input type="checkbox" id="ipForce"> <span id="ipForceText"></span></label>'+
+    '<div class="err" id="ipErr"></div><div class="actions"><button class="btn" id="ipOk">Сменить адрес</button><button class="btn ghost" id="ipNo">Отмена</button></div>');
+  $("ipNo").onclick=closeModal;
+  const run=async()=>{ const b=$("ipOk"), er=$("ipErr"); er.classList.remove("on"); b.disabled=true;
+    b.innerHTML='<span class="spin"></span> '+(ru?"Проверяю сервер и перевыпускаю файлы…":"Перенастраиваю туннель и проверяю связь…");
+    try {
+      const r=await call("/api/m/ip-change",{id:cur.id,target:t,newHost:$("ipNew").value.trim(),force:$("ipForce").checked});
+      if (r.needForce){ er.textContent=r.reason+(r.fingerprint?" Ключ SSH сервера: "+r.fingerprint:""); er.classList.add("on");
+        $("ipForceRow").classList.remove("hidden"); $("ipForceText").textContent = ru ? "Я уверен, что это тот же сервер — продолжить" : "Сохранить новый адрес, хотя сервер EU пока не ответил"; return; }
+      const id=cur.id; await loadProfiles(); openProfile(id);
+      if (ru) {
+        modal('<h2>Адрес сервера RU изменён</h2><p>'+esc(r.old)+' → <b>'+esc(r.new)+'</b>. Файлы подключения перевыпущены: '+r.clients.length+'.</p>'+
+          (r.bad&&r.bad.length?'<div class="err on">Не удалось обновить: '+esc(r.bad.join(", "))+' — перевыпустите их ключи во вкладке «Пользователи».</div>':'')+
+          '<div class="hintbox"><b>Что сделать на устройствах:</b> заново импортировать подключение — отсканировать новый QR-код или открыть новый файл .conf (вкладка «Пользователи» → «QR и ключ»). Можно и просто поменять адрес сервера в настройках подключения в приложении на '+esc(r.new)+'.</div>'+
+          (r.folder?'<p class="note">Новые файлы всех пользователей сохранены в папку: '+esc(r.folder)+(r.saveError?' (не все: '+esc(r.saveError)+')':'')+'</p>':'')+
+          (r.forced?'<p class="note">Адрес сменён принудительно, без подтверждения. Ключ SSH сервера: '+esc(r.fingerprint)+'</p>':'')+
+          '<div class="actions"><button class="btn" id="ipDone">Готово</button>'+(r.folder?'<button class="btn ghost" id="ipOpen">Открыть папку</button>':'')+'</div>');
+        $("ipDone").onclick=()=>{ closeModal(); showTab("users"); };
+        if (r.folder) $("ipOpen").onclick=()=>call("/api/m/open-folder",{id:cur.id,dir:r.folder}).catch(e=>toast(e.message,true));
+      } else {
+        closeModal(); toast(r.connected ? "Адрес сервера EU изменён: "+r.new+". Туннель работает." : "Адрес сервера EU сохранён: "+r.new+". Туннель заработает, когда сервер станет доступен.", !r.connected);
+        if (r.note) setTimeout(()=>toast(r.note,true),3500);
+        refreshStatus(false);
+      }
+    } catch(e){ er.textContent=e.message; er.classList.add("on"); }
+    finally { if ($("ipOk")){ b.disabled=false; b.textContent="Сменить адрес"; } } };
+  $("ipOk").onclick=run; $("ipNew").onkeydown=e=>{ if(e.key==="Enter") run(); };
+}
 $("mtAll").onclick = () => askUninstall(cur.euHost ? ["ru","eu"] : ["ru"]);
 
 async function waitBack(t){

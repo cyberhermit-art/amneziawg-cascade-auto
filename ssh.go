@@ -52,6 +52,13 @@ type Remote struct {
 	stopKA  chan struct{}
 }
 
+// Fingerprint — отпечаток ключа SSH-сервера, запомненный при подключении.
+func (r *Remote) Fingerprint() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.hostKey
+}
+
 func NewRemote(cfg ServerCfg, log func(string)) *Remote {
 	return &Remote{cfg: cfg, log: log}
 }

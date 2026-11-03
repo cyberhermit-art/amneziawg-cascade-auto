@@ -26,6 +26,7 @@ type Profile struct {
 	RUSubnet string    `json:"ruSubnet,omitempty"`
 	EUSubnet string    `json:"euSubnet,omitempty"`
 	Created  string    `json:"created,omitempty"`
+	Dir      string    `json:"dir,omitempty"` // папка профиля (фиксируется при смене IP сервера RU)
 }
 
 // storedServer — как сервер лежит на диске: секреты зашифрованы.
@@ -45,6 +46,7 @@ type storedProfile struct {
 	RUSubnet string       `json:"ruSubnet,omitempty"`
 	EUSubnet string       `json:"euSubnet,omitempty"`
 	Created  string       `json:"created,omitempty"`
+	Dir      string       `json:"dir,omitempty"`
 }
 
 type storeFile struct {
@@ -78,6 +80,9 @@ func profilesPath() string { return filepath.Join(appDataDir(), "profiles.json")
 
 // ProfileDir — папка профиля в «Документах»: резервные копии и файлы клиентов.
 func profileDir(p *Profile) string {
+	if p.Dir != "" {
+		return p.Dir
+	}
 	home, _ := os.UserHomeDir()
 	base := filepath.Join(home, "Documents")
 	if st, err := os.Stat(base); err != nil || !st.IsDir() {
@@ -169,7 +174,7 @@ func listProfiles() ([]Profile, string, error) {
 
 func fromStored(sp storedProfile) Profile {
 	return Profile{ID: sp.ID, Name: sp.Name, RU: decodeServer(sp.RU, "RU"), EU: decodeServer(sp.EU, "EU"),
-		RUSubnet: sp.RUSubnet, EUSubnet: sp.EUSubnet, Created: sp.Created}
+		RUSubnet: sp.RUSubnet, EUSubnet: sp.EUSubnet, Created: sp.Created, Dir: sp.Dir}
 }
 
 func getProfile(id string) (*Profile, error) {
@@ -219,6 +224,13 @@ func saveProfile(p Profile) (*Profile, error) {
 		if p.Created == "" {
 			p.Created = old.Created
 		}
+		if p.Dir == "" {
+			p.Dir = old.Dir
+		}
+		if p.Dir == "" && old.RU.Host != p.RU.Host {
+			// папка профиля называется по адресу RU — при смене адреса оставляем прежнюю
+			p.Dir = profileDir(&old)
+		}
 		keepSecrets(&p.RU, old.RU)
 		keepSecrets(&p.EU, old.EU)
 	} else {
@@ -235,7 +247,7 @@ func saveProfile(p Profile) (*Profile, error) {
 	if err != nil {
 		return nil, err
 	}
-	sp := storedProfile{ID: p.ID, Name: p.Name, RU: ru, EU: eu, RUSubnet: p.RUSubnet, EUSubnet: p.EUSubnet, Created: p.Created}
+	sp := storedProfile{ID: p.ID, Name: p.Name, RU: ru, EU: eu, RUSubnet: p.RUSubnet, EUSubnet: p.EUSubnet, Created: p.Created, Dir: p.Dir}
 	if idx >= 0 {
 		sf.Profiles[idx] = sp
 	} else {

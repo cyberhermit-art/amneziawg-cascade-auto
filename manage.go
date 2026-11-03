@@ -351,7 +351,7 @@ F=/etc/amnezia/amneziawg/awg1.conf; [ -f $F ] && { grep -qi '^[[:space:]]*Header
 	wg.Wait()
 	if err != nil {
 		st.RUError = err.Error()
-		st.Problems = append(st.Problems, "Нет связи с сервером RU: "+err.Error())
+		st.Problems = append(st.Problems, "Нет связи с сервером RU: "+err.Error()+". Если хостер сменил IP-адрес сервера — ниже, в «Обслуживании серверов», есть кнопка «Сменить IP»")
 		return st, nil
 	}
 	st.RUReachable = true
@@ -915,5 +915,6 @@ func registerManage(mux *http.ServeMux) {
 	mux.HandleFunc("/api/m/open-backups", mapi(mOpenBackups))
 	registerTasks(mux)
 	registerExclude(mux)
+	registerIPChange(mux)
 	mux.HandleFunc("/api/m/routing-update", mapi(mRoutingUpdate))
 }

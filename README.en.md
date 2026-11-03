@@ -32,6 +32,7 @@ One connection on the device, and both local and international services behave a
 - **Maintenance:** routing update on a running cascade, package updates, reboot and VPN removal for RU and EU separately, plus removal of the whole cascade (with a backup first).
 - **Bypass VPN:** sites that block hosting IPs (e.g. **Gosuslugi**, the Russian public services portal) are reached from the device directly — a ready preset plus custom networks; a site check from the RU server (which path it takes and whether it opens).
 - **Protocol version:** AmneziaWG 3.1 (default) or 2.0 for routers and older apps; both servers always get the same version, and the Server tab shows it and warns on a mismatch.
+- **Server IP change:** if the host changes the RU or EU address (or it has to be changed due to blocking) — reconfigure without reinstalling or changing keys.
 - **Backups** of both servers stored on your PC, with restore.
 - **Profiles:** several cascades in one app; an already running cascade can be attached.
 
@@ -81,7 +82,7 @@ Go 1.24+:
 
 ```bash
 go mod tidy
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.6.1" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.7.0" -o AmneziaWG-Cascade.exe .
 ```
 
 `rsrc_windows_amd64.syso` (icon and version info) is built from [`winres/`](winres) with `x86_64-w64-mingw32-windres -O coff -o ../rsrc_windows_amd64.syso app.rc`.
