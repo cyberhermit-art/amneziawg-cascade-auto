@@ -25,7 +25,7 @@ var indexHTML string
 const appPort = 47821
 
 // version задаётся при сборке: -ldflags "-X main.version=1.4.0"
-var version = "1.6.0"
+var version = "1.6.1"
 
 var (
 	token   string
@@ -214,7 +214,16 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 	jobMu.Lock()
 	jobStop = cancel
 	jobMu.Unlock()
-	hub.Log("", fmt.Sprintf("Старт: RU = %s, EU = %s", in.RU.Host, in.EU.Host))
+	if logFile != nil {
+		logMu.Lock()
+		fmt.Fprintf(logFile, "\n======== %s · AmneziaWG Cascade v%s ========\n", time.Now().Format("2006-01-02 15:04:05"), version)
+		logMu.Unlock()
+	}
+	opts := "версия протокола " + in.Protocol
+	if in.SkipUpdate {
+		opts += ", без обновления системы"
+	}
+	hub.Log("", fmt.Sprintf("Старт (программа v%s): RU = %s, EU = %s, %s", version, in.RU.Host, in.EU.Host, opts))
 	go func() {
 		defer hub.SetRunning(false)
 		defer cancel()

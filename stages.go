@@ -138,6 +138,12 @@ func (j *Job) run(res *FinalResult) error {
 func (j *Job) updateStage(id string, r *Remote) error {
 	if j.in.SkipUpdate {
 		j.hub.Stage(id, "skip", "")
+		if out, _, err := j.exec(r, `systemctl is-active --quiet awgc-update && echo RUN`, nil, 30*time.Second); err == nil && strings.Contains(out, "RUN") {
+			j.logf(r.cfg.Role, "Обновление системы с прошлого запуска ещё не закончилось, а вы выбрали установку без обновления — останавливаю его.")
+			if err := j.stopUpdate(r); err != nil {
+				return fmt.Errorf("сервер %s: %v", r.cfg.Role, err)
+			}
+		}
 		return nil
 	}
 	return j.stage(id, func() error { return j.updateServer(r) })
@@ -244,6 +250,7 @@ type probeResult struct {
 	running, done, rebootPending bool
 	bootID                       string
 	size                         int64
+	age                          int64 // сколько секунд журнал не менялся (-1 — неизвестно)
 	chunk                        string
 }
 
@@ -255,7 +262,8 @@ D=0; if %s; then D=1; fi
 P=0; [ -f /run/reboot-required ] && P=1
 B=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)
 S=$(stat -c %%s "$L" 2>/dev/null || echo 0)
-echo "@@ $R $D $P $B $S"
+M=$(stat -c %%Y "$L" 2>/dev/null); A=-1; [ -n "$M" ] && A=$(( $(date +%%s) - M ))
+echo "@@ $R $D $P $B $S $A"
 if [ "$S" -gt "$O" ]; then F=$O; [ $((S-O)) -gt 200000 ] && F=$((S-200000)); tail -c +$((F+1)) "$L" | head -c $((S-F)); fi`,
 		shq(logPath), offset, runningTest, doneTest)
 	out, _, err := r.Output(cmd, nil, 90*time.Second)
@@ -272,10 +280,106 @@ if [ "$S" -gt "$O" ]; then F=$O; [ $((S-O)) -gt 200000 ] && F=$((S-200000)); tai
 	}
 	p := &probeResult{running: f[1] == "1", done: f[2] == "1", rebootPending: f[3] == "1", bootID: f[4], chunk: out[nl+1:]}
 	p.size, _ = strconv.ParseInt(f[5], 10, 64)
+	p.age = -1
+	if len(f) > 6 {
+		p.age, _ = strconv.ParseInt(f[6], 10, 64)
+	}
 	return p, nil
 }
 
+// ---------- apt: кто держит блокировку, остановка зависшего обновления ----------
+
+// aptHoldersCmd печатает процессы, у которых открыты файлы блокировки apt/dpkg.
+const aptHoldersCmd = `for p in /proc/[0-9]*; do ls -l $p/fd 2>/dev/null | grep -qE '/var/lib/(apt/lists|dpkg)/lock' && echo "${p#/proc/} $(cat $p/comm 2>/dev/null)"; done; true`
+
+func (j *Job) aptHolders(r *Remote) (string, error) {
+	out, _, err := j.exec(r, aptHoldersCmd, nil, time.Minute)
+	if err != nil {
+		return "", err
+	}
+	var hs []string
+	for _, l := range strings.Split(strings.TrimSpace(out), "\n") {
+		if l = strings.TrimSpace(l); l != "" {
+			hs = append(hs, l)
+		}
+	}
+	return strings.Join(hs, ", "), nil
+}
+
+// stopUpdate останавливает наше обновление системы (службу awgc-update и её apt)
+// и доводит до конца прерванную настройку пакетов.
+func (j *Job) stopUpdate(r *Remote) error {
+	_, _, err := j.exec(r, `# сначала запоминаем все процессы обновления (после остановки службы
+# осиротевший apt уже не отличить от чужого), потом останавливаем службу и добиваем их
+ours() { p=$1; for _ in 1 2 3 4 5 6 7 8 9 10; do
+    grep -qa 'awgc-update' /proc/$p/cgroup 2>/dev/null && return 0
+    tr '\0' ' ' < /proc/$p/cmdline 2>/dev/null | grep -q 'awgc-vps-update' && return 0
+    p=$(awk '{print $4}' /proc/$p/stat 2>/dev/null); [ -n "$p" ] && [ "$p" -gt 1 ] || return 1
+  done; return 1; }
+L=""; for d in /proc/[0-9]*; do q=${d#/proc/}; [ "$q" = $$ ] && continue; ours $q && L="$L $q"; done
+systemctl stop awgc-update >/dev/null 2>&1
+[ -n "$L" ] && kill $L 2>/dev/null; sleep 3; [ -n "$L" ] && kill -9 $L 2>/dev/null
+pgrep -x dpkg >/dev/null || DEBIAN_FRONTEND=noninteractive dpkg --configure -a >/dev/null 2>&1
+true`, nil, 5*time.Minute)
+	return err
+}
+
+// waitApt ждёт, пока apt освободится. Если его держит наше же зависшее обновление
+// системы — останавливает его; чужой процесс (например, автообновления) ждёт до 20 минут.
+func (j *Job) waitApt(r *Remote) error {
+	role := r.cfg.Role
+	deadline := time.Now().Add(20 * time.Minute)
+	said := false
+	for {
+		h, err := j.aptHolders(r)
+		if err != nil {
+			return fmt.Errorf("сервер %s: %v", role, err)
+		}
+		if h == "" {
+			if said {
+				j.logf(role, "apt освободился.")
+			}
+			return nil
+		}
+		out, _, _ := j.exec(r, `systemctl is-active --quiet awgc-update && echo OURS`, nil, 30*time.Second)
+		if strings.Contains(out, "OURS") {
+			j.logf(role, "apt занят незавершённым обновлением системы с прошлого запуска (%s) — останавливаю его.", h)
+			if err := j.stopUpdate(r); err != nil {
+				return fmt.Errorf("сервер %s: %v", role, err)
+			}
+			continue
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("сервер %s: apt занят больше 20 минут (процессы: %s). Дождитесь их окончания или остановите их на сервере и запустите установку снова", role, h)
+		}
+		if !said {
+			j.logf(role, "apt сейчас занят другим процессом (%s) — скорее всего, система ставит автообновления. Жду, пока закончит…", h)
+			said = true
+		}
+		if err := j.sleep(20 * time.Second); err != nil {
+			return err
+		}
+	}
+}
+
 // ---------- шаг «обновление системы» ----------
+
+// updStall — сколько журнал обновления может не меняться, прежде чем считать apt зависшим.
+var updStall = 20 * time.Minute
+
+func fmtDur(sec int64) string {
+	if sec >= 3600 {
+		return fmt.Sprintf("%d ч %d мин", sec/3600, sec%3600/60)
+	}
+	return fmt.Sprintf("%d мин", (sec+59)/60)
+}
+
+func orDash(s string) string {
+	if s == "" {
+		return "—"
+	}
+	return s
+}
 
 const (
 	updRunning = `systemctl is-active --quiet awgc-update`
@@ -318,6 +422,14 @@ systemd-run --unit=awgc-update --collect --quiet /bin/bash -c 'bash %s >> %s 2>&
 	}
 
 	switch {
+	case p.running && p.age > int64(updStall/time.Second):
+		j.logf(role, "Обновление системы с прошлого запуска висит: его журнал не менялся %s. Останавливаю его и запускаю заново.", fmtDur(p.age))
+		if err := j.stopUpdate(r); err != nil {
+			return fmt.Errorf("сервер %s: %v", role, err)
+		}
+		if err := launch(); err != nil {
+			return err
+		}
 	case p.running:
 		j.logf(role, "Обновление системы уже идёт (с прошлого запуска) — продолжаю следить.")
 	case p.done && p.rebootPending:
@@ -333,9 +445,11 @@ systemd-run --unit=awgc-update --collect --quiet /bin/bash -c 'bash %s >> %s 2>&
 	fails := 0
 	var pendingSince time.Time
 	rebootRequested := false
+	lastGrowth, warned := time.Now(), false
 	for {
 		if time.Now().After(deadline) {
-			return fmt.Errorf("сервер %s: обновление идёт дольше 3 часов — проверьте сервер (лог: %s)", role, updateLog)
+			_ = j.stopUpdate(r)
+			return fmt.Errorf("сервер %s: обновление идёт дольше 3 часов — остановил его. Запустите установку снова или поставьте галочку «Не обновлять систему» (лог на сервере: %s)", role, updateLog)
 		}
 		if err := j.sleep(8 * time.Second); err != nil {
 			return err
@@ -355,10 +469,30 @@ systemd-run --unit=awgc-update --collect --quiet /bin/bash -c 'bash %s >> %s 2>&
 		}
 		if p.chunk != "" {
 			j.hub.Log(role, p.chunk)
+			lastGrowth, warned = time.Now(), false
 		}
 		offset = p.size
 
 		if p.running {
+			// Журнал не растёт — apt, скорее всего, завис на сети.
+			quiet := time.Since(lastGrowth)
+			if !warned && quiet > updStall/2 {
+				h, _ := j.aptHolders(r)
+				j.logf(role, "Обновление %s не пишет в журнал (работают: %s). Возможно, не отвечает зеркало пакетов — подожду ещё немного.", fmtDur(int64(quiet/time.Second)), orDash(h))
+				warned = true
+			}
+			if quiet > updStall {
+				_ = j.stopUpdate(r)
+				fails++
+				if fails >= 3 {
+					return fmt.Errorf("сервер %s: обновление системы зависает (вероятно, не отвечает зеркало пакетов — см. последние строки выше). Поставьте галочку «Не обновлять систему» или смените зеркало на сервере", role)
+				}
+				j.logf(role, "Обновление висит %s — остановил его и запускаю заново (попытка %d из 3)…", fmtDur(int64(quiet/time.Second)), fails+1)
+				if err := launch(); err != nil {
+					return err
+				}
+				lastGrowth, warned = time.Now(), false
+			}
 			continue
 		}
 		if p.done {
@@ -382,7 +516,7 @@ systemd-run --unit=awgc-update --collect --quiet /bin/bash -c 'bash %s >> %s 2>&
 		if fails >= 3 {
 			return fmt.Errorf("сервер %s: обновление системы не удалось — причина в логе выше. Можно поставить галочку «Пропустить обновление» и попробовать снова", role)
 		}
-		j.logf(role, "Обновление прервалось. Подожду минуту и попробую ещё раз…")
+		j.logf(role, "Обновление завершилось с ошибкой (см. выше). Подожду минуту и попробую ещё раз (попытка %d из 3)…", fails+1)
 		if err := j.sleep(time.Minute); err != nil {
 			return err
 		}
@@ -499,6 +633,9 @@ func (j *Job) installServer(r *Remote, subnet, proto string) error {
 		if err := j.fetchInstaller(r); err != nil {
 			return err
 		}
+		if err := j.waitApt(r); err != nil {
+			return err
+		}
 		pv := "по умолчанию — 3.1, где сервер его поддерживает"
 		if proto != "" {
 			pv = proto
@@ -511,6 +648,7 @@ func (j *Job) installServer(r *Remote, subnet, proto string) error {
 
 	deadline := time.Now().Add(2 * time.Hour)
 	sameBootFails, launches := 0, 1
+	var lastChunk strings.Builder
 	for {
 		if time.Now().After(deadline) {
 			return fmt.Errorf("сервер %s: установка идёт дольше 2 часов — проверьте сервер вручную (лог: %s)", role, installLog)
@@ -533,6 +671,12 @@ func (j *Job) installServer(r *Remote, subnet, proto string) error {
 		}
 		if p.chunk != "" {
 			j.hub.Log(role, p.chunk)
+			lastChunk.WriteString(p.chunk)
+			if lastChunk.Len() > 20000 {
+				t := lastChunk.String()
+				lastChunk.Reset()
+				lastChunk.WriteString(t[len(t)-10000:])
+			}
 			if strings.Contains(p.chunk, "Инициирована перезагрузка") {
 				seenReboot, rebootWaitSince = true, time.Now()
 			}
@@ -546,19 +690,30 @@ func (j *Job) installServer(r *Remote, subnet, proto string) error {
 			j.logf(role, "AmneziaWG установлен.")
 			return nil
 		}
-		if p.bootID == launchBoot {
+		rebooted := p.bootID != launchBoot
+		if !rebooted {
 			if seenReboot && time.Since(rebootWaitSince) < 3*time.Minute {
 				continue // сервер вот-вот уйдёт в перезагрузку
 			}
-			sameBootFails++
-			if sameBootFails >= 4 {
-				return fmt.Errorf("сервер %s: установщик остановился с ошибкой — последние строки лога выше", role)
-			}
-			// Частая временная причина — после загрузки система сама ставит
-			// обновления и держит блокировку apt. Даём ей закончить.
-			j.logf(role, "Установщик остановился. Подожду минуту и попробую ещё раз…")
-			if err := j.sleep(time.Minute); err != nil {
-				return err
+			last := lastChunk.String()
+			if strings.Contains(last, "Could not get lock") || strings.Contains(last, "Unable to lock") || strings.Contains(last, "is held by process") {
+				// Причина известна и временная: apt занят. Ждём его, а не перезапускаем вслепую.
+				j.logf(role, "Установщик остановился: apt был занят другим процессом.")
+				if err := j.waitApt(r); err != nil {
+					return err
+				}
+			} else {
+				sameBootFails++
+				if sameBootFails >= 3 {
+					return fmt.Errorf("сервер %s: установщик остановился с ошибкой — причина в последних строках лога выше (подробно на сервере: /root/awg/install_amneziawg.log)", role)
+				}
+				j.logf(role, "Установщик завершился с ошибкой (см. выше). Попробую ещё раз через минуту (попытка %d из 3)…", sameBootFails+1)
+				if err := j.sleep(time.Minute); err != nil {
+					return err
+				}
+				if err := j.waitApt(r); err != nil {
+					return err
+				}
 			}
 		} else {
 			sameBootFails = 0
@@ -568,7 +723,12 @@ func (j *Job) installServer(r *Remote, subnet, proto string) error {
 			return fmt.Errorf("сервер %s: установщик перезапускался слишком много раз — смотрите лог выше", role)
 		}
 		seenReboot = false
-		j.logf(role, "Продолжаю установку после перезагрузки (запуск №%d)…", launches)
+		lastChunk.Reset()
+		if rebooted {
+			j.logf(role, "Сервер перезагрузился — продолжаю установку (запуск №%d)…", launches)
+		} else {
+			j.logf(role, "Запускаю установщик снова (запуск №%d)…", launches)
+		}
 		if err := launch(); err != nil {
 			return err
 		}

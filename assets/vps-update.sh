@@ -7,7 +7,8 @@
 # (full-upgrade и autoremove на VPS иногда сносят netplan и сервер теряет сеть).
 export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a NEEDRESTART_SUSPEND=1 APT_LISTCHANGES_FRONTEND=none
 DONE=${AWGC_DONE:-/root/.awgc-update-done}
-APT="apt-get -q -o DPkg::Lock::Timeout=1800 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
+# Таймауты сети: без них одно зависшее зеркало вешает apt на часы.
+APT="apt-get -q -o DPkg::Lock::Timeout=1800 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::ftp::Timeout=30 -o Acquire::Retries=3 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
 
 echo "== Проверяю, не прервана ли прошлая установка пакетов"
 dpkg --configure -a
@@ -15,11 +16,19 @@ dpkg --configure -a
 echo "== Обновляю список пакетов"
 ok=0
 for i in 1 2 3; do
-    if $APT update; then ok=1; break; fi
+    # не дольше 10 минут на попытку: зависшее зеркало прерываем
+    timeout -k 30 600 $APT update 2>&1 | tee /tmp/awgc-apt-update.out
+    rc=${PIPESTATUS[0]}
+    if [ "$rc" = 0 ]; then ok=1; break; fi
+    [ "$rc" = 124 ] || [ "$rc" = 137 ] && echo "apt update завис больше 10 минут — прерываю"
     echo "Не получилось, повтор через 30 секунд ($i/3)"
     sleep 30
 done
-[ "$ok" = 1 ] || { echo "ОШИБКА: не удалось обновить список пакетов (нет доступа к репозиториям?)"; exit 1; }
+if [ "$ok" != 1 ]; then
+    hosts=$(grep -hoE '^(Err|Ign):[0-9]+ https?://[^ /]+' /tmp/awgc-apt-update.out | sed -E 's#.*://##' | sort -u | paste -sd' ')
+    echo "ОШИБКА: не удалось обновить список пакетов.${hosts:+ Не отвечают зеркала: $hosts.} Проверьте доступ сервера к репозиториям; если не отвечает зеркало хостера (например, ru.archive.ubuntu.com), смените его на archive.ubuntu.com в /etc/apt/sources.list.d/ или поставьте галочку «Не обновлять систему»."
+    exit 1
+fi
 
 echo "== Устанавливаю обновления. На медленном канале это может занять до часа"
 if ! $APT -y upgrade --with-new-pkgs; then

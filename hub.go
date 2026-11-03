@@ -64,7 +64,8 @@ func clean(s string) string {
 }
 
 func (h *Hub) emit(e Event) {
-	e.Time = time.Now().Format("15:04:05")
+	now := time.Now()
+	e.Time = now.Format("15:04:05")
 	b, _ := json.Marshal(e)
 	h.mu.Lock()
 	h.events = append(h.events, b)
@@ -85,7 +86,8 @@ func (h *Hub) emit(e Event) {
 		if e.Src != "" {
 			prefix = "[" + e.Src + "] "
 		}
-		sink(e.Time + " " + prefix + e.Msg)
+		// в файле — с датой: запуски разных дней идут подряд
+		sink(now.Format("2006-01-02 15:04:05") + " " + prefix + e.Msg)
 	}
 }
 
