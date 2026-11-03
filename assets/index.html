@@ -111,6 +111,10 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
 .acts button.del{color:var(--err)}
 .st{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .st.active .dot{background:var(--ok)} .st.recent .dot{background:var(--warn)}
+.popt{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin:8px 0;cursor:pointer;font-weight:400}
+.popt input{margin-top:3px;flex:none}
+.popt span{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+.popt:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{appearance:none;border:0;background:var(--card);color:var(--ink);padding:6px 12px;font:12.5px "Segoe UI",system-ui;cursor:pointer}
 .seg button+button{border-left:1px solid var(--line)}
@@ -249,6 +253,14 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
           <label>Пароль ключа (если есть)</label><input type="password" id="eu-keypass" autocomplete="new-password">
         </div>
       </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>Версия протокола AmneziaWG</h2>
+      <p class="hint">Оба сервера каскада всегда ставятся на одну версию — иначе туннель между ними не заработает.</p>
+      <label class="popt"><input type="radio" name="proto" value="3.1" checked><div><b>AmneziaWG 3.1 — рекомендуется</b><span>Новое поколение: шифрование заголовков и добавочный паддинг, трафик сложнее распознать. Нужны свежие приложения: AmneziaVPN 5.0.1.5+, AmneziaWG 3.1+ (Windows, Android, iOS), WG Tunnel. Если сервер не поддерживает 3.1 (старое ядро, ARM), установщик сам поставит 2.0 — программа об этом скажет.</span></div></label>
+      <label class="popt"><input type="radio" name="proto" value="2.0"><div><b>AmneziaWG 2.0 — для роутеров и старых приложений</b><span>Выбирайте, если подключать будете роутер на стоковой прошивке (Keenetic, GL.iNet, старый OpenWrt), Hiddify или приложения, которые давно не обновлялись. Клиент без поддержки 3.1 к серверу 3.1 не подключится.</span></div></label>
+      <p class="note">Сменить версию потом можно только переустановкой обоих серверов с выдачей всех ключей заново.</p>
     </div>
 
     <details class="card" style="margin-top:16px">
@@ -439,7 +451,9 @@ const keys = {ru:"", eu:""};
 const saveFields = ["ru-host","ru-port","ru-user","eu-host","eu-port","eu-user","ru-subnet","eu-subnet","extra"];
 let installActive = false;
 
-try { const s = JSON.parse(localStorage.getItem("awgc-form")||"{}"); for (const k of saveFields) if (s[k]) $(k).value = s[k]; } catch(e) {}
+const protoVal = () => (document.querySelector('input[name="proto"]:checked')||{}).value || "3.1";
+try { const s = JSON.parse(localStorage.getItem("awgc-form")||"{}"); for (const k of saveFields) if (s[k]) $(k).value = s[k];
+  if (s.proto) { const r=document.querySelector('input[name="proto"][value="'+s.proto+'"]'); if (r) r.checked=true; } } catch(e) {}
 
 for (const r of ["ru","eu"]) {
   $(r+"-usekey").onchange = e => $(r+"-keybox").classList.toggle("on", e.target.checked);
@@ -462,9 +476,9 @@ async function post(url, body){
 
 $("startBtn").onclick = async () => {
   $("formErr").classList.remove("on");
-  const s = {}; for (const k of saveFields) s[k] = $(k).value; try { localStorage.setItem("awgc-form", JSON.stringify(s)); } catch(e) {}
+  const s = {proto:protoVal()}; for (const k of saveFields) s[k] = $(k).value; try { localStorage.setItem("awgc-form", JSON.stringify(s)); } catch(e) {}
   $("startBtn").disabled = true;
-  const res = await post("/api/start", { ru:server("ru"), eu:server("eu"), ruSubnet:$("ru-subnet").value.trim(), euSubnet:$("eu-subnet").value.trim(), extraClients:$("extra").value, skipUpdate:$("skipUpdate").checked, profileName:$("prof-name").value.trim() });
+  const res = await post("/api/start", { ru:server("ru"), eu:server("eu"), ruSubnet:$("ru-subnet").value.trim(), euSubnet:$("eu-subnet").value.trim(), extraClients:$("extra").value, skipUpdate:$("skipUpdate").checked, profileName:$("prof-name").value.trim(), protocol:protoVal() });
   $("startBtn").disabled = false;
   if (res.error) { $("formErr").textContent = res.error; $("formErr").classList.add("on"); return; }
   showRun();
@@ -527,6 +541,10 @@ function finish(e){
   }
   const ok=document.createElement("div"); ok.className="okbox";
   ok.innerHTML="<b>Каскад готов.</b> Установите на устройство приложение <b>AmneziaVPN</b> или <b>AmneziaWG</b> и добавьте подключение: отсканируйте QR-код или импортируйте файл .conf. Проверка: сайт ifconfig.me должен показать <b></b>, а yandex.ru/internet — <b></b>.";
+  if (r.proto){ const pn=document.createElement("div"); pn.className="note"; pn.style.marginTop="8px";
+    pn.textContent = r.proto==="3.1" ? "Версия протокола: AmneziaWG 3.1. Нужно приложение с поддержкой 3.1: AmneziaVPN 5.0.1.5 и новее, AmneziaWG 3.1 и новее (Windows, Android, iOS), WG Tunnel. Роутеры на стоковой прошивке и Hiddify к такому серверу не подключатся."
+                                     : "Версия протокола: AmneziaWG 2.0 — подходит любое приложение AmneziaVPN или AmneziaWG и роутеры с поддержкой AmneziaWG.";
+    ok.appendChild(pn); }
   const bs=ok.querySelectorAll("b"); bs[3].textContent="IP сервера EU ("+(r.euIp||"")+")"; bs[4].textContent="IP сервера RU ("+(r.ruIp||"")+")";
   if (r.folder){ const p=document.createElement("div"); p.style.marginTop="8px"; p.className="note"; p.textContent="Файлы сохранены: "+r.folder+"  ";
     const b=document.createElement("button"); b.className="btn ghost small"; b.textContent="Открыть папку"; b.onclick=()=>post("/api/open-folder"); p.appendChild(b); ok.appendChild(p); }
@@ -652,8 +670,8 @@ function renderStatus(st){
   const tun = st.tunnelAge<0 ? "не было" : fmtAgo(st.tunnelAge);
   box.innerHTML =
     card("ok","Сервер RU",[["Адрес",cur.ruHost],["Отклик SSH",st.pingMs+" мс"],["Работает",fmtUptime(st.uptime)],["Нагрузка",st.load],["Память",mem],["Диск",st.disk],["Система",st.os]].concat(st.rebootRequired?[["Обновления","ждут перезагрузки"]]:[])) +
-    card(st.awg0==="active"?"ok":"err","VPN для пользователей",[["Служба awg0",st.awg0==="active"?"работает":st.awg0],["Пользователей",String(st.peers)]]) +
-    card(st.awg1!=="active"?"err":(st.tunnelAge<0||st.tunnelAge>300?"warn":"ok"),"Туннель RU → EU",[["Служба awg1",st.awg1==="active"?"работает":st.awg1],["Связь с EU",tun],["Сервер EU",st.endpoint||cur.euHost||"—"]]) +
+    card(st.awg0==="active"?"ok":"err","VPN для пользователей",[["Служба awg0",st.awg0==="active"?"работает":st.awg0],["Пользователей",String(st.peers)]].concat(st.ruProto?[["Протокол","AmneziaWG "+st.ruProto],["Приложения",st.ruProto==="3.1"?"нужна поддержка 3.1":"любые AmneziaWG"]]:[])) +
+    card(st.awg1!=="active"?"err":(st.tunnelAge<0||st.tunnelAge>300?"warn":"ok"),"Туннель RU → EU",[["Служба awg1",st.awg1==="active"?"работает":st.awg1],["Связь с EU",tun],["Сервер EU",st.endpoint||cur.euHost||"—"]].concat(st.euProto?[["Протокол EU","AmneziaWG "+st.euProto+(st.ruProto&&st.ruProto!==st.euProto?" — не совпадает с RU!":"")]]:[])) +
     card(st.routing!=="active"?"err":(st.ruNets<1000?"warn":"ok"),"Раздельная маршрутизация",[["Состояние",st.routing==="active"?"включена":st.routing],["Российских сетей",String(st.ruNets)],["Источники",st.extraList?"ipdeny + MaxMind":"только ipdeny"]]) +
     (cur.euHost ? card(st.euReachable?"ok":"err","Сервер EU",[["Адрес",cur.euHost],["SSH с этого ПК",st.euReachable?"доступен, "+st.euPingMs+" мс":"не отвечает"]]) : "");
 }

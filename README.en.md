@@ -31,6 +31,7 @@ One connection on the device, and both local and international services behave a
 - **Server:** health of the RU server, the tunnel to EU, routing, EU reachability; restart VPN.
 - **Maintenance:** routing update on a running cascade, package updates, reboot and VPN removal for RU and EU separately, plus removal of the whole cascade (with a backup first).
 - **Bypass VPN:** sites that block hosting IPs (e.g. **Gosuslugi**, the Russian public services portal) are reached from the device directly — a ready preset plus custom networks; a site check from the RU server (which path it takes and whether it opens).
+- **Protocol version:** AmneziaWG 3.1 (default) or 2.0 for routers and older apps; both servers always get the same version, and the Server tab shows it and warns on a mismatch.
 - **Backups** of both servers stored on your PC, with restore.
 - **Profiles:** several cascades in one app; an already running cascade can be attached.
 
@@ -52,7 +53,7 @@ Data locations: profiles (passwords/keys encrypted with Windows DPAPI) — `%APP
 
 The app connects over SSH and performs the steps from [CASCADE.md](https://github.com/bivlked/amneziawg-installer/blob/main/CASCADE.md) of [amneziawg-installer](https://github.com/bivlked/amneziawg-installer):
 
-- `install_amneziawg.sh` is downloaded from the project's official releases and run with `--yes --disallow-ipv6 --route-all --subnet=…`;
+- `install_amneziawg.sh` is downloaded from the project's official releases and run with `--yes --disallow-ipv6 --route-all --subnet=…` (plus `--protocol=` so both servers get the same protocol version);
 - long operations (system update, installer) run on the server as `systemd-run` units; the app only follows their logs, so disconnects and reboots don't break them;
 - for the cascade, [`assets/cascade-setup.sh`](assets/cascade-setup.sh) is placed on the RU server: it creates the `awg1` tunnel to EU and installs `awg-routing.sh` from CASCADE.md with two marked changes;
 - the list of Russian networks merges [ipdeny](https://www.ipdeny.com) (registry data) and [antonme/GeoIP](https://github.com/antonme/GeoIP) (MaxMind GeoLite2, physical location), which catches foreign CDN nodes located in Russia;
@@ -80,7 +81,7 @@ Go 1.24+:
 
 ```bash
 go mod tidy
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.5.1" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.6.0" -o AmneziaWG-Cascade.exe .
 ```
 
 `rsrc_windows_amd64.syso` (icon and version info) is built from [`winres/`](winres) with `x86_64-w64-mingw32-windres -O coff -o ../rsrc_windows_amd64.syso app.rc`.

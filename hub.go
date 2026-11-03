@@ -37,6 +37,7 @@ type FinalResult struct {
 	EUIP    string       `json:"euIp,omitempty"`
 	RUIP    string       `json:"ruIp,omitempty"`
 	Profile string       `json:"profile,omitempty"`
+	Proto   string       `json:"proto,omitempty"` // поколение AmneziaWG каскада: 3.1 или 2.0
 }
 
 type Hub struct {

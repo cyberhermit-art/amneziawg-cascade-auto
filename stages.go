@@ -78,15 +78,49 @@ func (j *Job) run(res *FinalResult) error {
 	if err := j.updateStage("ru-update", ru); err != nil {
 		return err
 	}
-	if err := j.stage("ru-install", func() error { return j.installServer(ru, j.in.RUSubnet) }); err != nil {
+	// RU ставится с выбранным поколением. Для 3.1 флаг не передаём: тогда
+	// установщик сам перейдёт на 2.0, если сервер не тянет 3.1 (старое ядро,
+	// ARM), — и весь каскад будет на 2.0.
+	ruFlag := ""
+	if j.in.Protocol == "2.0" {
+		ruFlag = "2.0"
+	}
+	if err := j.stage("ru-install", func() error { return j.installServer(ru, j.in.RUSubnet, ruFlag) }); err != nil {
 		return err
 	}
+	ruProto, err := j.serverProto(ru)
+	if err != nil {
+		return err
+	}
+	switch {
+	case ruProto != j.in.Protocol && j.in.Protocol == "3.1":
+		j.logf("RU", "Внимание: на сервере RU установлен AmneziaWG %s, а не 3.1 — сервер не поддерживает 3.1 (причина — в журнале установщика выше). Сервер EU поставлю тоже на %s, чтобы каскад работал.", ruProto, ruProto)
+	case ruProto != j.in.Protocol:
+		j.logf("RU", "Внимание: AmneziaWG на сервере RU уже был установлен раньше, с версией протокола %s — её и оставляю. Сервер EU поставлю тоже на %s.", ruProto, ruProto)
+	default:
+		j.logf("RU", "Версия протокола на сервере RU: AmneziaWG %s.", ruProto)
+	}
+	res.Proto = ruProto
 
 	// 2. Сервер EU: обновление, затем установка.
 	if err := j.updateStage("eu-update", eu); err != nil {
 		return err
 	}
-	if err := j.stage("eu-install", func() error { return j.installServer(eu, j.in.EUSubnet) }); err != nil {
+	// EU — строго с поколением RU: RU подключается к EU как клиент.
+	if err := j.stage("eu-install", func() error {
+		if err := j.installServer(eu, j.in.EUSubnet, ruProto); err != nil {
+			return err
+		}
+		euProto, err := j.serverProto(eu)
+		if err != nil {
+			return err
+		}
+		if euProto != ruProto {
+			return fmt.Errorf("на серверах разные версии протокола: RU — AmneziaWG %s, EU — %s. Туннель между ними не заработает. Удалите VPN с сервера EU (вкладка «Сервер» → «Удалить VPN с сервера») и запустите установку ещё раз", ruProto, euProto)
+		}
+		j.logf("EU", "Версия протокола на сервере EU: AmneziaWG %s — совпадает с RU.", euProto)
+		return nil
+	}); err != nil {
 		return err
 	}
 
@@ -365,7 +399,48 @@ const (
 	instDone    = `[ ! -f /root/awg/setup_state ] && [ -f /etc/amnezia/amneziawg/awg0.conf ] && [ -f /root/awg/manage_amneziawg.sh ] && systemctl is-active --quiet awg-quick@awg0`
 )
 
-func (j *Job) installServer(r *Remote, subnet string) error {
+// protoMarker печатает поколение установленного AmneziaWG: маркер AWG_PROTOCOL в
+// awgsetup_cfg.init (нет маркера — 2.0, так помечены установки до v6.0.0 установщика),
+// а если конфиг сервера содержит ключ защиты заголовков — точно 3.1.
+const protoMarker = `C=/root/awg/awgsetup_cfg.init
+P=$(sed -n "s/^[[:space:]]*\(export[[:space:]]\+\)\?AWG_PROTOCOL[[:space:]]*=[[:space:]]*['\"]\?\([0-9.]*\).*/\2/p" "$C" 2>/dev/null | tail -1)
+grep -qi '^[[:space:]]*HeaderProtectionKey[[:space:]]*=' /etc/amnezia/amneziawg/awg0.conf 2>/dev/null && P=3.1
+echo "@@PROTO ${P:-2.0}"`
+
+func parseProto(out string) string {
+	for _, l := range strings.Split(out, "\n") {
+		if f := strings.Fields(l); len(f) == 2 && f[0] == "@@PROTO" && (f[1] == "3.1" || f[1] == "2.0") {
+			return f[1]
+		}
+	}
+	return ""
+}
+
+func (j *Job) serverProto(r *Remote) (string, error) {
+	out, _, err := j.exec(r, protoMarker, nil, time.Minute)
+	if err != nil {
+		return "", fmt.Errorf("сервер %s: %v", r.cfg.Role, err)
+	}
+	p := parseProto(out)
+	if p == "" {
+		return "", fmt.Errorf("сервер %s: не удалось определить версию протокола AmneziaWG", r.cfg.Role)
+	}
+	return p, nil
+}
+
+// installCmd — запуск установщика отдельной службой. proto ("" — по умолчанию
+// установщика) передаётся флагом --protocol, который есть в установщике с v6.0.0.
+func installCmd(subnet, proto string) string {
+	protoOpt := ""
+	if proto != "" {
+		protoOpt = fmt.Sprintf(`$(grep -q -- '--protocol' %s && echo ' --protocol=%s')`, installerPath, proto)
+	}
+	return fmt.Sprintf(`systemctl reset-failed awgc-install >/dev/null 2>&1
+systemd-run --unit=awgc-install --collect --quiet --setenv=HOME=/root /bin/bash -c "cd /root && bash %s --yes --disallow-ipv6 --route-all --subnet=%s%s >> %s 2>&1"
+cat /proc/sys/kernel/random/boot_id`, installerPath, subnet, protoOpt, installLog)
+}
+
+func (j *Job) installServer(r *Remote, subnet, proto string) error {
 	role := r.cfg.Role
 	if err := j.ensure(r); err != nil {
 		return err
@@ -382,9 +457,7 @@ func (j *Job) installServer(r *Remote, subnet string) error {
 
 	launchBoot := p.bootID
 	launch := func() error {
-		out, code, err := j.exec(r, fmt.Sprintf(`systemctl reset-failed awgc-install >/dev/null 2>&1
-systemd-run --unit=awgc-install --collect --quiet --setenv=HOME=/root /bin/bash -c 'cd /root && bash %s --yes --disallow-ipv6 --route-all --subnet=%s >> %s 2>&1'
-cat /proc/sys/kernel/random/boot_id`, installerPath, subnet, installLog), nil, time.Minute)
+		out, code, err := j.exec(r, installCmd(subnet, proto), nil, time.Minute)
 		if err != nil {
 			return err
 		}
@@ -426,7 +499,11 @@ cat /proc/sys/kernel/random/boot_id`, installerPath, subnet, installLog), nil, t
 		if err := j.fetchInstaller(r); err != nil {
 			return err
 		}
-		j.logf(role, "Запускаю установщик AmneziaWG (подсеть %s). Сервер сам перезагрузится 1–2 раза — это нормально.", subnet)
+		pv := "по умолчанию — 3.1, где сервер его поддерживает"
+		if proto != "" {
+			pv = proto
+		}
+		j.logf(role, "Запускаю установщик AmneziaWG (подсеть %s, версия протокола: %s). Сервер сам перезагрузится 1–2 раза — это нормально.", subnet, pv)
 		if err := launch(); err != nil {
 			return err
 		}

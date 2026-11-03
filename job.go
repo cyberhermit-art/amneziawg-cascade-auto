@@ -35,6 +35,7 @@ type JobInput struct {
 	ExtraClients string    `json:"extraClients"`
 	SkipUpdate   bool      `json:"skipUpdate"`
 	ProfileName  string    `json:"profileName"`
+	Protocol     string    `json:"protocol"` // "3.1" (по умолчанию, с автооткатом на 2.0) или "2.0"
 }
 
 var nameRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,32}$`)
@@ -58,6 +59,13 @@ func (in *JobInput) validate() error {
 	}
 	if in.RU.addr() == in.EU.addr() {
 		return errors.New("у серверов RU и EU одинаковый адрес — нужны два разных сервера")
+	}
+	switch in.Protocol {
+	case "", "3.1", "auto":
+		in.Protocol = "3.1"
+	case "2.0":
+	default:
+		return errors.New("неизвестная версия протокола (допустимо 3.1 или 2.0)")
 	}
 	if in.RUSubnet == "" {
 		in.RUSubnet = "172.16.17.1/24"

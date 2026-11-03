@@ -304,6 +304,8 @@ type statusResp struct {
 	Endpoint    string   `json:"endpoint"`
 	Reboot      bool     `json:"rebootRequired"`
 	ExtraList   bool     `json:"extraList"` // скрипт маршрутизации с дополнительным списком RU-сетей
+	RUProto     string   `json:"ruProto"`   // поколение AmneziaWG на RU: 3.1 / 2.0
+	EUProto     string   `json:"euProto"`   // поколение EU по конфигу туннеля awg1 ("" — туннеля нет)
 	Problems    []string `json:"problems"`
 }
 
@@ -342,7 +344,9 @@ echo "@@NETS $(ipset list ru 2>/dev/null | awk -F': ' '/Number of entries/{print
 echo "@@PEERS $(grep -c '^\[Peer\]' /etc/amnezia/amneziawg/awg0.conf 2>/dev/null)"
 echo "@@EP $(grep -oP '^AWG1_ENDPOINT="\K[^"]+' /root/awg/awg-routing.sh 2>/dev/null)"
 echo "@@RB $([ -f /run/reboot-required ] && echo 1)"
-echo "@@XL $(grep -q '^RU_ZONE_EXTRA_URL=' /root/awg/awg-routing.sh 2>/dev/null && echo 1)"`, nil, 60*time.Second)
+echo "@@XL $(grep -q '^RU_ZONE_EXTRA_URL=' /root/awg/awg-routing.sh 2>/dev/null && echo 1)"
+F=/etc/amnezia/amneziawg/awg1.conf; [ -f $F ] && { grep -qi '^[[:space:]]*HeaderProtectionKey[[:space:]]*=' $F && echo "@@EUP 3.1" || echo "@@EUP 2.0"; }
+`+protoMarker, nil, 60*time.Second)
 	st.PingMs = int(time.Since(t0).Milliseconds())
 	wg.Wait()
 	if err != nil {
@@ -380,6 +384,10 @@ echo "@@XL $(grep -q '^RU_ZONE_EXTRA_URL=' /root/awg/awg-routing.sh 2>/dev/null 
 	st.Endpoint = kv["EP"]
 	st.Reboot = kv["RB"] == "1"
 	st.ExtraList = kv["XL"] == "1"
+	st.RUProto, st.EUProto = kv["PROTO"], kv["EUP"]
+	if st.RUProto != "" && st.EUProto != "" && st.RUProto != st.EUProto {
+		st.Problems = append(st.Problems, "Разные версии протокола: на RU — AmneziaWG "+st.RUProto+", на EU — "+st.EUProto+". Туннель RU → EU с такими настройками не работает: оба сервера должны быть на одной версии")
+	}
 
 	if st.AWG0 != "active" {
 		st.Problems = append(st.Problems, "VPN-сервер на RU не запущен (awg-quick@awg0: "+st.AWG0+")")
