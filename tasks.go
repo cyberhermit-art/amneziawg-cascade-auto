@@ -94,6 +94,7 @@ S=$(grep -oP '^CLIENT_SUBNET="\K[^"]+' /root/awg/awg-routing.sh 2>/dev/null)
 [ -n "$S" ] && iptables -t mangle -D PREROUTING -i awg0 -s "$S" -m set --match-set ru_dns dst -j RETURN 2>/dev/null
 ipset destroy ru_dns 2>/dev/null
 rm -rf /etc/awgc-dns
+[ -x /root/awg/awgc-eu.sh ] && bash /root/awg/awgc-eu.sh disable >/dev/null 2>&1
 echo "== Отключаю каскад (туннель до EU, маршрутизация, автозапуск)"
 bash /root/cascade-setup.sh --remove 2>&1 | grep -v "удалите клиента"
 echo "== Убираю сбор статистики"

@@ -924,5 +924,6 @@ func registerManage(mux *http.ServeMux) {
 	registerExclude(mux)
 	registerIPChange(mux)
 	registerDNS(mux)
+	registerViaEU(mux)
 	mux.HandleFunc("/api/m/routing-update", mapi(mRoutingUpdate))
 }

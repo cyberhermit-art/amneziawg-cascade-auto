@@ -39,6 +39,7 @@ var actionNames = map[string]string{
 	"/api/m/routing-update": "Обновление маршрутизации",
 	"/api/m/task-start":     "Запуск задачи",
 	"/api/m/excl-set":       "«Мимо VPN»: применение списка",
+	"/api/m/eu-set":         "«Через EU»: применение списка",
 	"/api/m/check-site":     "Проверка сайта с сервера RU",
 	"/api/m/ip-change":      "Смена IP-адреса сервера",
 	"/api/m/dns-set":        "«Домены РФ»",
@@ -101,9 +102,9 @@ func (a *actReq) describe(path string) string {
 	case "/api/m/restore":
 		add("копия", a.Backup)
 		add("что", a.Target)
-	case "/api/m/excl-set":
+	case "/api/m/excl-set", "/api/m/eu-set":
 		n := len(strings.Fields(strings.NewReplacer(",", " ", ";", " ").Replace(a.Nets)))
-		d = append(d, fmt.Sprintf("сетей мимо VPN: %d", n))
+		d = append(d, fmt.Sprintf("сетей: %d", n))
 	case "/api/m/ip-change":
 		add("сервер", strings.ToUpper(a.Target))
 		add("новый адрес", a.NewHost)

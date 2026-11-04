@@ -398,6 +398,16 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
           <div class="hintbox" style="margin-top:12px"><b>После применения</b> на устройствах нужно заново импортировать подключение — QR-код или файл .conf из вкладки «Пользователи». Ключи не меняются; пока подключение не обновлено, устройство работает по-старому.</div>
         </div>
         <div class="card">
+          <h2>Через EU вместо RU</h2>
+          <p class="hint">Для российских сервисов, которые не пускают адрес вашего сервера RU (считают адреса этого хостинга VPN), но работают с зарубежного адреса. Трафик к этим сетям пойдёт через сервер EU. Меняется только сервер — <b>на устройствах ничего делать не нужно</b>.</p>
+          <div id="ePresets"></div>
+          <label class="blabel" for="eNets">Свои адреса и сети</label>
+          <textarea id="eNets" class="bta" placeholder="по одному на строку" spellcheck="false"></textarea>
+          <div class="err" id="eErr"></div>
+          <div class="toolbar" style="margin:10px 0 0"><button class="btn small" id="eApply">Применить</button><span class="note" id="eInfo"></span></div>
+          <p class="note" style="margin-top:8px">Сервис увидит адрес сервера EU — проверьте, что он с ним работает.</p>
+        </div>
+        <div class="card">
           <h2>Проверить сайт с сервера RU</h2>
           <p class="hint">Покажет адреса сайта, каким путём каскад отправляет к ним трафик и открывается ли сайт с сервера RU.</p>
           <div class="toolbar" style="margin:0"><input type="text" id="xHost" class="search" style="flex:1;min-width:0" placeholder="esia.gosuslugi.ru" spellcheck="false"><button class="btn ghost small" id="xCheck">Проверить</button></div>
@@ -678,7 +688,7 @@ function showTab(t, force){
   if (t==="stats") loadStats();
   if (t==="server") { renderStatus(lastStatus); renderMaint(); }
   if (t==="backup") loadBackups();
-  if (t==="bypass") loadBypass();
+  if (t==="bypass") { loadBypass(); loadEU(); }
   if (t==="rudns") loadDNS();
   if (t==="profile") renderProfileForm($("t-profile"), cur);
 }
@@ -1112,7 +1122,7 @@ async function checkSite(){
     else if (r.refused) v='<div class="verdict">С сервера RU сайт ответил кодом '+esc(r.code)+' (отказ или проверка «вы не робот»), но его адреса идут через EU — проверьте сайт с устройства.</div>';
     else if (ru.length) v='<div class="verdict bad"><b>С сервера RU сайт не отвечает.</b> Скорее всего, он не пускает адреса хостингов. Пустите его мимо VPN: <button class="btn small" id="xAddIps" style="margin-top:8px">Добавить сети сайта мимо VPN</button></div>';
     else v='<div class="verdict">С сервера RU сайт не ответил, но его адреса идут через EU — проверьте сайт с устройства.</div>';
-    out.innerHTML='<div class="xres"><table>'+r.ips.map(x=>'<tr><td style="font-family:Consolas,monospace">'+esc(x.ip)+'</td><td>'+(x.path==="ru"?'<span class="tag ru">RU</span> напрямую с сервера RU':x.path==="rudns"?'<span class="tag ru">RU</span> напрямую (по домену)':'<span class="tag eu">EU</span> через сервер EU')+'</td></tr>').join("")+'</table>'+
+    out.innerHTML='<div class="xres"><table>'+r.ips.map(x=>'<tr><td style="font-family:Consolas,monospace">'+esc(x.ip)+'</td><td>'+(x.path==="ru"?'<span class="tag ru">RU</span> напрямую с сервера RU':x.path==="rudns"?'<span class="tag ru">RU</span> напрямую (по домену)':x.path==="euforce"?'<span class="tag eu">EU</span> через сервер EU (список «Через EU»)':'<span class="tag eu">EU</span> через сервер EU')+'</td></tr>').join("")+'</table>'+
       (r.inList?'<p class="note">Домен '+esc(r.inList)+' — в списке «Домены РФ»: его адреса идут напрямую, когда устройство спрашивает DNS у сервера RU.</p>':'')+v+'</div>';
     const add=$("xAddIps"); if (add) add.onclick=()=>{
       const cur24=new Set(netsOf($("xNets").value)); const covered=bypassNets();
@@ -1126,6 +1136,30 @@ function coveredBy(ip, nets){ const v=ipNum(ip); return nets.some(n=>{ const [a,
 $("xCheck").onclick=checkSite;
 $("xHost").onkeydown=e=>{ if(e.key==="Enter") checkSite(); };
 
+
+
+// ================= через EU =================
+let euPresets=[];
+async function loadEU(){
+  if (!cur) return; const id=cur.id; $("eErr").classList.remove("on"); $("eInfo").textContent="загружаю…";
+  try {
+    const r=await call("/api/m/eu-get",{id}); if(!cur||cur.id!==id) return;
+    euPresets=r.presets||[]; let nets=netsOf(r.nets||"");
+    $("ePresets").innerHTML=euPresets.map(p=>{ const on=p.nets.every(n=>nets.includes(n)); if(on) nets=nets.filter(n=>!p.nets.includes(n));
+      return '<label class="bpreset"><input type="checkbox" data-p="'+esc(p.id)+'"'+(on?' checked':'')+'><div><b>'+esc(p.title)+'</b><span>'+p.nets.map(esc).join(", ")+'</span></div></label>'; }).join("");
+    $("eNets").value=nets.join("\n");
+    const total=netsOf(r.nets||"").length;
+    $("eInfo").textContent = !r.cascade ? "каскад не настроен" : total ? ("Сейчас через EU: "+plural(total,"сеть","сети","сетей")+(r.active&&!r.first?" — правило не первое, исправится в течение 10 минут":"")) : "Сейчас ничего";
+  } catch(e){ $("eInfo").textContent=""; $("eErr").textContent=e.message; $("eErr").classList.add("on"); }
+}
+$("eApply").onclick=async()=>{
+  const nets=[]; document.querySelectorAll("#ePresets input:checked").forEach(c=>{ const p=euPresets.find(x=>x.id===c.dataset.p); if(p) nets.push(...p.nets); });
+  for (const n of netsOf($("eNets").value)) if(!nets.includes(n)) nets.push(n);
+  const b=$("eApply"); b.disabled=true; b.innerHTML='<span class="spin"></span> Применяю…'; $("eErr").classList.remove("on");
+  try { const r=await call("/api/m/eu-set",{id:cur.id,nets:nets.join("\n")}); toast(r.nets?("Через EU теперь идёт сетей: "+r.nets+". На устройствах ничего делать не нужно."):"Список «Через EU» очищен"); loadEU(); }
+  catch(e){ $("eErr").textContent=e.message; $("eErr").classList.add("on"); }
+  finally { b.disabled=false; b.textContent="Применить"; }
+};
 
 // ================= домены РФ =================
 let dnsState=null;

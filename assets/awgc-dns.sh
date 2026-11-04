@@ -102,8 +102,11 @@ build() {
 prepare() {
     [ -n "$SUBNET" ] || die "каскад не настроен (нет CLIENT_SUBNET в awg-routing.sh)"
     ipset create $SET hash:ip timeout 21600 -exist
+    # правило «Через EU» (eu_force), если есть, должно остаться первым
+    local pos=1
+    iptables -t mangle -S PREROUTING 2>/dev/null | sed -n '2p' | grep -q -- '--match-set eu_force dst' && pos=2
     iptables -t mangle -C PREROUTING -i awg0 -s "$SUBNET" -m set --match-set $SET dst -j RETURN 2>/dev/null \
-        || iptables -t mangle -I PREROUTING 1 -i awg0 -s "$SUBNET" -m set --match-set $SET dst -j RETURN
+        || iptables -t mangle -I PREROUTING $pos -i awg0 -s "$SUBNET" -m set --match-set $SET dst -j RETURN
     # запросы к общему DNS — через туннель в EU (как у пользователей без этой функции)
     if ip link show awg1 >/dev/null 2>&1; then
         for s in $UP_DNS; do ip route replace "$s" dev awg1; done

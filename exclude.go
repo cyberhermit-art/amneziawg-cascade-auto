@@ -299,7 +299,8 @@ func handleCheckSite(m *mctx, r exclReq) (any, error) {
 	}
 	out, _, _, err := m.ruCmd(fmt.Sprintf(`H=%s
 for ip in $(getent ahostsv4 "$H" | awk '{print $1}' | sort -u); do
-  if ipset test ru "$ip" >/dev/null 2>&1; then echo "@@IP $ip ru"
+  if ipset test eu_force "$ip" >/dev/null 2>&1; then echo "@@IP $ip euforce"
+  elif ipset test ru "$ip" >/dev/null 2>&1; then echo "@@IP $ip ru"
   elif ipset test ru_dns "$ip" >/dev/null 2>&1; then echo "@@IP $ip rudns"
   else echo "@@IP $ip abroad"; fi
 done
