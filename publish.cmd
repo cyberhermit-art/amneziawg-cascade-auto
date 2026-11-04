@@ -24,7 +24,7 @@ git remote get-url origin >nul 2>&1
 if not errorlevel 1 goto have_remote
 echo.
 echo Укажите адрес репозитория на GitHub, например:
-echo   https://github.com/ВАШ_ЛОГИН/amneziawg-cascade
+echo   https://github.com/cyberhermit-art/amneziawg-cascade-auto
 set /p URL=Адрес: 
 if "%URL%"=="" (
   echo Адрес не указан.
