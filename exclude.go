@@ -30,6 +30,8 @@ var presets = map[string]struct {
 	Nets  []string
 }{
 	"gosuslugi": {"Госуслуги (вход через ЕСИА, личный кабинет, сервисы)", []string{"213.59.252.0/22", "109.207.0.0/20"}},
+	// Сети автономных систем Wildberries (AS57073, AS201512, AS49053 и др.) по данным iptoasn, ноябрь 2026.
+	"wildberries": {"Wildberries (сайт, приложение, картинки)", []string{"85.198.76.0/22", "90.156.244.0/22", "91.230.107.0/24", "176.101.88.0/21", "185.62.200.0/22", "185.138.252.0/22", "194.1.214.0/24", "213.184.154.0/23", "213.184.156.0/22"}},
 }
 
 const (
@@ -169,7 +171,13 @@ func handleExclGet(m *mctx, r exclReq) (any, error) {
 	nets := between(out, "@@NETS", "@@BASE")
 	base := strings.TrimSpace(between(out, "@@BASE", "@@END"))
 	pl := []map[string]any{}
-	for id, p := range presets {
+	ids := make([]string, 0, len(presets))
+	for id := range presets {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		p := presets[id]
 		pl = append(pl, map[string]any{"id": id, "title": p.Title, "nets": p.Nets})
 	}
 	return map[string]any{"nets": strings.TrimSpace(nets), "base": base, "presets": pl}, nil
