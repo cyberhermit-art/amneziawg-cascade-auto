@@ -228,12 +228,18 @@ if [ "$S" -gt "$O" ]; then F=$O; [ $((S-O)) -gt 200000 ] && F=$((S-200000)); tai
 	if st.Size < tr.Offset { // журнал начали заново
 		st.Chunk = ""
 	}
+	if st.Chunk != "" {
+		logTaskChunk(role, tr.Task, st.Chunk)
+	}
 	// Файл кода завершения мог не появиться, если служба была убита (перезагрузка).
 	if !st.Running && f[2] == "-" && st.Size > 0 {
 		st.Finished = true
 		if tr.Task == "update" && strings.Contains(out, "перезагружаю сервер") {
 			st.RC = 0
 		}
+	}
+	if st.Finished {
+		logTaskFinish(m.p, role, tr.Task, st.RC)
 	}
 	return st, nil
 }

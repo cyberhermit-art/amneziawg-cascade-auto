@@ -17,3 +17,5 @@ func openBrowser(url string) {
 }
 
 func openFolder(dir string) { _ = exec.Command("xdg-open", dir).Start() }
+
+func openLogFile(path string) { _ = exec.Command("xdg-open", path).Start() }

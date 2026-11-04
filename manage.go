@@ -356,6 +356,7 @@ F=/etc/amnezia/amneziawg/awg1.conf; [ -f $F ] && { grep -qi '^[[:space:]]*Header
 	if err != nil {
 		st.RUError = err.Error()
 		st.Problems = append(st.Problems, "Нет связи с сервером RU: "+err.Error()+". Если хостер сменил IP-адрес сервера — ниже, в «Обслуживании серверов», есть кнопка «Сменить IP»")
+		logStateChange(m.p, st.Problems)
 		return st, nil
 	}
 	st.RUReachable = true
@@ -412,6 +413,7 @@ F=/etc/amnezia/amneziawg/awg1.conf; [ -f $F ] && { grep -qi '^[[:space:]]*Header
 		st.Problems = append(st.Problems, "Сервер EU не отвечает по SSH с этого компьютера")
 	}
 	go m.prepareRU()
+	logStateChange(m.p, st.Problems)
 	return st, nil
 }
 

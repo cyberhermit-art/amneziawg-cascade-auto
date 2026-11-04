@@ -468,7 +468,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
   </div>
 </template>
 
-<footer class="foot">AmneziaWG Cascade __VERSION__ · © 2026 AACH · код написан Claude (Anthropic) · лицензия MIT · использует <a href="https://github.com/bivlked/amneziawg-installer" target="_blank" rel="noopener">amneziawg-installer</a></footer>
+<footer class="foot">AmneziaWG Cascade __VERSION__ · © 2026 AACH · код написан Claude (Anthropic) · <a href="#" id="openLog">журнал действий</a> · лицензия MIT · использует <a href="https://github.com/bivlked/amneziawg-installer" target="_blank" rel="noopener">amneziawg-installer</a></footer>
 
 <div class="modal hidden" id="modal"><div class="mbox" role="dialog" aria-modal="true"><button class="mclose" id="mClose" aria-label="Закрыть">×</button><div id="mBody"></div></div></div>
 <div class="toast" id="toast"></div>
@@ -1141,6 +1141,8 @@ async function dnsDo(action, btn, busy){
 $("dOn").onclick=()=>confirmBox("Включить маршрутизацию по доменам?","На сервер RU будет установлен DNS-сервер (dnsmasq), а во всех файлах подключения DNS сменится на адрес сервера RU в VPN. Чтобы функция заработала, на устройствах нужно заново импортировать подключение. Ключи не меняются.","Включить",()=>{ closeModal(); return dnsDo("enable",$("dOn"),"Устанавливаю…"); });
 $("dSave").onclick=()=>dnsDo("apply",$("dSave"),"Сохраняю…");
 $("dOff").onclick=()=>confirmBox("Выключить маршрутизацию по доменам?","Пользователям вернётся прежний DNS, DNS-сервер на сервере RU остановится. На устройствах нужно заново импортировать подключение.","Выключить",()=>{ closeModal(); return dnsDo("disable",$("dOff"),"Выключаю…"); }, true);
+
+$("openLog").onclick=e=>{ e.preventDefault(); call("/api/open-log").catch(er=>toast(er.message,true)); };
 
 // ================= форма профиля =================
 function renderProfileForm(host, p){

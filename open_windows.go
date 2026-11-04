@@ -42,3 +42,8 @@ func openBrowser(url string) {
 func openFolder(dir string) {
 	_ = exec.Command("explorer", dir).Start()
 }
+
+// openLogFile открывает журнал в Блокноте.
+func openLogFile(path string) {
+	_ = exec.Command("notepad.exe", path).Start()
+}

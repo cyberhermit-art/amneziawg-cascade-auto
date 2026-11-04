@@ -25,7 +25,7 @@ var indexHTML string
 const appPort = 47821
 
 // version задаётся при сборке: -ldflags "-X main.version=1.4.0"
-var version = "1.8.0"
+var version = "1.8.1"
 
 var (
 	token   string
@@ -66,6 +66,7 @@ func main() {
 	token = hex.EncodeToString(b)
 
 	setupLogFile()
+	logLine(fmt.Sprintf("======== Запуск программы AmneziaWG Cascade v%s ========", version))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleIndex)
@@ -77,6 +78,7 @@ func main() {
 	mux.HandleFunc("/api/cancel", api(handleCancel))
 	mux.HandleFunc("/api/events", handleEvents)
 	mux.HandleFunc("/api/open-folder", api(handleOpenFolder))
+	mux.HandleFunc("/api/open-log", api(handleOpenLog))
 	registerManage(mux)
 	mux.HandleFunc("/api/state", api(func(w http.ResponseWriter, r *http.Request) {
 		hub.mu.Lock()
@@ -85,7 +87,7 @@ func main() {
 		writeJSON(w, map[string]any{"running": running})
 	}))
 
-	srv := &http.Server{Handler: hostGuard(addr, mux)}
+	srv := &http.Server{Handler: hostGuard(addr, actionLog(mux))}
 	url := "http://" + addr + "/"
 	if os.Getenv("AWGC_NO_BROWSER") == "" {
 		go func() { time.Sleep(300 * time.Millisecond); openBrowser(url) }()
@@ -137,15 +139,12 @@ func versionLess(a, b string) bool {
 }
 
 func setupLogFile() {
-	home, _ := os.UserHomeDir()
-	dir := filepath.Join(home, "Documents", "AmneziaWG-Cascade")
-	if st, err := os.Stat(filepath.Join(home, "Documents")); err != nil || !st.IsDir() {
-		dir = filepath.Join(home, "AmneziaWG-Cascade")
-	}
-	if os.MkdirAll(dir, 0o700) != nil {
+	path := logPath()
+	if os.MkdirAll(filepath.Dir(path), 0o700) != nil {
 		return
 	}
-	f, err := os.OpenFile(filepath.Join(dir, "log.txt"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	rotateLog(path)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
 		return
 	}
