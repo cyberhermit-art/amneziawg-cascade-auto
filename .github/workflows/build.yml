@@ -54,11 +54,16 @@ jobs:
             dist/*.zip
             dist/SHA256SUMS.txt
 
+      - name: Release notes from CHANGELOG.md
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: bash scripts/release-notes.sh "${GITHUB_REF_NAME}" > dist/RELEASE_NOTES.md && cat dist/RELEASE_NOTES.md
+
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          name: AmneziaWG Cascade ${{ steps.ver.outputs.version }}
+          body_path: dist/RELEASE_NOTES.md
           files: |
             dist/*.zip
             dist/SHA256SUMS.txt
-          generate_release_notes: true

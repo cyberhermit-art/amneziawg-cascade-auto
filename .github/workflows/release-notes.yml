@@ -1,0 +1,45 @@
+# Приводит в порядок все релизы: название «AmneziaWG Cascade X.Y.Z», описание
+# из CHANGELOG.md, отметка «Latest» у самой новой версии.
+# Запускается сам после каждой сборки, а также вручную: Actions →
+# «Release notes» → «Run workflow». Нужен, например, после первой загрузки
+# репозитория, когда релизы старых версий собираются старым сценарием.
+name: Release notes
+
+on:
+  workflow_run:
+    workflows: [Build]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-notes
+  cancel-in-progress: false
+
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Update releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest=""
+          for tag in $(git tag -l 'v*' | sort -V); do
+            if gh release view "$tag" >/dev/null 2>&1; then
+              bash scripts/release-notes.sh "$tag" > notes.md
+              gh release edit "$tag" --title "AmneziaWG Cascade ${tag#v}" --notes-file notes.md
+              echo "обновлён $tag"
+              latest="$tag"
+            else
+              echo "релиза $tag пока нет — пропускаю"
+            fi
+          done
+          [ -n "$latest" ] && gh release edit "$latest" --latest && echo "Latest: $latest" || true
