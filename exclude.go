@@ -20,6 +20,7 @@ import (
 	"net/netip"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -308,14 +309,18 @@ echo "@@CURL $(curl -4 -m 12 -o /dev/null -s -w '%%{http_code} %%{time_connect}'
 	if len(ips) == 0 {
 		return nil, fmt.Errorf("сервер RU не смог найти адрес %s", h)
 	}
-	reach := code != "000" && code != ""
+	// Открывается — только ответы 2xx/3xx. 4xx/5xx (403, 429, 498 у антибота
+	// Wildberries и т. п.) — сайт отвечает, но отказывает адресу сервера RU.
+	n, _ := strconv.Atoi(code)
+	reach := n >= 200 && n < 400
+	refused := n >= 400
 	inList := ""
 	for _, l := range strings.Split(out, "\n") {
 		if strings.HasPrefix(l, "@@INLIST ") {
 			inList = strings.TrimSpace(strings.TrimPrefix(l, "@@INLIST "))
 		}
 	}
-	return map[string]any{"host": h, "ips": ips, "code": code, "reachable": reach, "inList": inList}, nil
+	return map[string]any{"host": h, "ips": ips, "code": code, "reachable": reach, "refused": refused, "inList": inList}, nil
 }
 
 // allowedOpt — фрагмент команды add: новые клиенты сразу получают AllowedIPs с исключениями.
