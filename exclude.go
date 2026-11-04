@@ -30,8 +30,6 @@ var presets = map[string]struct {
 	Nets  []string
 }{
 	"gosuslugi": {"Госуслуги (вход через ЕСИА, личный кабинет, сервисы)", []string{"213.59.252.0/22", "109.207.0.0/20"}},
-	// Сети автономных систем Wildberries (AS57073, AS201512, AS49053 и др.) по данным iptoasn, ноябрь 2026.
-	"wildberries": {"Wildberries (сайт, приложение, картинки)", []string{"85.198.76.0/22", "90.156.244.0/22", "91.230.107.0/24", "176.101.88.0/21", "185.62.200.0/22", "185.138.252.0/22", "194.1.214.0/24", "213.184.154.0/23", "213.184.156.0/22"}},
 }
 
 const (
@@ -206,9 +204,16 @@ func handleExclSet(m *mctx, r exclReq) (any, error) {
 	}
 	// Базовый AllowedIPs: сохранённый при первом применении, иначе — из файла первого клиента.
 	out, _, _, err := m.ruCmd(`if [ -s `+exclBase+` ]; then cat `+exclBase+`; else
-f=$(ls /root/awg/*.conf 2>/dev/null | grep -v '/awgc-' | head -1); [ -n "$f" ] && sed -n 's/^AllowedIPs[ \t]*=[ \t]*//p' "$f" | head -1; fi`, nil, time.Minute)
+f=$(ls /root/awg/*.conf 2>/dev/null | grep -v '/awgc-' | head -1); [ -n "$f" ] && sed -n 's/^AllowedIPs[ \t]*=[ \t]*//p' "$f" | head -1; fi
+f=$(ls /root/awg/*.conf 2>/dev/null | grep -v '/awgc-' | head -1)
+[ -n "$f" ] && echo "@@OTHER $(grep -v '^AllowedIPs' "$f" | wc -c)"`, nil, time.Minute)
 	if err != nil {
 		return nil, err
+	}
+	other := 900 // размер файла подключения без строки AllowedIPs, байт (если не удалось прочитать)
+	if i := strings.Index(out, "@@OTHER "); i >= 0 {
+		fmt.Sscanf(out[i:], "@@OTHER %d", &other)
+		out = out[:i]
 	}
 	baseStr := strings.TrimSpace(out)
 	if baseStr == "" {
@@ -234,6 +239,13 @@ f=$(ls /root/awg/*.conf 2>/dev/null | grep -v '/awgc-' | head -1); [ -n "$f" ] &
 		if len(keep) > 0 {
 			allowed += ", " + strings.Join(keep, ", ")
 		}
+	}
+	// QR-код вмещает около 2900 байт. Файл подключения с длинным AllowedIPs в него не
+	// помещается, а без QR установщик (на 3.1) не создаёт нового пользователя совсем.
+	const qrLimit = 2700
+	if size := other + len("AllowedIPs = ") + len(allowed) + 1; len(excl) > 0 && size > qrLimit {
+		n := len(strings.Split(allowed, ","))
+		return nil, fmt.Errorf("слишком много сетей мимо VPN: в файле подключения получится %d маршрутов (около %d байт), а QR-код вмещает примерно %d. С таким списком у пользователей не будет QR-кода, а новых пользователей сервер не сможет добавить. Уберите часть сетей — каждая сеть добавляет до 20–30 маршрутов", n, size, qrLimit)
 	}
 	var lines []string
 	for _, p := range excl {
