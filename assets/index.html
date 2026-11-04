@@ -71,7 +71,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
 .clients{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:14px}
 .client{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center}
 .client h3{margin:0 0 8px;font-size:15px}
-.client img{width:190px;height:190px;image-rendering:pixelated;background:#fff;border-radius:6px;padding:6px}
+.client img{width:190px;height:190px;image-rendering:pixelated;background:#fff;border-radius:6px;padding:6px;cursor:zoom-in}
 .client .b{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
 .hidden{display:none!important}
 .elapsed{color:var(--muted);font-size:12.5px}
@@ -145,7 +145,10 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
 .mbox{position:relative;background:var(--card);color:var(--ink);border-radius:12px;padding:20px 22px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
 .mbox h2{margin:0 0 6px;font-size:17px}
 .mclose{position:absolute;right:10px;top:8px;appearance:none;border:0;background:none;color:var(--muted);font-size:22px;cursor:pointer}
-.mbox .qr{display:block;margin:10px auto;width:230px;height:230px;image-rendering:pixelated;background:#fff;padding:8px;border-radius:8px}
+.mbox .qr{display:block;margin:10px auto;width:min(360px,72vw);height:auto;aspect-ratio:1;image-rendering:pixelated;background:#fff;padding:10px;border-radius:8px;cursor:zoom-in}
+.qrfull{position:fixed;inset:0;z-index:1000;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;cursor:zoom-out}
+.qrfull img{width:min(92vh,92vw);height:min(92vh,92vw);max-height:calc(100vh - 60px);image-rendering:pixelated;object-fit:contain}
+.qrfull span{color:#333;font-size:13px}
 .mbox textarea{width:100%;height:70px;font:11.5px Consolas,monospace;border:1px solid var(--line);border-radius:7px;background:var(--field);color:var(--ink);padding:6px;resize:vertical}
 .mbox .actions{margin-top:14px}
 .mbox hr{border:0;border-top:1px solid var(--line);margin:16px 0}
@@ -607,7 +610,7 @@ function finish(e){
   for (const c of (r.clients||[])){
     const card=document.createElement("div"); card.className="client";
     const h=document.createElement("h3"); h.textContent=c.name; card.appendChild(h);
-    if (c.png){ const img=document.createElement("img"); img.src="data:image/png;base64,"+c.png; img.alt="QR "+c.name; card.appendChild(img); }
+    if (c.png){ const img=document.createElement("img"); img.src="data:image/png;base64,"+c.png; img.alt="QR "+c.name; img.title="Нажмите, чтобы открыть во весь экран"; img.onclick=()=>qrFull(c.png, c.name); card.appendChild(img); }
     const b=document.createElement("div"); b.className="b";
     const d1=document.createElement("button"); d1.className="btn small"; d1.textContent="Скачать .conf"; d1.onclick=()=>downloadText(c.name+".conf", c.conf); b.appendChild(d1);
     if (c.vpnuri){ const d2=document.createElement("button"); d2.className="btn ghost small"; d2.textContent="Копировать vpn://";
@@ -952,14 +955,23 @@ const KEEP = {};  // fn вернула KEEP — окно уже заменено
 function b64ToBlob(b64, type){ const bin=atob(b64); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return new Blob([u],{type}); }
 function saveBlob(name, blob){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
 
+// QR-код во весь экран: крупные модули на белом фоне — так его уверенно читают камеры телефонов.
+function qrFull(png, name){
+  const d=document.createElement("div"); d.className="qrfull";
+  d.innerHTML='<img alt="QR-код" src="data:image/png;base64,'+png+'"><span>'+esc(name||"")+' — нажмите или Esc, чтобы закрыть</span>';
+  const close=()=>{ d.remove(); document.removeEventListener("keydown",onKey,true); };
+  const onKey=e=>{ if(e.key==="Escape"){ e.stopPropagation(); close(); } };
+  d.onclick=close; document.addEventListener("keydown",onKey,true); document.body.appendChild(d);
+}
 function keyModal(c, note){
   modal('<h2>'+esc(c.name)+'</h2>'+(note?'<p class="note">'+esc(note)+'</p>':'')+
     (c.png?'<img class="qr" alt="QR-код" src="data:image/png;base64,'+c.png+'">':'<p class="note">QR-код на сервере не найден.</p>')+
-    '<p class="note" style="text-align:center">Отсканируйте в приложении AmneziaVPN / AmneziaWG или импортируйте файл .conf</p>'+
-    '<div class="actions" style="justify-content:center"><button class="btn small" id="kConf">Скачать .conf</button>'+(c.png?'<button class="btn ghost small" id="kPng">Скачать QR</button>':'')+(c.vpnuri?'<button class="btn ghost small" id="kUri">Копировать vpn://</button>':'')+'</div>'+
+    '<p class="note" style="text-align:center">Отсканируйте в приложении AmneziaVPN / AmneziaWG или импортируйте файл .conf. Если телефон не распознаёт код — откройте его во весь экран.</p>'+
+    '<div class="actions" style="justify-content:center">'+(c.png?'<button class="btn small" id="kFull">QR во весь экран</button>':'')+'<button class="btn small" id="kConf">Скачать .conf</button>'+(c.png?'<button class="btn ghost small" id="kPng">Скачать QR</button>':'')+(c.vpnuri?'<button class="btn ghost small" id="kUri">Копировать vpn://</button>':'')+'</div>'+
     (c.vpnuri?'<label>Ссылка vpn://</label><textarea readonly>'+esc(c.vpnuri)+'</textarea>':''));
   $("kConf").onclick=()=>saveBlob(c.name+".conf", new Blob([c.conf],{type:"text/plain"}));
-  if (c.png) $("kPng").onclick=()=>saveBlob(c.name+"-qr.png", b64ToBlob(c.png,"image/png"));
+  if (c.png) { $("kPng").onclick=()=>saveBlob(c.name+"-qr.png", b64ToBlob(c.png,"image/png"));
+    $("kFull").onclick=()=>qrFull(c.png, c.name); $("mBody").querySelector("img.qr").onclick=()=>qrFull(c.png, c.name); }
   if (c.vpnuri) $("kUri").onclick=async()=>{ try{ await navigator.clipboard.writeText(c.vpnuri); toast("Ссылка скопирована"); }catch(_){ const t=$("mBody").querySelector("textarea"); t.select(); document.execCommand("copy"); toast("Ссылка скопирована"); } };
 }
 async function showKey(n){
