@@ -178,6 +178,11 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
 .bgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;align-items:start}
 .bta{width:100%;height:96px;font:12.5px Consolas,monospace;border:1px solid var(--line);border-radius:7px;background:var(--field);color:var(--ink);padding:7px 9px;resize:vertical;box-sizing:border-box}
 .blabel{display:block;font-size:12.5px;color:var(--muted);margin:12px 0 5px}
+.dmain{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:11px 13px;border:1px solid var(--line);border-radius:8px;margin:4px 0 14px}
+.dmain span{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+.dbtns{flex:none;display:flex;gap:8px}
+.dsub{border:1px dashed var(--line);border-radius:8px;padding:11px 13px}
+.dsub h3{font-size:13.5px;margin:0 0 4px}
 .bpreset{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
 .bpreset input{margin-top:3px}
 .bpreset span{display:block;font-size:12px;color:var(--muted);font-family:Consolas,monospace;margin-top:2px}
@@ -406,12 +411,20 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
         <div class="card">
           <h2>Российские сервисы по доменам <span class="pill" id="dState" style="margin-left:6px"><i class="dot"></i><span>…</span></span></h2>
           <p class="hint" id="dInfo">Загружаю состояние…</p>
-          <label class="bpreset"><input type="checkbox" id="dTlds"><div><b>Все сайты в зонах .ru, .рф, .su — напрямую</b><span style="font-family:inherit">Больше российских сайтов не увидят VPN. Но заблокированные в России сайты в этих зонах перестанут открываться.</span></div></label>
-          <label class="blabel" for="dCustom">Свои домены (по одному на строку, поддомены включаются автоматически)</label>
-          <textarea id="dCustom" class="bta" placeholder="например&#10;mybank.ru&#10;app.example.com" spellcheck="false"></textarea>
+          <div class="dmain">
+            <div><b>Функция целиком</b><span>Включение и выключение меняет DNS в файлах подключения всех пользователей — после этого на устройствах нужно заново импортировать подключение (QR-код или .conf). Ключи не меняются.</span></div>
+            <div class="dbtns"><button class="btn small" id="dOn">Включить</button><button class="btn ghost small danger hidden" id="dOff">Выключить</button></div>
+          </div>
+          <div class="dsub">
+            <h3>Дополнительные настройки</h3>
+            <p class="note" id="dSubNote">Эти настройки не выключают функцию и не требуют ничего делать на устройствах — достаточно нажать «Сохранить настройки».</p>
+            <label class="bpreset"><input type="checkbox" id="dTlds"><div><b>Все сайты в зонах .ru, .рф, .su — напрямую</b><span style="font-family:inherit">Больше российских сайтов не увидят VPN. Но заблокированные в России сайты в этих зонах перестанут открываться. Снятие галочки отключает только эту опцию — список российских сервисов продолжает работать.</span></div></label>
+            <label class="blabel" for="dCustom">Свои домены (по одному на строку, поддомены включаются автоматически)</label>
+            <textarea id="dCustom" class="bta" placeholder="например&#10;mybank.ru&#10;app.example.com" spellcheck="false"></textarea>
+            <div class="toolbar" style="margin:10px 0 0"><button class="btn small hidden" id="dSave">Сохранить настройки</button><span class="note" id="dNote"></span></div>
+          </div>
           <div class="err" id="dErr"></div>
-          <div class="toolbar" style="margin:10px 0 0"><button class="btn small" id="dOn">Включить</button><button class="btn small hidden" id="dSave">Сохранить</button><button class="btn ghost small danger hidden" id="dOff">Выключить</button><span class="note" id="dNote"></span></div>
-          <div class="hintbox" style="margin-top:12px"><b>После включения и выключения</b> на устройствах нужно заново импортировать подключение (QR-код или .conf): в нём меняется DNS-сервер. Ключи не меняются. Список доменов обновляется на сервере раз в неделю.</div>
+          <p class="note" style="margin-top:10px">Список доменов российских сервисов обновляется на сервере раз в неделю.</p>
         </div>
         <div class="card">
           <h2>Как это работает и ограничения</h2>
@@ -1122,6 +1135,8 @@ async function loadDNS(){
     const pill=$("dState"); pill.className="pill "+(r.enabled?(r.active?"ok":"err"):""); pill.querySelector("span").textContent=r.enabled?(r.active?"включено":"включено, но не работает"):"выключено";
     $("dTlds").checked=!!r.tlds; $("dCustom").value=r.custom||"";
     $("dOn").classList.toggle("hidden",r.enabled); $("dSave").classList.toggle("hidden",!r.enabled); $("dOff").classList.toggle("hidden",!r.enabled);
+    $("dSubNote").textContent = r.enabled ? "Эти настройки не выключают функцию и не требуют ничего делать на устройствах — достаточно нажать «Сохранить настройки»."
+                                          : "Настройки применятся при включении функции.";
     $("dOn").disabled=!r.cascade;
     $("dInfo").textContent = !r.cascade ? "На сервере RU не настроен каскад." :
       r.enabled ? "Доменов в списке: "+r.domains+(r.listDate?" (список от "+r.listDate+")":"")+". Адресов сейчас идёт напрямую по доменам: "+(r.ips||0)+". DNS в файлах подключения: "+(r.dns||"—")+"."
@@ -1134,7 +1149,7 @@ async function dnsDo(action, btn, busy){
     const r=await call("/api/m/dns-set",{id:cur.id,action,tlds:$("dTlds").checked,custom:$("dCustom").value});
     let msg = action==="enable" ? "Включено. Обновлено файлов подключения: "+(r.updated||0)+" — импортируйте подключение на устройствах заново."
             : action==="disable" ? "Выключено. Обновлено файлов подключения: "+(r.updated||0)+" — импортируйте подключение на устройствах заново."
-            : "Сохранено. Доменов в списке: "+(r.domains||"—");
+            : "Настройки сохранены, функция работает. Доменов в списке: "+(r.domains||"—")+". На устройствах ничего делать не нужно.";
     if (r.failed&&r.failed.length) msg+=" Не удалось: "+r.failed.join("; ");
     toast(msg, !!(r.failed&&r.failed.length)); await loadDNS();
   } catch(e){ $("dErr").textContent=e.message; $("dErr").classList.add("on"); }
