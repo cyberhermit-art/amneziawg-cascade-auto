@@ -1135,7 +1135,9 @@ async function checkSite(){
     else if (ru.length) v='<div class="verdict bad"><b>С сервера RU сайт не отвечает.</b> Скорее всего, он не пускает адреса хостингов. Пустите его мимо VPN: <button class="btn small" id="xAddIps" style="margin-top:8px">Добавить сети сайта мимо VPN</button></div>';
     else v='<div class="verdict">С сервера RU сайт не ответил, но его адреса идут через EU — проверьте сайт с устройства.</div>';
     out.innerHTML='<div class="xres"><table>'+r.ips.map(x=>'<tr><td style="font-family:Consolas,monospace">'+esc(x.ip)+'</td><td>'+(x.path==="ru"?'<span class="tag ru">RU</span> напрямую с сервера RU':x.path==="rudns"?'<span class="tag ru">RU</span> напрямую (по домену)':x.path==="euforce"?'<span class="tag eu">EU</span> через сервер EU (список «Через EU»)':'<span class="tag eu">EU</span> через сервер EU')+'</td></tr>').join("")+'</table>'+
-      (r.inList?'<p class="note">Домен '+esc(r.inList)+' — в списке «Домены РФ»: его адреса идут напрямую, когда устройство спрашивает DNS у сервера RU.</p>':'')+v+'</div>';
+      (r.inList?(r.ips.some(x=>x.path==="euforce")
+        ? '<p class="note">Домен '+esc(r.inList)+' есть в списке «Домены РФ», но его адреса в списке «Через EU» — он важнее, поэтому трафик идёт через EU.</p>'
+        : '<p class="note">Домен '+esc(r.inList)+' — в списке «Домены РФ»: его адреса идут напрямую, когда устройство спрашивает DNS у сервера RU.</p>'):'')+v+'</div>';
     const add=$("xAddIps"); if (add) add.onclick=()=>{
       const cur24=new Set(netsOf($("xNets").value)); const covered=bypassNets();
       for (const x of ru){ const n=x.ip.split(".").slice(0,3).join(".")+".0/24"; if(!covered.includes(n)&&!coveredBy(x.ip,covered)) cur24.add(n); }
