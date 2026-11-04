@@ -321,6 +321,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
       <button data-t="stats">Статистика</button>
       <button data-t="server">Сервер</button>
       <button data-t="bypass">Мимо VPN</button>
+      <button data-t="rudns">Домены РФ</button>
       <button data-t="backup">Резервные копии</button>
       <button data-t="profile">Профиль</button>
     </nav>
@@ -363,7 +364,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
         <div class="mcard"><h3><span class="tag ru">RU</span> Входной сервер <span class="note" id="mtRuHost"></span></h3>
           <div class="mrow"><div><b>Обновить пакеты</b><span>apt update + upgrade. VPN продолжает работать; перезагрузка — только если вы разрешите.</span></div><button class="btn ghost small" data-mt="update" data-s="ru">Обновить</button></div>
           <div class="mrow"><div><b>Перезагрузить сервер</b><span>VPN будет недоступен 1–3 минуты.</span></div><button class="btn ghost small" data-mt="reboot" data-s="ru">Перезагрузить</button></div>
-          <div class="mrow"><div><b>Обновить маршрутизацию</b><span>Свежий скрипт и объединённый список российских сетей (ipdeny + MaxMind). Настройки и свои сети сохраняются.</span></div><button class="btn ghost small" data-mt="routing" data-s="ru">Обновить</button></div>
+          <div class="mrow"><div><b>Обновить маршрутизацию</b><span>Свежий скрипт и объединённый список российских сетей (ipdeny + MaxMind + DB-IP). Настройки и свои сети сохраняются.</span></div><button class="btn ghost small" data-mt="routing" data-s="ru">Обновить</button></div>
           <div class="mrow"><div><b>Сервер сменил IP-адрес</b><span>Хостер поменял адрес или его пришлось сменить из-за блокировки. Ключи сохраняются, пользователям нужно заново импортировать подключение.</span></div><button class="btn ghost small" data-mt="ip" data-s="ru">Сменить IP…</button></div>
           <div class="mrow"><div><b>Удалить VPN с сервера</b><span>Отключает каскад и полностью удаляет AmneziaWG, пользователей и ключи.</span></div><button class="btn ghost small danger" data-mt="uninstall" data-s="ru">Удалить…</button></div>
         </div>
@@ -395,6 +396,32 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
           <p class="hint">Покажет адреса сайта, каким путём каскад отправляет к ним трафик и открывается ли сайт с сервера RU.</p>
           <div class="toolbar" style="margin:0"><input type="text" id="xHost" class="search" style="flex:1;min-width:0" placeholder="esia.gosuslugi.ru" spellcheck="false"><button class="btn ghost small" id="xCheck">Проверить</button></div>
           <div id="xRes"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mtab hidden" id="t-rudns">
+      <p class="note bintro">Списки российских сетей определяют страну по адресу. Но многие российские сервисы работают с адресов <b>зарубежных CDN и облаков</b> — такие адреса уходят через EU, и сервис видит заграничный IP. Эта функция делает сервер RU DNS-сервером для пользователей VPN: адреса <b>доменов российских сервисов</b> (около 2000 — банки, госуслуги, маркетплейсы, VK, Яндекс, операторы и др.) идут напрямую через RU, где бы они ни находились.</p>
+      <div class="bgrid">
+        <div class="card">
+          <h2>Российские сервисы по доменам <span class="pill" id="dState" style="margin-left:6px"><i class="dot"></i><span>…</span></span></h2>
+          <p class="hint" id="dInfo">Загружаю состояние…</p>
+          <label class="bpreset"><input type="checkbox" id="dTlds"><div><b>Все сайты в зонах .ru, .рф, .su — напрямую</b><span style="font-family:inherit">Больше российских сайтов не увидят VPN. Но заблокированные в России сайты в этих зонах перестанут открываться.</span></div></label>
+          <label class="blabel" for="dCustom">Свои домены (по одному на строку, поддомены включаются автоматически)</label>
+          <textarea id="dCustom" class="bta" placeholder="например&#10;mybank.ru&#10;app.example.com" spellcheck="false"></textarea>
+          <div class="err" id="dErr"></div>
+          <div class="toolbar" style="margin:10px 0 0"><button class="btn small" id="dOn">Включить</button><button class="btn small hidden" id="dSave">Сохранить</button><button class="btn ghost small danger hidden" id="dOff">Выключить</button><span class="note" id="dNote"></span></div>
+          <div class="hintbox" style="margin-top:12px"><b>После включения и выключения</b> на устройствах нужно заново импортировать подключение (QR-код или .conf): в нём меняется DNS-сервер. Ключи не меняются. Список доменов обновляется на сервере раз в неделю.</div>
+        </div>
+        <div class="card">
+          <h2>Как это работает и ограничения</h2>
+          <ul class="note" style="padding-left:18px;line-height:1.55;margin:6px 0 0">
+            <li>Домены российских сервисов сервер RU разрешает через российский DNS (Яндекс) — так выбираются российские узлы CDN; адреса сразу отправляются напрямую.</li>
+            <li>Остальные домены разрешаются через Cloudflare DNS по туннелю в EU — как и раньше.</li>
+            <li>Не работает, если в браузере включён «Безопасный DNS» (DNS-over-HTTPS) или на устройстве задан свой DNS: тогда устройство не спрашивает сервер RU.</li>
+            <li>Если российский сервис делит адрес CDN с заблокированным сайтом, тот сайт может не открыться, пока адрес в списке (до 6 часов).</li>
+            <li>Проверить конкретный сайт — вкладка «Мимо VPN» → «Проверить сайт с сервера RU».</li>
+          </ul>
         </div>
       </div>
     </div>
@@ -638,6 +665,7 @@ function showTab(t, force){
   if (t==="server") { renderStatus(lastStatus); renderMaint(); }
   if (t==="backup") loadBackups();
   if (t==="bypass") loadBypass();
+  if (t==="rudns") loadDNS();
   if (t==="profile") renderProfileForm($("t-profile"), cur);
 }
 function stopTimers(){ clearInterval(statusTimer); statusTimer=null; }
@@ -663,7 +691,7 @@ async function refreshStatus(first){
 function renderStatus(st){
   const box=$("vCards"), pr=$("vProblems");
   if (!st){ pr.innerHTML='<p class="note"><span class="spin"></span> Проверяю серверы…</p>'; box.textContent=""; return; }
-  const upd = (st.ruReachable && st.routing==="active" && !st.extraList) ? '<div class="hintbox">Доступно обновление маршрутизации: объединённый список российских сетей (ipdeny + MaxMind GeoLite2) — точнее определяет российские сервисы на зарубежных CDN. Кнопка «Обновить маршрутизацию» — ниже, в карточке сервера RU.</div>' : '';
+  const upd = (st.ruReachable && st.routing==="active" && !st.extraList) ? '<div class="hintbox">Доступно обновление маршрутизации: к списку российских сетей добавлена база DB-IP (ipdeny + MaxMind + DB-IP) — больше российских сайтов на небольших хостингах пойдут напрямую. Кнопка «Обновить маршрутизацию» — ниже, в карточке сервера RU.</div>' : '';
   pr.innerHTML = upd + (st.problems.length ? st.problems.map(p=>'<div class="problem">'+esc(p)+'</div>').join("") : '<div class="allgood">Всё в порядке: VPN работает, туннель до EU активен, раздельная маршрутизация включена.</div>');
   $("vInfo").textContent = "Проверено в "+new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})+" · обновляется каждые 30 с";
   if (!st.ruReachable){ box.textContent=""; return; }
@@ -674,7 +702,7 @@ function renderStatus(st){
     card("ok","Сервер RU",[["Адрес",cur.ruHost],["Отклик SSH",st.pingMs+" мс"],["Работает",fmtUptime(st.uptime)],["Нагрузка",st.load],["Память",mem],["Диск",st.disk],["Система",st.os]].concat(st.rebootRequired?[["Обновления","ждут перезагрузки"]]:[])) +
     card(st.awg0==="active"?"ok":"err","VPN для пользователей",[["Служба awg0",st.awg0==="active"?"работает":st.awg0],["Пользователей",String(st.peers)]].concat(st.ruProto?[["Протокол","AmneziaWG "+st.ruProto],["Приложения",st.ruProto==="3.1"?"нужна поддержка 3.1":"любые AmneziaWG"]]:[])) +
     card(st.awg1!=="active"?"err":(st.tunnelAge<0||st.tunnelAge>300?"warn":"ok"),"Туннель RU → EU",[["Служба awg1",st.awg1==="active"?"работает":st.awg1],["Связь с EU",tun],["Сервер EU",st.endpoint||cur.euHost||"—"]].concat(st.euProto?[["Протокол EU","AmneziaWG "+st.euProto+(st.ruProto&&st.ruProto!==st.euProto?" — не совпадает с RU!":"")]]:[])) +
-    card(st.routing!=="active"?"err":(st.ruNets<1000?"warn":"ok"),"Раздельная маршрутизация",[["Состояние",st.routing==="active"?"включена":st.routing],["Российских сетей",String(st.ruNets)],["Источники",st.extraList?"ipdeny + MaxMind":"только ipdeny"]]) +
+    card(st.routing!=="active"?"err":(st.ruNets<1000?"warn":"ok"),"Раздельная маршрутизация",[["Состояние",st.routing==="active"?"включена":st.routing],["Российских сетей",String(st.ruNets)],["Источники",st.sources||"—"]]) +
     (cur.euHost ? card(st.euReachable?"ok":"err","Сервер EU",[["Адрес",cur.euHost],["SSH с этого ПК",st.euReachable?"доступен, "+st.euPingMs+" мс":"не отвечает"]]) : "");
 }
 $("vRefresh").onclick = async () => { $("vProblems").innerHTML='<p class="note"><span class="spin"></span> Проверяю…</p>'; await refreshStatus(false); renderStatus(lastStatus); };
@@ -1062,13 +1090,14 @@ async function checkSite(){
   b.disabled=true; b.innerHTML='<span class="spin"></span>'; out.innerHTML='<div class="xres note">Проверяю с сервера RU — до 15 секунд…</div>';
   try {
     const r=await call("/api/m/check-site",{id:cur.id,host:h});
-    const ru=r.ips.filter(x=>x.path==="ru");
+    const ru=r.ips.filter(x=>x.path==="ru"||x.path==="rudns");
     let v;
     if (r.reachable) v='<div class="verdict good">С сервера RU сайт открывается (ответ '+esc(r.code)+'). Блокировки адреса сервера нет — если на устройстве сайт не работает, причина в другом.</div>';
     else if (ru.length && ru.every(x=>coveredBy(x.ip,bypassNets()))) v='<div class="verdict">С сервера RU сайт не отвечает, но его адреса <b>уже в списке мимо VPN</b>. Если на устройстве сайт всё равно не открывается — убедитесь, что список применён, и заново импортируйте подключение на устройстве (QR-код или .conf).</div>';
     else if (ru.length) v='<div class="verdict bad"><b>С сервера RU сайт не отвечает.</b> Скорее всего, он не пускает адреса хостингов. Пустите его мимо VPN: <button class="btn small" id="xAddIps" style="margin-top:8px">Добавить сети сайта мимо VPN</button></div>';
     else v='<div class="verdict">С сервера RU сайт не ответил, но его адреса идут через EU — проверьте сайт с устройства.</div>';
-    out.innerHTML='<div class="xres"><table>'+r.ips.map(x=>'<tr><td style="font-family:Consolas,monospace">'+esc(x.ip)+'</td><td>'+(x.path==="ru"?'<span class="tag ru">RU</span> напрямую с сервера RU':'<span class="tag eu">EU</span> через сервер EU')+'</td></tr>').join("")+'</table>'+v+'</div>';
+    out.innerHTML='<div class="xres"><table>'+r.ips.map(x=>'<tr><td style="font-family:Consolas,monospace">'+esc(x.ip)+'</td><td>'+(x.path==="ru"?'<span class="tag ru">RU</span> напрямую с сервера RU':x.path==="rudns"?'<span class="tag ru">RU</span> напрямую (по домену)':'<span class="tag eu">EU</span> через сервер EU')+'</td></tr>').join("")+'</table>'+
+      (r.inList?'<p class="note">Домен '+esc(r.inList)+' — в списке «Домены РФ»: его адреса идут напрямую, когда устройство спрашивает DNS у сервера RU.</p>':'')+v+'</div>';
     const add=$("xAddIps"); if (add) add.onclick=()=>{
       const cur24=new Set(netsOf($("xNets").value)); const covered=bypassNets();
       for (const x of ru){ const n=x.ip.split(".").slice(0,3).join(".")+".0/24"; if(!covered.includes(n)&&!coveredBy(x.ip,covered)) cur24.add(n); }
@@ -1080,6 +1109,38 @@ function ipNum(ip){ return ip.split(".").reduce((a,o)=>a*256+(+o),0); }
 function coveredBy(ip, nets){ const v=ipNum(ip); return nets.some(n=>{ const [a,bits]=n.split("/"); const m=+(bits||32); const size=2**(32-m); const base=Math.floor(ipNum(a)/size)*size; return v>=base&&v<base+size; }); }
 $("xCheck").onclick=checkSite;
 $("xHost").onkeydown=e=>{ if(e.key==="Enter") checkSite(); };
+
+
+// ================= домены РФ =================
+let dnsState=null;
+async function loadDNS(){
+  if (!cur) return; const id=cur.id; $("dErr").classList.remove("on"); $("dInfo").textContent="Загружаю состояние…";
+  try {
+    const r=await call("/api/m/dns-get",{id}); if(!cur||cur.id!==id) return; dnsState=r;
+    const pill=$("dState"); pill.className="pill "+(r.enabled?(r.active?"ok":"err"):""); pill.querySelector("span").textContent=r.enabled?(r.active?"включено":"включено, но не работает"):"выключено";
+    $("dTlds").checked=!!r.tlds; $("dCustom").value=r.custom||"";
+    $("dOn").classList.toggle("hidden",r.enabled); $("dSave").classList.toggle("hidden",!r.enabled); $("dOff").classList.toggle("hidden",!r.enabled);
+    $("dOn").disabled=!r.cascade;
+    $("dInfo").textContent = !r.cascade ? "На сервере RU не настроен каскад." :
+      r.enabled ? "Доменов в списке: "+r.domains+(r.listDate?" (список от "+r.listDate+")":"")+". Адресов сейчас идёт напрямую по доменам: "+(r.ips||0)+". DNS в файлах подключения: "+(r.dns||"—")+"."
+                : "Сейчас российские сервисы на зарубежных адресах идут через EU. DNS в файлах подключения: "+(r.dns||"—")+".";
+  } catch(e){ $("dInfo").textContent=""; $("dErr").textContent=e.message; $("dErr").classList.add("on"); }
+}
+async function dnsDo(action, btn, busy){
+  const old=btn.textContent; btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+busy; $("dErr").classList.remove("on");
+  try {
+    const r=await call("/api/m/dns-set",{id:cur.id,action,tlds:$("dTlds").checked,custom:$("dCustom").value});
+    let msg = action==="enable" ? "Включено. Обновлено файлов подключения: "+(r.updated||0)+" — импортируйте подключение на устройствах заново."
+            : action==="disable" ? "Выключено. Обновлено файлов подключения: "+(r.updated||0)+" — импортируйте подключение на устройствах заново."
+            : "Сохранено. Доменов в списке: "+(r.domains||"—");
+    if (r.failed&&r.failed.length) msg+=" Не удалось: "+r.failed.join("; ");
+    toast(msg, !!(r.failed&&r.failed.length)); await loadDNS();
+  } catch(e){ $("dErr").textContent=e.message; $("dErr").classList.add("on"); }
+  finally { btn.disabled=false; btn.textContent=old; }
+}
+$("dOn").onclick=()=>confirmBox("Включить маршрутизацию по доменам?","На сервер RU будет установлен DNS-сервер (dnsmasq), а во всех файлах подключения DNS сменится на адрес сервера RU в VPN. Чтобы функция заработала, на устройствах нужно заново импортировать подключение. Ключи не меняются.","Включить",()=>{ closeModal(); return dnsDo("enable",$("dOn"),"Устанавливаю…"); });
+$("dSave").onclick=()=>dnsDo("apply",$("dSave"),"Сохраняю…");
+$("dOff").onclick=()=>confirmBox("Выключить маршрутизацию по доменам?","Пользователям вернётся прежний DNS, DNS-сервер на сервере RU остановится. На устройствах нужно заново импортировать подключение.","Выключить",()=>{ closeModal(); return dnsDo("disable",$("dOff"),"Выключаю…"); }, true);
 
 // ================= форма профиля =================
 function renderProfileForm(host, p){

@@ -4,7 +4,7 @@
 #
 # Встроенный ниже скрипт маршрутизации (между маркерами ROUTING_EOF) взят из CASCADE.md проекта
 # https://github.com/bivlked/amneziawg-installer. Изменения AmneziaWG Cascade помечены «[AmneziaWG Cascade]»:
-# дополнительный список RU-сетей (MaxMind GeoLite2) объединяется с основным, загрузка через ipset restore.
+# дополнительные списки RU-сетей (MaxMind GeoLite2, DB-IP Lite) объединяются с основным, загрузка через ipset restore.
 # Copyright (c) 2025-2026 Ivan Bondarev, лицензия MIT (см. THIRD_PARTY_NOTICES.md).
 # cascade-setup.sh — настройка каскада AmneziaWG одной командой на ВХОДНОМ сервере (RU).
 # Делает шаги 3–5 из CASCADE.md (bivlked/amneziawg-installer):
@@ -163,6 +163,9 @@ RU_ZONE_FALLBACK_URL="https://raw.githubusercontent.com/bivlked/amneziawg-instal
 # (где адрес находится физически), поэтому содержит узлы зарубежных CDN, стоящие в России, которых нет
 # в списке ipdeny (тот собран по регистрационным данным RIR). Пустая строка - отключить.
 RU_ZONE_EXTRA_URL="https://raw.githubusercontent.com/antonme/GeoIP/master/russia.ipv4.cidr.txt"
+# [AmneziaWG Cascade] Третий список: база DB-IP Lite (CC BY 4.0, IP Geolocation by DB-IP) в виде
+# готового ru.txt проекта v2fly/geoip. Добавляет российские хостинги, на которых живут российские сайты.
+RU_ZONE_EXTRA2_URL="https://raw.githubusercontent.com/v2fly/geoip/release/text/ru.txt"
 AWG_DIR="/root/awg"
 EXTRA_RU_NETS=""                        # свои адреса/сети, которые вести через РФ (через пробел),
                                         # напр. "203.0.113.7 198.51.100.0/24". Нужно для .ru-сайтов
@@ -207,6 +210,8 @@ fetch_ru_zone() {                                # $1 = URL; качает и П�
     # --retry-max-time ограничивает СУММУ попыток, иначе три повтора по 30 с дают 93 с на один URL.
     curl -fsS --retry 2 --retry-max-time 45 --connect-timeout 10 --max-time 30 \
         -o "$RU_ZONE.tmp" "$1" || return 1
+    # [AmneziaWG Cascade] Строки IPv6 (в списке DB-IP они есть) убираем: каскад работает только по IPv4.
+    sed -i '/:/d' "$RU_ZONE.tmp"
     # 🔴 Проверять надо СОДЕРЖИМОЕ, а не только непустоту. curl -f отсекает только код >= 400,
     # поэтому заглушка провайдера, страница DPI или капча, отданные с кодом 200, прошли бы как
     # валидный список, затёрли рабочий файл и сломали деление до ручного вмешательства.
@@ -239,7 +244,16 @@ if [ -n "${RU_ZONE_EXTRA_URL:-}" ]; then
 else
     rm -f "$RU_ZONE.extra"
 fi
-[ -s "$RU_ZONE" ] || [ -s "$RU_ZONE.extra" ] || { echo "ERROR: список RU-сетей пуст и нигде не найден - прерываюсь, чтобы не сломать деление" >&2; exit 1; }
+if [ -n "${RU_ZONE_EXTRA2_URL:-}" ]; then
+    if fetch_ru_zone "$RU_ZONE_EXTRA2_URL"; then
+        mv -f "$RU_ZONE.tmp" "$RU_ZONE.extra2"
+    else
+        echo "WARN: список DB-IP не скачался - использую прежний локальный (если есть)" >&2
+    fi
+else
+    rm -f "$RU_ZONE.extra2"
+fi
+[ -s "$RU_ZONE" ] || [ -s "$RU_ZONE.extra" ] || [ -s "$RU_ZONE.extra2" ] || { echo "ERROR: список RU-сетей пуст и нигде не найден - прерываюсь, чтобы не сломать деление" >&2; exit 1; }
 
 # 2) Загрузить RU-сети в ipset через временный сет (атомарная замена, без "пустого окна").
 ipset create ru hash:net -exist
@@ -247,7 +261,7 @@ ipset create ru_tmp hash:net -exist
 ipset flush ru_tmp
 # [AmneziaWG Cascade] Загрузка одним вызовом ipset restore: на объединённом списке (~20 тыс. сетей)
 # это секунды вместо минуты. Пересекающиеся сети hash:net принимает, -exist гасит дубликаты.
-for _z in "$RU_ZONE" "$RU_ZONE.extra"; do
+for _z in "$RU_ZONE" "$RU_ZONE.extra" "$RU_ZONE.extra2"; do
     [ -s "$_z" ] || continue
     { grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}/[0-9]{1,2}$' "$_z" || true; } | sed 's/^/add ru_tmp /'
 done | ipset restore -exist

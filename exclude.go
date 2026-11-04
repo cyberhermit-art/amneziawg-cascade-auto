@@ -278,8 +278,14 @@ func handleCheckSite(m *mctx, r exclReq) (any, error) {
 	}
 	out, _, _, err := m.ruCmd(fmt.Sprintf(`H=%s
 for ip in $(getent ahostsv4 "$H" | awk '{print $1}' | sort -u); do
-  if ipset test ru "$ip" >/dev/null 2>&1; then echo "@@IP $ip ru"; else echo "@@IP $ip abroad"; fi
+  if ipset test ru "$ip" >/dev/null 2>&1; then echo "@@IP $ip ru"
+  elif ipset test ru_dns "$ip" >/dev/null 2>&1; then echo "@@IP $ip rudns"
+  else echo "@@IP $ip abroad"; fi
 done
+L=/etc/awgc-dns/domains.txt
+if [ -s $L ] && systemctl is-active --quiet awgc-dns; then
+  d=$H; while :; do grep -qxF "$d" $L && { echo "@@INLIST $d"; break; }; case $d in *.*) d=${d#*.};; *) break;; esac; done
+fi
 echo "@@CURL $(curl -4 -m 12 -o /dev/null -s -w '%%{http_code} %%{time_connect}' "https://$H/" 2>/dev/null || true)"`, shq(h)), nil, time.Minute)
 	if err != nil {
 		return nil, err
@@ -303,7 +309,13 @@ echo "@@CURL $(curl -4 -m 12 -o /dev/null -s -w '%%{http_code} %%{time_connect}'
 		return nil, fmt.Errorf("сервер RU не смог найти адрес %s", h)
 	}
 	reach := code != "000" && code != ""
-	return map[string]any{"host": h, "ips": ips, "code": code, "reachable": reach}, nil
+	inList := ""
+	for _, l := range strings.Split(out, "\n") {
+		if strings.HasPrefix(l, "@@INLIST ") {
+			inList = strings.TrimSpace(strings.TrimPrefix(l, "@@INLIST "))
+		}
+	}
+	return map[string]any{"host": h, "ips": ips, "code": code, "reachable": reach, "inList": inList}, nil
 }
 
 // allowedOpt — фрагмент команды add: новые клиенты сразу получают AllowedIPs с исключениями.

@@ -86,6 +86,14 @@ cd /root && { wget -q --tries=2 -T 30 -O %[1]s.new %[2]s || curl -fsSL --retry 1
 }
 
 const uninstallRU = `set +e
+echo "== Отключаю DNS с маршрутизацией по доменам (если был включён)"
+systemctl disable --now awgc-dns-update.timer awgc-dns >/dev/null 2>&1
+rm -f /etc/systemd/system/awgc-dns.service /etc/systemd/system/awgc-dns-update.service /etc/systemd/system/awgc-dns-update.timer
+systemctl daemon-reload
+S=$(grep -oP '^CLIENT_SUBNET="\K[^"]+' /root/awg/awg-routing.sh 2>/dev/null)
+[ -n "$S" ] && iptables -t mangle -D PREROUTING -i awg0 -s "$S" -m set --match-set ru_dns dst -j RETURN 2>/dev/null
+ipset destroy ru_dns 2>/dev/null
+rm -rf /etc/awgc-dns
 echo "== Отключаю каскад (туннель до EU, маршрутизация, автозапуск)"
 bash /root/cascade-setup.sh --remove 2>&1 | grep -v "удалите клиента"
 echo "== Убираю сбор статистики"

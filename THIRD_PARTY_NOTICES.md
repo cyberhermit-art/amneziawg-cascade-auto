@@ -49,6 +49,20 @@ SOFTWARE.
   GeoLite2 End User License Agreement: https://www.maxmind.com/en/geolite2/eula
   This product includes GeoLite2 data created by MaxMind, available from https://www.maxmind.com.
 
+## 1b. DB-IP Lite country data (downloaded at runtime, not distributed)
+
+- Source: https://github.com/v2fly/geoip — `text/ru.txt` (release branch), built from DB-IP Lite data.
+- Used: merged into the list of Russian networks by the routing script on the RU server.
+- License of the data: Creative Commons Attribution 4.0 International — IP Geolocation by DB-IP (https://db-ip.com).
+
+## 1c. Russian service domain list (downloaded at runtime, not distributed)
+
+- Source: https://github.com/lib4u/amnezia-tunneling-ru — `amnezia.json`, generated from
+  https://github.com/v2fly/domain-list-community (MIT License).
+- Used: only if «Домены РФ» is enabled; the RU server builds a dnsmasq configuration from it.
+- dnsmasq itself (GPL-2.0/GPL-3.0, https://thekelleys.org.uk/dnsmasq/) is installed on the
+  server from the operating system's package repository and is not distributed with this product.
+
 ---
 
 ## 2. Go supplementary libraries: golang.org/x/crypto, golang.org/x/sys

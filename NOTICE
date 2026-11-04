@@ -21,9 +21,13 @@ This product includes software from:
   * golang.org/x/crypto, golang.org/x/sys and the Go standard library —
     Copyright 2009 The Go Authors, BSD-3-Clause License
 
-At runtime the RU server also downloads a list of Russian IPv4 networks from
+At runtime the RU server also downloads lists of Russian IPv4 networks from
 https://github.com/antonme/GeoIP (derived from MaxMind GeoLite2 data, subject to the
-GeoLite2 EULA). The list itself is not distributed with this product.
+GeoLite2 EULA) and https://github.com/v2fly/geoip (IP Geolocation by DB-IP,
+https://db-ip.com, CC BY 4.0), and — if domain routing is enabled — a list of
+Russian service domains from https://github.com/lib4u/amnezia-tunneling-ru
+(based on v2fly/domain-list-community). These lists are not distributed with
+this product. Domain routing uses dnsmasq installed from the server's OS packages.
 
 Full license texts: THIRD_PARTY_NOTICES.md
 

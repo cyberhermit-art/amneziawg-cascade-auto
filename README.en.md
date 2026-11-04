@@ -30,6 +30,7 @@ One connection on the device, and both local and international services behave a
 - **Statistics:** traffic per day and per user for 1/7/30/90 days, collected on the server every 5 minutes and kept across reboots.
 - **Server:** health of the RU server, the tunnel to EU, routing, EU reachability; restart VPN.
 - **Maintenance:** routing update on a running cascade, package updates, reboot and VPN removal for RU and EU separately, plus removal of the whole cascade (with a backup first).
+- **Russian domains:** Russian services hosted on foreign CDNs are routed directly by domain — the RU server acts as DNS for VPN users (about 2000 domains, custom domains, weekly updates).
 - **Bypass VPN:** sites that block hosting IPs (e.g. **Gosuslugi**, the Russian public services portal) are reached from the device directly — a ready preset plus custom networks; a site check from the RU server (which path it takes and whether it opens).
 - **Protocol version:** AmneziaWG 3.1 (default) or 2.0 for routers and older apps; both servers always get the same version, and the Server tab shows it and warns on a mismatch.
 - **Server IP change:** if the host changes the RU or EU address (or it has to be changed due to blocking) — reconfigure without reinstalling or changing keys.
@@ -57,7 +58,8 @@ The app connects over SSH and performs the steps from [CASCADE.md](https://githu
 - `install_amneziawg.sh` is downloaded from the project's official releases and run with `--yes --disallow-ipv6 --route-all --subnet=…` (plus `--protocol=` so both servers get the same protocol version);
 - long operations (system update, installer) run on the server as `systemd-run` units; the app only follows their logs, so disconnects and reboots don't break them;
 - for the cascade, [`assets/cascade-setup.sh`](assets/cascade-setup.sh) is placed on the RU server: it creates the `awg1` tunnel to EU and installs `awg-routing.sh` from CASCADE.md with two marked changes;
-- the list of Russian networks merges [ipdeny](https://www.ipdeny.com) (registry data) and [antonme/GeoIP](https://github.com/antonme/GeoIP) (MaxMind GeoLite2, physical location), which catches foreign CDN nodes located in Russia;
+- the list of Russian networks merges [ipdeny](https://www.ipdeny.com) (registry data), [antonme/GeoIP](https://github.com/antonme/GeoIP) (MaxMind GeoLite2, physical location; catches foreign CDN nodes located in Russia) and DB-IP Lite via [v2fly/geoip](https://github.com/v2fly/geoip) (adds Russian hosting providers);
+- optional domain routing: dnsmasq on the RU server puts addresses of Russian service domains (list from [amnezia-tunneling-ru](https://github.com/lib4u/amnezia-tunneling-ru)) into a separate ipset that is routed directly;
 - users are managed through the stock `manage_amneziawg.sh`.
 
 The UI is a local web page: the app listens on `127.0.0.1` only and every request carries a random token.
@@ -82,7 +84,7 @@ Go 1.24+:
 
 ```bash
 go mod tidy
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.7.0" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.8.0" -o AmneziaWG-Cascade.exe .
 ```
 
 `rsrc_windows_amd64.syso` (icon and version info) is built from [`winres/`](winres) with `x86_64-w64-mingw32-windres -O coff -o ../rsrc_windows_amd64.syso app.rc`.
