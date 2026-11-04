@@ -287,7 +287,7 @@ L=/etc/awgc-dns/domains.txt
 if [ -s $L ] && systemctl is-active --quiet awgc-dns; then
   d=$H; while :; do grep -qxF "$d" $L && { echo "@@INLIST $d"; break; }; case $d in *.*) d=${d#*.};; *) break;; esac; done
 fi
-echo "@@CURL $(curl -4 -m 12 -o /dev/null -s -w '%%{http_code} %%{time_connect}' "https://$H/" 2>/dev/null || true)"`, shq(h)), nil, time.Minute)
+echo "@@CURL $(curl -4 -m 12 -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36' -o /dev/null -s -w '%%{http_code} %%{time_connect}' "https://$H/" 2>/dev/null || true)"`, shq(h)), nil, time.Minute)
 	if err != nil {
 		return nil, err
 	}
