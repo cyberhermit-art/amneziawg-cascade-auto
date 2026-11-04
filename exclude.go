@@ -242,9 +242,15 @@ f=$(ls /root/awg/*.conf 2>/dev/null | grep -v '/awgc-' | head -1)
 	}
 	// QR-код вмещает около 2900 байт. Файл подключения с длинным AllowedIPs в него не
 	// помещается, а без QR установщик (на 3.1) не создаёт нового пользователя совсем.
-	const qrLimit = 2700
-	if size := other + len("AllowedIPs = ") + len(allowed) + 1; len(excl) > 0 && size > qrLimit {
-		n := len(strings.Split(allowed, ","))
+	// Установщик (v6+) при добавлении пользователя ещё и вырезает из списка адрес
+	// самого сервера — это до 30 маршрутов сверху. Считаем с этим запасом.
+	const qrLimit = 2600
+	check := allowed
+	if ep, err := netip.ParseAddr(strings.TrimSpace(m.p.RU.Host)); err == nil && ep.Is4() && len(excl) > 0 {
+		check = joinPfx(subtract(base4, append(append([]netip.Prefix{}, excl...), netip.PrefixFrom(ep, 32))))
+	}
+	if size := other + len("AllowedIPs = ") + len(check) + 1; len(excl) > 0 && size > qrLimit {
+		n := len(strings.Split(check, ","))
 		return nil, fmt.Errorf("слишком много сетей мимо VPN: в файле подключения получится %d маршрутов (около %d байт), а QR-код вмещает примерно %d. С таким списком у пользователей не будет QR-кода, а новых пользователей сервер не сможет добавить. Уберите часть сетей — каждая сеть добавляет до 20–30 маршрутов", n, size, qrLimit)
 	}
 	var lines []string
