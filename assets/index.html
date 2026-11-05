@@ -539,13 +539,15 @@ async function post(url, body){
 function ipReportsHTML(reps){
   return reps.map(r=>{
     const yn=l=>l.ru===null||l.ru===undefined?'<span class="note">'+esc(l.error||"нет данных")+'</span>':(l.ru?'Россия':'<b>не Россия</b>');
+    const soft=l=>r.role==="RU"&&l.id==="rir"&&r.notes&&r.notes.length;
     const good=l=>l.ru!==null&&l.ru!==undefined&&(r.role==="RU"?l.ru:!l.ru);
-    let h='<div class="ipr"><h3><span class="tag '+(r.role==="RU"?"ru":"eu")+'">'+r.role+'</span> '+esc(r.host)+(r.ip&&r.ip!==r.host?' <span class="note">('+esc(r.ip)+')</span>':'')+' '+(r.error?'<span class="ipbad">ошибка</span>':r.ok?'<span class="ipok">подходит</span>':'<span class="ipbad">есть замечания</span>')+'</h3>';
+    let h='<div class="ipr"><h3><span class="tag '+(r.role==="RU"?"ru":"eu")+'">'+r.role+'</span> '+esc(r.host)+(r.ip&&r.ip!==r.host?' <span class="note">('+esc(r.ip)+')</span>':'')+' '+(r.error?'<span class="ipbad">ошибка</span>':r.ok?'<span class="ipok">подходит'+(r.notes&&r.notes.length?' (с примечанием)':'')+'</span>':'<span class="ipbad">есть замечания</span>')+'</h3>';
     if (r.error) return h+'<div class="err on">'+esc(r.error)+'</div></div>';
-    h+='<table class="tbl"><tbody>'+r.lists.map(l=>'<tr><td>'+esc(l.title)+'</td><td class="'+(good(l)?'okc':'badc')+'">'+yn(l)+'</td></tr>').join("")+
+    h+='<table class="tbl"><tbody>'+r.lists.map(l=>'<tr><td>'+esc(l.title)+'</td><td class="'+(good(l)?'okc':soft(l)?'':'badc')+'">'+yn(l)+'</td></tr>').join("")+
       (r.org?'<tr><td>Сеть и владелец (ipinfo.io)</td><td>'+esc(r.org)+'</td></tr>':'')+
       (r.country?'<tr><td>Страна и город (ipinfo.io)</td><td>'+esc(r.country)+(r.city?', '+esc(r.city):'')+'</td></tr>':'')+'</tbody></table>';
     if (r.warnings&&r.warnings.length) h+=r.warnings.map(w=>'<div class="problem">'+esc(w)+'</div>').join("");
+    if (r.notes&&r.notes.length) h+=r.notes.map(w=>'<div class="hintbox" style="margin-top:6px">'+esc(w)+'</div>').join("");
     return h+'</div>';
   }).join("");
 }

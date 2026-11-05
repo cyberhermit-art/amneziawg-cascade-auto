@@ -142,6 +142,7 @@ type addrReport struct {
 	Org      string       `json:"org"`
 	ASN      string       `json:"asn"`
 	Warnings []string     `json:"warnings"`
+	Notes    []string     `json:"notes"` // замечания, которые не мешают использовать адрес
 	OK       bool         `json:"ok"`
 	Err      string       `json:"error,omitempty"`
 }
@@ -167,7 +168,7 @@ func resolveV4(host string) (netip.Addr, error) {
 }
 
 func checkAddr(role, host string) *addrReport {
-	r := &addrReport{Role: role, Host: host, Warnings: []string{}}
+	r := &addrReport{Role: role, Host: host, Warnings: []string{}, Notes: []string{}}
 	a, err := resolveV4(host)
 	if err != nil {
 		r.Err = err.Error()
@@ -227,6 +228,20 @@ func checkAddr(role, host string) *addrReport {
 		if l.RU != nil && *l.RU {
 			isRU = append(isRU, l.Title)
 		}
+	}
+	ruIn := func(id string) bool {
+		for _, l := range r.Lists {
+			if l.ID == id {
+				return l.RU != nil && *l.RU
+			}
+		}
+		return false
+	}
+	if role == "RU" && len(notRU) == 1 && notRU[0] == ruLists[0].Title && ruIn("maxmind") && ruIn("dbip") {
+		// Только статистика RIPE: блок выдан регистратору другой страны, но базы
+		// геолокации, по которым сервисы определяют страну, считают адрес российским.
+		r.Notes = append(r.Notes, "В статистике RIPE (список ipdeny) адрес числится за регистратором другой страны — блок выдан иностранному регистратору, а хостер получил из него часть. Сервисы определяют страну по базам геолокации (MaxMind, DB-IP), а там адрес российский, так что это не мешает.")
+		notRU = nil
 	}
 	if role == "RU" {
 		if len(notRU) > 0 {
