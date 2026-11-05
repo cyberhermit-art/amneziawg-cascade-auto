@@ -44,33 +44,43 @@ var actionNames = map[string]string{
 	"/api/m/ip-change":      "Смена IP-адреса сервера",
 	"/api/m/dns-set":        "«Домены РФ»",
 	"/api/cancel":           "Остановка установки",
+	"/api/ipcheck":          "Проверка адресов серверов",
 }
 
 var taskNames = map[string]string{"update": "обновление пакетов", "uninstall": "удаление VPN"}
 
 // actReq — безопасные поля запроса, которые можно писать в журнал.
 type actReq struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	NewName string `json:"newName"`
-	Expires string `json:"expires"`
-	Backup  string `json:"backup"`
-	Target  string `json:"target"`
-	Task    string `json:"task"`
-	Reboot  bool   `json:"reboot"`
-	NewHost string `json:"newHost"`
-	Force   bool   `json:"force"`
-	Host    string `json:"host"`
-	Nets    string `json:"nets"`
-	Action  string `json:"action"`
-	TLDs    bool   `json:"tlds"`
-	Custom  string `json:"custom"`
-	RU      struct {
+	ID      string          `json:"id"`
+	Name    string          `json:"name"`
+	NewName string          `json:"newName"`
+	Expires string          `json:"expires"`
+	Backup  string          `json:"backup"`
+	Target  string          `json:"target"`
+	Task    string          `json:"task"`
+	Reboot  bool            `json:"reboot"`
+	NewHost string          `json:"newHost"`
+	Force   bool            `json:"force"`
+	Host    string          `json:"host"`
+	Nets    string          `json:"nets"`
+	Action  string          `json:"action"`
+	TLDs    bool            `json:"tlds"`
+	Custom  string          `json:"custom"`
+	RU      json.RawMessage `json:"ru"`
+	EU      json.RawMessage `json:"eu"`
+}
+
+// hostOf: поле ru/eu — строка (проверка адресов) или объект с host (профиль).
+func hostOf(raw json.RawMessage) string {
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return s
+	}
+	var o struct {
 		Host string `json:"host"`
-	} `json:"ru"`
-	EU struct {
-		Host string `json:"host"`
-	} `json:"eu"`
+	}
+	_ = json.Unmarshal(raw, &o)
+	return o.Host
 }
 
 func (a *actReq) describe(path string) string {
@@ -83,8 +93,11 @@ func (a *actReq) describe(path string) string {
 	switch path {
 	case "/api/profile-save":
 		add("название", "«"+a.Name+"»")
-		add("RU", a.RU.Host)
-		add("EU", a.EU.Host)
+		add("RU", hostOf(a.RU))
+		add("EU", hostOf(a.EU))
+	case "/api/ipcheck":
+		add("RU", hostOf(a.RU))
+		add("EU", hostOf(a.EU))
 	case "/api/m/rename":
 		add("", a.Name+" → "+a.NewName)
 	case "/api/m/add":

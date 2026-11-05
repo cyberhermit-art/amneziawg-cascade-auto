@@ -177,6 +177,9 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
 .mbox.wide{max-width:760px}
 .tstat{display:flex;align-items:center;gap:8px;font-size:13px}
 .tstat.ok{color:var(--ok)} .tstat.err{color:var(--err)}
+.ipr{margin:12px 0}.ipr h3{font-size:14px;margin:0 0 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ipr .tbl td{padding:5px 8px}.okc{color:var(--ok)}.badc{color:var(--err)}
+.ipok{color:var(--ok);font-size:12.5px;font-weight:600}.ipbad{color:var(--err);font-size:12.5px;font-weight:600}
 .bintro{max-width:880px;margin:0 0 14px;line-height:1.5}
 .bgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;align-items:start}
 .bta{width:100%;height:96px;font:12.5px Consolas,monospace;border:1px solid var(--line);border-radius:7px;background:var(--field);color:var(--ink);padding:7px 9px;resize:vertical;box-sizing:border-box}
@@ -286,6 +289,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
 
     <div class="err" id="formErr"></div>
     <div class="actions">
+      <button class="btn ghost" id="ipChkBtn">Проверить адреса серверов</button>
       <button class="btn" id="startBtn">Начать установку</button>
       <span class="note">Серверы настраиваются по очереди: сначала RU, потом EU, затем каскад. Обычно 30–60 минут, серверы несколько раз перезагрузятся. Лучше ставить на чистые VPS (Ubuntu 24.04 или Debian 13). Данные для входа сохранятся в профиль на этом компьютере в зашифрованном виде.</span>
     </div>
@@ -374,6 +378,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
           <div class="mrow"><div><b>Обновить пакеты</b><span>apt update + upgrade. VPN продолжает работать; перезагрузка — только если вы разрешите.</span></div><button class="btn ghost small" data-mt="update" data-s="ru">Обновить</button></div>
           <div class="mrow"><div><b>Перезагрузить сервер</b><span>VPN будет недоступен 1–3 минуты.</span></div><button class="btn ghost small" data-mt="reboot" data-s="ru">Перезагрузить</button></div>
           <div class="mrow"><div><b>Обновить маршрутизацию</b><span>Свежий скрипт и объединённый список российских сетей (ipdeny + MaxMind + DB-IP). Настройки и свои сети сохраняются.</span></div><button class="btn ghost small" data-mt="routing" data-s="ru">Обновить</button></div>
+          <div class="mrow"><div><b>Проверить адреса серверов</b><span>Считается ли адрес RU российским, а адрес EU — зарубежным, в базах RIPE, MaxMind, DB-IP; кто владелец сети.</span></div><button class="btn ghost small" id="mtIPChk">Проверить</button></div>
           <div class="mrow"><div><b>Сервер сменил IP-адрес</b><span>Хостер поменял адрес или его пришлось сменить из-за блокировки. Ключи сохраняются, пользователям нужно заново импортировать подключение.</span></div><button class="btn ghost small" data-mt="ip" data-s="ru">Сменить IP…</button></div>
           <div class="mrow"><div><b>Удалить VPN с сервера</b><span>Отключает каскад и полностью удаляет AmneziaWG, пользователей и ключи.</span></div><button class="btn ghost small danger" data-mt="uninstall" data-s="ru">Удалить…</button></div>
         </div>
@@ -530,8 +535,48 @@ async function post(url, body){
   return r.json();
 }
 
+// ===== проверка адресов серверов =====
+function ipReportsHTML(reps){
+  return reps.map(r=>{
+    const yn=l=>l.ru===null||l.ru===undefined?'<span class="note">'+esc(l.error||"нет данных")+'</span>':(l.ru?'Россия':'<b>не Россия</b>');
+    const good=l=>l.ru!==null&&l.ru!==undefined&&(r.role==="RU"?l.ru:!l.ru);
+    let h='<div class="ipr"><h3><span class="tag '+(r.role==="RU"?"ru":"eu")+'">'+r.role+'</span> '+esc(r.host)+(r.ip&&r.ip!==r.host?' <span class="note">('+esc(r.ip)+')</span>':'')+' '+(r.error?'<span class="ipbad">ошибка</span>':r.ok?'<span class="ipok">подходит</span>':'<span class="ipbad">есть замечания</span>')+'</h3>';
+    if (r.error) return h+'<div class="err on">'+esc(r.error)+'</div></div>';
+    h+='<table class="tbl"><tbody>'+r.lists.map(l=>'<tr><td>'+esc(l.title)+'</td><td class="'+(good(l)?'okc':'badc')+'">'+yn(l)+'</td></tr>').join("")+
+      (r.org?'<tr><td>Сеть и владелец (ipinfo.io)</td><td>'+esc(r.org)+'</td></tr>':'')+
+      (r.country?'<tr><td>Страна и город (ipinfo.io)</td><td>'+esc(r.country)+(r.city?', '+esc(r.city):'')+'</td></tr>':'')+'</tbody></table>';
+    if (r.warnings&&r.warnings.length) h+=r.warnings.map(w=>'<div class="problem">'+esc(w)+'</div>').join("");
+    return h+'</div>';
+  }).join("");
+}
+async function runIPCheck(ru, eu){ return await call("/api/ipcheck",{ru,eu}); }
+let lastIPCheck=null;
+$("ipChkBtn").onclick=async()=>{
+  const ru=$("ru-host").value.trim(), eu=$("eu-host").value.trim();
+  if(!ru&&!eu){ toast("Сначала введите адреса серверов",true); return; }
+  modal('<h2>Проверка адресов серверов</h2><p class="note"><span class="spin"></span> Проверяю по базам RIPE, MaxMind, DB-IP и ipinfo.io…</p>');
+  try { const r=await runIPCheck(ru,eu); lastIPCheck={ru,eu,warn:r.warn};
+    modal('<h2>Проверка адресов серверов</h2><p class="note">Для входа RU адрес должен везде считаться российским, для выхода EU — зарубежным, и лучше, чтобы серверы были у разных хостеров.</p>'+ipReportsHTML(r.reports)+'<div class="actions"><button class="btn" id="ipcOk">Понятно</button></div>');
+    $("mBody").parentElement.classList.add("wide"); $("ipcOk").onclick=closeModal;
+  } catch(e){ modal('<h2>Проверка адресов серверов</h2><div class="err on">'+esc(e.message)+'</div>'); }
+};
 $("startBtn").onclick = async () => {
   $("formErr").classList.remove("on");
+  // Проверка адресов перед установкой: при замечаниях — спросить, продолжать ли.
+  const ruH=$("ru-host").value.trim(), euH=$("eu-host").value.trim();
+  if (ruH && euH && !(lastIPCheck && lastIPCheck.ru===ruH && lastIPCheck.eu===euH && lastIPCheck.accepted)) {
+    $("startBtn").disabled=true; $("startBtn").textContent="Проверяю адреса…";
+    let r=null; try { r=await runIPCheck(ruH,euH); } catch(e) {}
+    $("startBtn").disabled=false; $("startBtn").textContent="Начать установку";
+    if (r && r.warn) {
+      lastIPCheck={ru:ruH,eu:euH,warn:true};
+      modal('<h2>У адресов серверов есть замечания</h2>'+ipReportsHTML(r.reports)+'<div class="actions"><button class="btn" id="ipcGo">Всё равно установить</button><button class="btn ghost" id="ipcNo">Отмена</button></div>');
+      $("mBody").parentElement.classList.add("wide");
+      $("ipcNo").onclick=closeModal;
+      $("ipcGo").onclick=()=>{ lastIPCheck.accepted=true; closeModal(); $("startBtn").click(); };
+      return;
+    }
+  }
   const s = {proto:protoVal()}; for (const k of saveFields) s[k] = $(k).value; try { localStorage.setItem("awgc-form", JSON.stringify(s)); } catch(e) {}
   $("startBtn").disabled = true;
   const res = await post("/api/start", { ru:server("ru"), eu:server("eu"), ruSubnet:$("ru-subnet").value.trim(), euSubnet:$("eu-subnet").value.trim(), extraClients:$("extra").value, skipUpdate:$("skipUpdate").checked, profileName:$("prof-name").value.trim(), protocol:protoVal() });
@@ -786,6 +831,13 @@ function askIPChange(t){
     finally { if ($("ipOk")){ b.disabled=false; b.textContent="Сменить адрес"; } } };
   $("ipOk").onclick=run; $("ipNew").onkeydown=e=>{ if(e.key==="Enter") run(); };
 }
+$("mtIPChk").onclick=async()=>{
+  modal('<h2>Проверка адресов серверов</h2><p class="note"><span class="spin"></span> Проверяю по базам RIPE, MaxMind, DB-IP и ipinfo.io…</p>');
+  try { const r=await runIPCheck(cur.ruHost||"", cur.euHost||"");
+    modal('<h2>Проверка адресов серверов</h2>'+ipReportsHTML(r.reports)+'<div class="actions"><button class="btn" id="ipcOk">Понятно</button></div>');
+    $("mBody").parentElement.classList.add("wide"); $("ipcOk").onclick=closeModal;
+  } catch(e){ modal('<h2>Проверка адресов серверов</h2><div class="err on">'+esc(e.message)+'</div>'); }
+};
 $("mtAll").onclick = () => askUninstall(cur.euHost ? ["ru","eu"] : ["ru"]);
 
 async function waitBack(t){

@@ -55,6 +55,10 @@ SOFTWARE.
 - Used: merged into the list of Russian networks by the routing script on the RU server.
 - License of the data: Creative Commons Attribution 4.0 International — IP Geolocation by DB-IP (https://db-ip.com).
 
+## 1b-2. Address check (on the user's computer)
+
+- The «Проверить адреса серверов» feature downloads the same three lists (ipdeny.com, antonme/GeoIP, v2fly/geoip) to the program folder and queries https://ipinfo.io for the network owner of the entered server addresses. No data is sent other than the server IP addresses.
+
 ## 1c. Russian service domain list (downloaded at runtime, not distributed)
 
 - Source: https://github.com/lib4u/amnezia-tunneling-ru — `amnezia.json`, generated from

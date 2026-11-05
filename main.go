@@ -25,7 +25,7 @@ var indexHTML string
 const appPort = 47821
 
 // version задаётся при сборке: -ldflags "-X main.version=1.4.0"
-var version = "1.9.3"
+var version = "1.10.0"
 
 var (
 	token   string
@@ -79,6 +79,7 @@ func main() {
 	mux.HandleFunc("/api/events", handleEvents)
 	mux.HandleFunc("/api/open-folder", api(handleOpenFolder))
 	mux.HandleFunc("/api/open-log", api(handleOpenLog))
+	mux.HandleFunc("/api/ipcheck", api(handleIPCheck))
 	registerManage(mux)
 	mux.HandleFunc("/api/state", api(func(w http.ResponseWriter, r *http.Request) {
 		hub.mu.Lock()
