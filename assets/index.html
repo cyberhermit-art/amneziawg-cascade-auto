@@ -362,6 +362,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)} u.ex{background:var(--ex)}
       <button data-t="bypass">Мимо VPN</button>
       <button data-t="rudns">Домены РФ</button>
       <button data-t="backup">Резервные копии</button>
+      <button data-t="exp">Эксперименты</button>
       <button data-t="profile">Профиль</button>
     </nav>
 
@@ -499,6 +500,57 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)} u.ex{background:var(--ex)}
       <div class="tablewrap"><table class="tbl" id="bTable"><thead><tr><th>Дата</th><th>Серверы</th><th class="r">Размер</th><th>Примечание</th><th class="r"></th></tr></thead><tbody></tbody></table></div>
     </div>
 
+    <div class="mtab hidden" id="t-exp">
+      <p class="note bintro">Экспериментальные функции. Они работают <b>на самих серверах</b> — программу на компьютере можно закрыть. Ведут себя по-новому и могут меняться от версии к версии.</p>
+      <div class="bgrid">
+        <div class="card">
+          <h2 style="display:flex;align-items:center;gap:8px">Агент и уведомления в Telegram <span class="pill" id="agState"><i class="dot"></i><span>…</span></span></h2>
+          <p class="hint">На серверы ставится небольшой скрипт, который раз в 5 минут проверяет каскад и пишет в Telegram о проблемах и о том, что они ушли. О том, что пропал сам сервер RU, сообщит сервер EU.</p>
+          <ol class="note" style="padding-left:18px;margin:4px 0 8px;line-height:1.55">
+            <li>Создайте бота: напишите <b>@BotFather</b> в Telegram команду /newbot — он пришлёт токен.</li>
+            <li>Откройте своего бота и нажмите «Старт» (или добавьте его в группу и напишите там сообщение).</li>
+            <li>Вставьте токен ниже и нажмите «Определить» — программа найдёт chat id.</li>
+          </ol>
+          <label for="agToken">Токен бота</label><input type="password" id="agToken" autocomplete="off" spellcheck="false" placeholder="123456789:AA…">
+          <label for="agChat">Chat id</label>
+          <div style="display:flex;gap:8px"><input type="text" id="agChat" autocomplete="off" spellcheck="false" placeholder="например 123456789"><button class="btn ghost small" id="agFind" style="white-space:nowrap">Определить</button></div>
+          <h3 style="font-size:13.5px;margin:14px 0 4px">О чём сообщать</h3>
+          <label class="bpreset"><input type="checkbox" id="agHealth" checked><div><b>Сбои каскада</b><span style="font-family:inherit">VPN на RU не работает, зарубежный сервер не отвечает в туннеле, через выход не проходит трафик, сервер RU или транзит пропал со связи.</span></div></label>
+          <label class="bpreset"><input type="checkbox" id="agExpOn" checked><div><b>Истекает срок у пользователя</b><span style="font-family:inherit">Предупредить за <select id="agExp" style="padding:2px 4px;border:1px solid var(--line);border-radius:5px;background:var(--field);color:var(--ink)"><option value="1">1 день</option><option value="3" selected>3 дня</option><option value="7">7 дней</option></select> и когда срок истёк.</span></div></label>
+          <label class="bpreset"><input type="checkbox" id="agLimits" checked><div><b>Лимиты трафика</b><span style="font-family:inherit">При 80% и 100% месячного лимита (лимиты — в карточке справа).</span></div></label>
+          <label class="bpreset"><input type="checkbox" id="agRep" checked><div><b>Репутация адресов</b><span style="font-family:inherit">Раз в сутки: не помечен ли адрес выхода или RU как VPN/прокси, не сменилась ли страна (по базе ip-api.com).</span></div></label>
+          <h3 style="font-size:13.5px;margin:14px 0 4px">Резервные копии в Telegram</h3>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select id="agBackup" style="padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:var(--field);color:var(--ink)"><option value="off">Не отправлять</option><option value="daily">Каждый день</option><option value="weekly">Раз в неделю (пн)</option></select>
+            <span class="note">в</span>
+            <select id="agHour" style="padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:var(--field);color:var(--ink)"></select>
+            <span class="note">по времени этого компьютера</span>
+          </div>
+          <p class="note" style="margin:6px 0 0">Каждый сервер присылает свой архив. В копии — ключи всех пользователей: держите чат с ботом закрытым.</p>
+          <div class="toolbar" style="margin:14px 0 0">
+            <button class="btn small" id="agSave">Сохранить и включить</button>
+            <button class="btn ghost small" id="agTest">Тестовое сообщение</button>
+            <button class="btn ghost small" id="agBak">Копия сейчас</button>
+            <button class="btn ghost small danger hidden" id="agOff">Выключить</button>
+          </div>
+          <div class="err" id="agErr"></div>
+          <p class="note" id="agInfo" style="margin-top:8px"></p>
+        </div>
+        <div class="card">
+          <h2>Лимиты трафика</h2>
+          <p class="hint">Месячный лимит на пользователя. Пока это <b>только уведомление</b> в Telegram при 80% и 100% — ключ не отключается. Месяц календарный.</p>
+          <div class="tablewrap"><table class="tbl" id="limTable"><thead><tr><th>Пользователь</th><th class="r">В этом месяце</th><th class="r">Лимит, ГБ</th></tr></thead><tbody></tbody></table></div>
+          <div class="toolbar" style="margin:10px 0 0"><button class="btn small" id="limSave">Сохранить лимиты</button><span class="note" id="limNote">Пусто или 0 — без лимита.</span></div>
+          <div class="err" id="limErr"></div>
+          <h2 style="margin-top:20px">Скоро в «Экспериментах»</h2>
+          <ul class="note" style="padding-left:18px;line-height:1.55;margin:6px 0 0">
+            <li>Несколько выходов с автоматическим переключением, если один упал или попал в блокировку.</li>
+            <li>MTProto-прокси для Telegram на сервере RU.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <div class="mtab hidden" id="t-profile"></div>
   </section>
 
@@ -598,6 +650,7 @@ function ipReportsHTML(reps){
     let h='<div class="ipr"><h3><span class="tag '+(r.role==="RU"?"ru":"eu")+'">'+r.role+'</span> '+esc(r.host)+(r.ip&&r.ip!==r.host?' <span class="note">('+esc(r.ip)+')</span>':'')+' '+(r.error?'<span class="ipbad">ошибка</span>':r.ok?'<span class="ipok">подходит'+(r.notes&&r.notes.length?' (с примечанием)':'')+'</span>':'<span class="ipbad">есть замечания</span>')+'</h3>';
     if (r.error) return h+'<div class="err on">'+esc(r.error)+'</div></div>';
     h+='<table class="tbl"><tbody>'+r.lists.map(l=>'<tr><td>'+esc(l.title)+'</td><td class="'+(good(l)?'okc':soft(l)?'':'badc')+'">'+yn(l)+'</td></tr>').join("")+
+      (r.proxy===true||r.proxy===false?'<tr><td>Помечен как VPN/прокси (ip-api.com)</td><td class="'+(r.proxy?(r.role==="TR"?'':'badc'):'okc')+'">'+(r.proxy?'<b>да</b>':'нет')+'</td></tr>':'')+
       (r.org?'<tr><td>Сеть и владелец (ipinfo.io)</td><td>'+esc(r.org)+'</td></tr>':'')+
       (r.country?'<tr><td>Страна и город (ipinfo.io)</td><td>'+esc(r.country)+(r.city?', '+esc(r.city):'')+'</td></tr>':'')+'</tbody></table>';
     if (r.warnings&&r.warnings.length) h+=r.warnings.map(w=>'<div class="problem">'+esc(w)+'</div>').join("");
@@ -795,6 +848,7 @@ function showTab(t, force){
   if (t==="backup") loadBackups();
   if (t==="bypass") { loadBypass(); loadEU(); }
   if (t==="rudns") loadDNS();
+  if (t==="exp") loadExp();
   if (t==="profile") renderProfileForm($("t-profile"), cur);
 }
 function stopTimers(){ clearInterval(statusTimer); statusTimer=null; }
@@ -1296,6 +1350,54 @@ $("eApply").onclick=async()=>{
 
 // ================= домены РФ =================
 let dnsState=null;
+// ================= эксперименты: агент и Telegram =================
+const tzOff = Math.round(-new Date().getTimezoneOffset()/60);
+(function(){ const s=$("agHour"); for(let h=0;h<24;h++){ const o=document.createElement("option"); o.value=h; o.textContent=String(h).padStart(2,"0")+":00"; s.appendChild(o);} s.value=4; })();
+let agState=null;
+const SRVNAME={RU:"RU",EU:"EU",EX:"выход"};
+function agResults(res){ const bad=Object.entries(res||{}).filter(([k,v])=>v); return bad.length ? bad.map(([k,v])=>SRVNAME[k]+": "+v).join("\n") : ""; }
+async function loadExp(){
+  if (!cur) return; const id=cur.id; $("agErr").classList.remove("on"); $("agInfo").textContent="Загружаю…";
+  try {
+    const r=await call("/api/m/agent-get",{id}); if(!cur||cur.id!==id) return; agState=r;
+    const pill=$("agState"); pill.className="pill "+(r.configured?(r.active?"ok":"err"):""); pill.querySelector("span").textContent=r.configured?(r.active?"включён":"не работает"):"выключен";
+    $("agToken").value=""; $("agToken").placeholder=r.tokenMasked||"123456789:AA…"; $("agChat").value=r.chat||"";
+    if (r.configured){ $("agHealth").checked=r.health; $("agExpOn").checked=r.expiry>0; if(r.expiry>0) $("agExp").value=String(r.expiry); $("agLimits").checked=r.limits; $("agRep").checked=r.rep;
+      $("agBackup").value=r.backup; $("agHour").value=String(((r.hourUtc+tzOff)%24+24)%24); }
+    $("agOff").classList.toggle("hidden",!r.configured); $("agTest").disabled=!r.configured; $("agBak").disabled=!r.configured;
+    $("agInfo").textContent = "Агент ставится на серверы: "+(r.servers||[]).map(x=>SRVNAME[x]).join(", ")+"."+(r.configured&&r.lastRunAge>=0?" Последняя проверка на RU: "+fmtAgo(r.lastRunAge)+".":"")+(r.lastError?" Последняя ошибка Telegram: "+r.lastError:"");
+  } catch(e){ $("agInfo").textContent=""; $("agErr").textContent=e.message; $("agErr").classList.add("on"); }
+  loadLimits();
+}
+function agBody(){ const lh=+$("agHour").value; return {id:cur.id, token:$("agToken").value.trim(), chat:$("agChat").value.trim(), health:$("agHealth").checked,
+  expiry:$("agExpOn").checked?+$("agExp").value:0, limits:$("agLimits").checked, rep:$("agRep").checked, backup:$("agBackup").value, hourUtc:((lh-tzOff)%24+24)%24}; }
+async function agDo(btn, busy, url, body, okMsg){
+  const er=$("agErr"); er.classList.remove("on"); const t=btn.textContent; btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+busy;
+  try { const r=await call(url, body); const bad=agResults(r.results); if(bad){ er.textContent=bad; er.classList.add("on"); } else if(okMsg) toast(okMsg); return r; }
+  catch(e){ er.textContent=e.message; er.classList.add("on"); }
+  finally { btn.disabled=false; btn.textContent=t; }
+}
+$("agFind").onclick=async()=>{ const r=await agDo($("agFind"),"Ищу…","/api/m/agent-chat",{id:cur.id, token:$("agToken").value.trim()}); if(r&&r.chat){ $("agChat").value=r.chat; toast("Chat id найден"+(r.who?": "+r.who:"")); } };
+$("agSave").onclick=async()=>{ const r=await agDo($("agSave"),"Ставлю агент на серверы…","/api/m/agent-set",agBody(),"Агент включён. Отправляю тестовое сообщение…");
+  if(r){ await loadExp(); agDo($("agTest"),"Отправляю…","/api/m/agent-test",{id:cur.id},"Тестовое сообщение отправлено — проверьте Telegram"); } };
+$("agTest").onclick=()=>agDo($("agTest"),"Отправляю…","/api/m/agent-test",{id:cur.id},"Тестовое сообщение отправлено — проверьте Telegram");
+$("agBak").onclick=()=>agDo($("agBak"),"Отправляю копии…","/api/m/agent-backup",{id:cur.id},"Резервные копии отправлены в Telegram");
+$("agOff").onclick=()=>confirmBox("Выключить агент?","Агент и его настройки (токен бота) будут удалены со всех серверов. Уведомлений и копий в Telegram больше не будет.","Выключить",async()=>{
+  const r=await call("/api/m/agent-off",{id:cur.id}); const bad=agResults(r.results); if(bad) throw new Error(bad); toast("Агент выключен"); loadExp(); },true);
+let limRows=[];
+async function loadLimits(){
+  const tb=$("limTable").tBodies[0]; const id=cur.id;
+  try { const r=await call("/api/m/limits-get",{id}); if(!cur||cur.id!==id) return; limRows=r.rows||[];
+    tb.innerHTML = limRows.length ? limRows.map((x,i)=>'<tr><td><b>'+esc(x.name)+'</b></td><td class="num">'+fmtBytes(x.used)+'</td><td class="r"><input type="number" min="0" step="1" data-li="'+i+'" value="'+(x.limitGb||"")+'" style="width:90px;text-align:right"></td></tr>').join("")
+      : '<tr><td colspan="3" class="empty">Пользователей нет</td></tr>';
+  } catch(e){ tb.innerHTML='<tr><td colspan="3" class="empty">'+esc(e.message)+'</td></tr>'; }
+}
+$("limSave").onclick=async()=>{ const er=$("limErr"); er.classList.remove("on"); const lim={};
+  $("limTable").querySelectorAll("input[data-li]").forEach(inp=>{ const v=parseFloat(inp.value); if(v>0) lim[limRows[+inp.dataset.li].name]=v; });
+  const b=$("limSave"); b.disabled=true; b.innerHTML='<span class="spin"></span> Сохраняю…';
+  try { await call("/api/m/limits-set",{id:cur.id, limitGb:lim}); toast((agState&&agState.configured&&agState.limits)?"Лимиты сохранены":"Лимиты сохранены. Чтобы приходили уведомления, включите агент с пунктом «Лимиты трафика»."); }
+  catch(e){ er.textContent=e.message; er.classList.add("on"); } finally { b.disabled=false; b.textContent="Сохранить лимиты"; } };
+
 async function loadDNS(){
   if (!cur) return; const id=cur.id; $("dErr").classList.remove("on"); $("dInfo").textContent="Загружаю состояние…";
   try {

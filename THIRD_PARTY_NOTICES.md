@@ -57,7 +57,8 @@ SOFTWARE.
 
 ## 1b-2. Address check (on the user's computer)
 
-- The «Проверить адреса серверов» feature downloads the same three lists (ipdeny.com, antonme/GeoIP, v2fly/geoip) to the program folder and queries https://ipinfo.io for the network owner of the entered server addresses. No data is sent other than the server IP addresses.
+- The «Проверить адреса серверов» feature downloads the same three lists (ipdeny.com, antonme/GeoIP, v2fly/geoip) to the program folder and queries https://ipinfo.io for the network owner of the entered server addresses. No data is sent other than the server IP addresses. It also asks http://ip-api.com whether an address is flagged as VPN/proxy.
+- The «Эксперименты» agent (optional) runs on the user's servers and talks only to the Telegram Bot API (api.telegram.org) with the user's own bot token, to http://ip-api.com (once a day, the cascade's own server addresses) and to https://www.gstatic.com/generate_204 (connectivity check through the tunnel).
 
 ## 1c. Russian service domain list (downloaded at runtime, not distributed)
 

@@ -108,6 +108,25 @@ type ipInfo struct {
 	Hostname string `json:"hostname"`
 }
 
+// fetchProxyFlag — помечен ли адрес в базе ip-api.com как VPN/прокси (бесплатный
+// доступ — только http).
+func fetchProxyFlag(ip string) (*bool, error) {
+	c := &http.Client{Timeout: 15 * time.Second}
+	resp, err := c.Get("http://ip-api.com/json/" + ip + "?fields=status,proxy")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var v struct {
+		Status string `json:"status"`
+		Proxy  bool   `json:"proxy"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil || v.Status != "success" {
+		return nil, errors.New("нет данных")
+	}
+	return &v.Proxy, nil
+}
+
 func fetchIPInfo(ip string) (*ipInfo, error) {
 	c := &http.Client{Timeout: 15 * time.Second}
 	resp, err := c.Get("https://ipinfo.io/" + ip + "/json")
@@ -141,6 +160,7 @@ type addrReport struct {
 	City     string       `json:"city"`
 	Org      string       `json:"org"`
 	ASN      string       `json:"asn"`
+	Proxy    *bool        `json:"proxy"` // ip-api.com: адрес помечен как VPN/прокси (nil — нет данных)
 	Warnings []string     `json:"warnings"`
 	Notes    []string     `json:"notes"` // замечания, которые не мешают использовать адрес
 	OK       bool         `json:"ok"`
@@ -205,6 +225,8 @@ func checkAddr(role, host string) *addrReport {
 	var info *ipInfo
 	wg.Add(1)
 	go func() { defer wg.Done(); info, _ = fetchIPInfo(r.IP) }()
+	wg.Add(1)
+	go func() { defer wg.Done(); r.Proxy, _ = fetchProxyFlag(r.IP) }()
 	wg.Wait()
 	if info != nil {
 		r.Country, r.City, r.Org = info.Country, info.City, info.Org
@@ -261,6 +283,13 @@ func checkAddr(role, host string) *addrReport {
 		}
 		if r.Country == "RU" {
 			r.Warnings = append(r.Warnings, "ipinfo.io считает адрес российским — для выхода нужен зарубежный.")
+		}
+	}
+	if r.Proxy != nil && *r.Proxy {
+		if role == "TR" {
+			r.Notes = append(r.Notes, "Адрес помечен в базе ip-api.com как VPN/прокси, но для транзита это не важно — сайты его не видят.")
+		} else {
+			r.Warnings = append(r.Warnings, "Адрес помечен в базе ip-api.com как VPN/прокси — сервисы, которые проверяют адреса по таким базам, могут его не пускать.")
 		}
 	}
 	if strings.Contains(strings.ToLower(r.Org), "aeza") {

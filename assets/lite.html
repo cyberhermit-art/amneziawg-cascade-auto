@@ -429,7 +429,7 @@ ru: {
   restartQ:"Перезапустить VPN?", restartText:"Службы VPN и туннеля перезапустятся. У пользователей связь пропадёт на несколько секунд и восстановится сама.", restartB:"Перезапустить", restarted:"VPN перезапущен",
   routingT:"Доступно обновление маршрутизации", routingText:"Свежий список российских сетей (три базы вместо двух) — больше российских сайтов пойдут напрямую. Пользователей это не затронет.", routingB:"Обновить маршрутизацию", routingDone:"Маршрутизация обновлена: российских сетей — {0}",
   fullNote:"На этом каскаде включены функции полной версии программы: {0}. Lite их не показывает и не меняет — они продолжают работать. Настроить их можно в полной версии.",
-  ffdns:"«Домены РФ»", ffeu:"«Через EU»", ffexcl:"«Мимо VPN»",
+  ffdns:"«Домены РФ»", ffeu:"«Через EU»", ffexcl:"«Мимо VPN»", ffagent:"агент с уведомлениями в Telegram", vpnFlag:"Помечен как VPN/прокси (ip-api.com)", yes:"да", no:"нет",
   delAll:"Удалить весь каскад", delAllText2:"VPN будет удалён с обоих серверов (сначала RU, затем EU). Сами VPS останутся.", delAllText3:"VPN будет удалён со всех трёх серверов (RU, транзит, выход). Сами VPS останутся.", delAllB:"Удалить каскад…",
   pr_ru:"{0}. Если хостер сменил адрес сервера — нажмите «Сменить IP…» в карточке сервера RU.",
   pr_awg0:"VPN-сервер на RU не запущен — попробуйте «Перезапустить VPN».",
@@ -556,7 +556,7 @@ en: {
   restartQ:"Restart VPN?", restartText:"The VPN and tunnel services restart. Users lose connection for a few seconds, then it comes back on its own.", restartB:"Restart", restarted:"VPN restarted",
   routingT:"Routing update available", routingText:"A fresh list of Russian networks (three databases instead of two) — more Russian sites go direct. Users are not affected.", routingB:"Update routing", routingDone:"Routing updated: {0} Russian networks",
   fullNote:"Full-edition features are enabled on this cascade: {0}. Lite does not show or change them — they keep working. Configure them in the full edition.",
-  ffdns:"Russian domains", ffeu:"Via EU", ffexcl:"Bypass VPN",
+  ffdns:"Russian domains", ffeu:"Via EU", ffexcl:"Bypass VPN", ffagent:"agent with Telegram notifications", vpnFlag:"Flagged as VPN/proxy (ip-api.com)", yes:"yes", no:"no",
   delAll:"Remove the whole cascade", delAllText2:"VPN is removed from both servers (RU first, then EU). The VPS themselves stay.", delAllText3:"VPN is removed from all three servers (RU, transit, exit). The VPS themselves stay.", delAllB:"Remove cascade…",
   pr_ru:"{0}. If the host changed the server address, press “Change IP…” on the RU server card.",
   pr_awg0:"The VPN server on RU is not running — try “Restart VPN”.",
@@ -695,6 +695,8 @@ const TR_EN = [
   [/Адрес считается российским, но для транзита это не важно.*$/g, "The address is Russian, but that does not matter for a transit — websites see the exit address."],
   [/Адрес считается российским в базах: (.*?)\. Для выхода.*$/g, "The address is Russian in: $1. The exit needs a foreign address — otherwise websites will see Russia."],
   [/ipinfo\.io считает адрес российским — для выхода нужен зарубежный\./g, "ipinfo.io considers the address Russian — the exit needs a foreign one."],
+  [/Адрес помечен в базе ip-api\.com как VPN\/прокси, но для транзита.*$/g, "The address is flagged as VPN/proxy by ip-api.com, but that does not matter for a transit — websites never see it."],
+  [/Адрес помечен в базе ip-api\.com как VPN\/прокси — .*$/g, "The address is flagged as VPN/proxy by ip-api.com — services that check addresses against such databases may block it."],
   [/Хостер Aeza: .*$/g, "Host Aeza: its networks are widely used for VPNs, and some Russian services (e.g. Wildberries) block such addresses."],
   [/Не удалось проверить: базы недоступны с этого компьютера\./g, "Could not check: the databases are unreachable from this computer."],
   [/Вход \(RU\) и выход в одной сети \((\S+)\):.*$/g, "Entry (RU) and exit are in the same network ($1): if services distrust this host, neither address helps. Better use different hosts."],
@@ -915,6 +917,7 @@ function reportHTML(r, i, toggles){
     const open = !!chkOpen[i];
     det = '<div><button class="link" data-chk="'+i+'" aria-expanded="'+open+'">'+esc(T(open ? "less" : "more"))+'</button></div>';
     if (open) det += '<div class="tscroll"><table><tbody>'+(r.lists||[]).map(l => '<tr><td>'+esc(tr(l.title))+'</td><td>'+esc(l.ru === null || l.ru === undefined ? tr(l.error || T("noData")) : l.ru ? T("russia") : T("notRussia"))+'</td></tr>').join("")+
+      (r.proxy === true || r.proxy === false ? '<tr><td>'+esc(T("vpnFlag"))+'</td><td>'+esc(T(r.proxy ? "yes" : "no"))+'</td></tr>' : '')+
       (r.org ? '<tr><td>'+esc(T("owner"))+'</td><td>'+esc(r.org)+'</td></tr>' : '')+
       (r.country ? '<tr><td>'+esc(T("place"))+'</td><td>'+esc(r.country + (r.city ? ", " + r.city : ""))+'</td></tr>' : '')+'</tbody></table></div>';
   }

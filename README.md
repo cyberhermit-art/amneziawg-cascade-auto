@@ -48,6 +48,7 @@
 - **Домены РФ:** российские сервисы на зарубежных CDN идут напрямую по доменам — сервер RU становится DNS-сервером для пользователей VPN (около 2000 доменов, свои домены, обновление раз в неделю).
 - **Через EU вместо RU:** российские сервисы, которые не пускают адрес сервера RU, можно отправлять через сервер EU — без изменений на устройствах.
 - **Три сервера (по желанию):** вход RU → транзит → выход. Сайты видят только адрес выхода; если он попадёт в чёрные списки, меняется только выход — сервер RU и ключи пользователей остаются прежними.
+- **Эксперименты:** агент на серверах с уведомлениями в Telegram (сбои, сроки пользователей, лимиты трафика, репутация адресов) и резервные копии по расписанию в Telegram.
 - **Проверка адресов серверов:** перед установкой и на работающем каскаде — считается ли адрес RU российским, а EU зарубежным в базах RIPE, MaxMind и DB-IP, кто владелец сети.
 - **Мимо VPN:** сайты, которые не пускают адреса хостингов (например, **Госуслуги**), открываются с устройства напрямую — готовый набор и свои сети; проверка сайта с сервера RU (каким путём идёт и открывается ли).
 - **Версия протокола:** AmneziaWG 3.1 (по умолчанию) или 2.0 для роутеров и старых приложений; оба сервера всегда ставятся на одну версию, вкладка «Сервер» показывает версии и предупреждает о расхождении.
@@ -113,8 +114,8 @@
 
 ```bash
 go mod tidy
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.12.0" -o AmneziaWG-Cascade.exe .
-GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.12.0" -o AmneziaWG-Cascade-Lite.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.13.0" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.13.0" -o AmneziaWG-Cascade-Lite.exe .
 ```
 
 Файл `rsrc_windows_amd64.syso` (иконка и сведения о версии) собран из [`winres/`](winres) командой
@@ -133,6 +134,7 @@ GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui 
 | `viaeu.go`, `assets/awgc-eu.sh` | «Через EU вместо RU»: выбранные сети через сервер EU |
 | `assets/awgc-transit.sh` | Транзит для каскада из трёх серверов: туннель к выходу и правило «от RU — к выходу» |
 | `actlog.go` | журнал действий в log.txt |
+| `agent.go`, `assets/awgc-agent.sh` | «Эксперименты»: агент на серверах, Telegram, копии по расписанию, лимиты |
 | `ipcheck.go` | проверка адресов серверов по базам RIPE, MaxMind, DB-IP и ipinfo.io |
 | `profiles.go`, `secret_*.go` | профили и шифрование DPAPI |
 | `ssh.go`, `hub.go` | SSH с переподключением, поток событий в интерфейс |

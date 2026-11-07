@@ -428,7 +428,7 @@ R=/root/awg/awg-routing.sh; S=ipdeny
 grep -q '^RU_ZONE_EXTRA_URL="h' $R 2>/dev/null && S="$S + MaxMind"
 grep -q '^RU_ZONE_EXTRA2_URL="h' $R 2>/dev/null && { S="$S + DB-IP"; echo "@@XL 1"; }
 echo "@@SRC $S"
-echo "@@FF $(systemctl is-active --quiet awgc-dns 2>/dev/null && echo -n 'dns ')$([ -s /root/awg/awgc-eu.txt ] && echo -n 'eu ')$([ -s /root/awg/awgc-exclude.txt ] && echo -n 'excl')"
+echo "@@FF $(systemctl is-active --quiet awgc-dns 2>/dev/null && echo -n 'dns ')$([ -s /root/awg/awgc-eu.txt ] && echo -n 'eu ')$([ -s /root/awg/awgc-exclude.txt ] && echo -n 'excl ')$(systemctl is-active --quiet awgc-agent.timer 2>/dev/null && echo -n 'agent')"
 F=/etc/amnezia/amneziawg/awg1.conf; [ -f $F ] && { grep -qi '^[[:space:]]*HeaderProtectionKey[[:space:]]*=' $F && echo "@@EUP 3.1" || echo "@@EUP 2.0"; }
 `+protoMarker, nil, 60*time.Second)
 	st.PingMs = int(time.Since(t0).Milliseconds())
@@ -1048,6 +1048,7 @@ func registerManage(mux *http.ServeMux) {
 		registerExclude(mux)
 		registerDNS(mux)
 		registerViaEU(mux)
+		registerAgent(mux)
 	}
 	mux.HandleFunc("/api/m/routing-update", mapi(mRoutingUpdate))
 }

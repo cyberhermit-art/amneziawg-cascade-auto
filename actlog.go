@@ -45,6 +45,11 @@ var actionNames = map[string]string{
 	"/api/m/dns-set":        "«Домены РФ»",
 	"/api/cancel":           "Остановка установки",
 	"/api/ipcheck":          "Проверка адресов серверов",
+	"/api/m/agent-set":      "Агент и Telegram: включение / сохранение",
+	"/api/m/agent-off":      "Агент и Telegram: выключение",
+	"/api/m/agent-test":     "Агент и Telegram: тестовое сообщение",
+	"/api/m/agent-backup":   "Агент и Telegram: резервная копия сейчас",
+	"/api/m/limits-set":     "Лимиты трафика: сохранение",
 }
 
 var taskNames = map[string]string{"update": "обновление пакетов", "uninstall": "удаление VPN"}

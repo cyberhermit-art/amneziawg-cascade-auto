@@ -94,6 +94,7 @@ S=$(grep -oP '^CLIENT_SUBNET="\K[^"]+' /root/awg/awg-routing.sh 2>/dev/null)
 ipset destroy ru_dns 2>/dev/null
 rm -rf /etc/awgc-dns
 [ -x /root/awg/awgc-eu.sh ] && bash /root/awg/awgc-eu.sh disable >/dev/null 2>&1
+` + agentUninst + `
 echo "== Отключаю каскад (туннель до EU, маршрутизация, автозапуск)"
 bash /root/cascade-setup.sh --remove 2>&1 | grep -v "удалите клиента"
 echo "== Убираю сбор статистики"
@@ -106,6 +107,7 @@ rm -f /root/awgc-* /root/.awgc-* /root/cascade-setup.sh /root/ru_host.conf /root
 exit $rc`
 
 const uninstallEU = `set +e
+` + agentUninst + `
 if [ -f /etc/amnezia/amneziawg/awg1.conf ]; then
   echo "== Убираю туннель к серверу-выходу (транзит)"
   systemctl disable --now awg-quick@awg1 >/dev/null 2>&1
