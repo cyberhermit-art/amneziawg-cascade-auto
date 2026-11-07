@@ -505,7 +505,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)} u.ex{background:var(--ex)}
       <div class="bgrid">
         <div class="card">
           <h2 style="display:flex;align-items:center;gap:8px">Агент и уведомления в Telegram <span class="pill" id="agState"><i class="dot"></i><span>…</span></span></h2>
-          <p class="hint">На серверы ставится небольшой скрипт, который раз в 5 минут проверяет каскад и пишет в Telegram о проблемах и о том, что они ушли. О том, что пропал сам сервер RU, сообщит сервер EU.</p>
+          <p class="hint">На серверы ставится небольшой скрипт, который раз в 5 минут проверяет каскад и пишет в Telegram о проблемах и о том, что они ушли. О том, что пропал сам сервер RU, сообщит сервер EU. По желанию бот умеет и добавлять пользователей, и присылать их QR-коды.</p>
           <ol class="note" style="padding-left:18px;margin:4px 0 8px;line-height:1.55">
             <li>Создайте бота: напишите <b>@BotFather</b> в Telegram команду /newbot — он пришлёт токен.</li>
             <li>Откройте своего бота и нажмите «Старт» (или добавьте его в группу и напишите там сообщение).</li>
@@ -519,6 +519,8 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)} u.ex{background:var(--ex)}
           <label class="bpreset"><input type="checkbox" id="agExpOn" checked><div><b>Истекает срок у пользователя</b><span style="font-family:inherit">Предупредить за <select id="agExp" style="padding:2px 4px;border:1px solid var(--line);border-radius:5px;background:var(--field);color:var(--ink)"><option value="1">1 день</option><option value="3" selected>3 дня</option><option value="7">7 дней</option></select> и когда срок истёк.</span></div></label>
           <label class="bpreset"><input type="checkbox" id="agLimits" checked><div><b>Лимиты трафика</b><span style="font-family:inherit">При 80% и 100% месячного лимита (лимиты — в карточке справа).</span></div></label>
           <label class="bpreset"><input type="checkbox" id="agRep" checked><div><b>Репутация адресов</b><span style="font-family:inherit">Раз в сутки: не помечен ли адрес выхода или RU как VPN/прокси, не сменилась ли страна (по базе ip-api.com).</span></div></label>
+          <h3 style="font-size:13.5px;margin:14px 0 4px">Управление через бота</h3>
+          <label class="bpreset"><input type="checkbox" id="agBot"><div><b>Пользователи через Telegram</b><span style="font-family:inherit">Бот отвечает в вашем чате на команды: /users — список и состояние, /add — добавить пользователя (спросит имя и срок), нажатие на имя или /get — QR-код, файл .conf и ссылка vpn://, /del — удалить (с подтверждением), /status — состояние каскада. Работает на сервере RU постоянно. Отвечает только в указанном чате — но любой, у кого есть доступ к этому чату, сможет управлять пользователями.</span></div></label>
           <h3 style="font-size:13.5px;margin:14px 0 4px">Резервные копии в Telegram</h3>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <select id="agBackup" style="padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:var(--field);color:var(--ink)"><option value="off">Не отправлять</option><option value="daily">Каждый день</option><option value="weekly">Раз в неделю (пн)</option></select>
@@ -1363,14 +1365,14 @@ async function loadExp(){
     const pill=$("agState"); pill.className="pill "+(r.configured?(r.active?"ok":"err"):""); pill.querySelector("span").textContent=r.configured?(r.active?"включён":"не работает"):"выключен";
     $("agToken").value=""; $("agToken").placeholder=r.tokenMasked||"123456789:AA…"; $("agChat").value=r.chat||"";
     if (r.configured){ $("agHealth").checked=r.health; $("agExpOn").checked=r.expiry>0; if(r.expiry>0) $("agExp").value=String(r.expiry); $("agLimits").checked=r.limits; $("agRep").checked=r.rep;
-      $("agBackup").value=r.backup; $("agHour").value=String(((r.hourUtc+tzOff)%24+24)%24); }
+      $("agBot").checked=!!r.bot; $("agBackup").value=r.backup; $("agHour").value=String(((r.hourUtc+tzOff)%24+24)%24); }
     $("agOff").classList.toggle("hidden",!r.configured); $("agTest").disabled=!r.configured; $("agBak").disabled=!r.configured;
-    $("agInfo").textContent = "Агент ставится на серверы: "+(r.servers||[]).map(x=>SRVNAME[x]).join(", ")+"."+(r.configured&&r.lastRunAge>=0?" Последняя проверка на RU: "+fmtAgo(r.lastRunAge)+".":"")+(r.lastError?" Последняя ошибка Telegram: "+r.lastError:"");
+    $("agInfo").textContent = "Агент ставится на серверы: "+(r.servers||[]).map(x=>SRVNAME[x]).join(", ")+"."+(r.configured&&r.lastRunAge>=0?" Последняя проверка на RU: "+fmtAgo(r.lastRunAge)+".":"")+(r.bot?(r.botActive?" Бот работает.":" Бот включён, но не запущен — нажмите «Сохранить и включить» ещё раз."):"")+(r.lastError?" Последняя ошибка Telegram: "+r.lastError:"");
   } catch(e){ $("agInfo").textContent=""; $("agErr").textContent=e.message; $("agErr").classList.add("on"); }
   loadLimits();
 }
 function agBody(){ const lh=+$("agHour").value; return {id:cur.id, token:$("agToken").value.trim(), chat:$("agChat").value.trim(), health:$("agHealth").checked,
-  expiry:$("agExpOn").checked?+$("agExp").value:0, limits:$("agLimits").checked, rep:$("agRep").checked, backup:$("agBackup").value, hourUtc:((lh-tzOff)%24+24)%24}; }
+  expiry:$("agExpOn").checked?+$("agExp").value:0, limits:$("agLimits").checked, rep:$("agRep").checked, bot:$("agBot").checked, backup:$("agBackup").value, hourUtc:((lh-tzOff)%24+24)%24}; }
 async function agDo(btn, busy, url, body, okMsg){
   const er=$("agErr"); er.classList.remove("on"); const t=btn.textContent; btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+busy;
   try { const r=await call(url, body); const bad=agResults(r.results); if(bad){ er.textContent=bad; er.classList.add("on"); } else if(okMsg) toast(okMsg); return r; }

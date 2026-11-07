@@ -26,11 +26,15 @@ import (
 //go:embed assets/awgc-agent.sh
 var agentScript []byte
 
+//go:embed assets/awgc-bot.py
+var botScript []byte
+
 const (
 	agentPath   = "/root/awg/awgc-agent.sh"
 	agentConf   = "/root/awg/awgc-agent.conf"
 	limitsFile  = "/root/awg/awgc-limits.txt"
-	agentUninst = `systemctl disable --now awgc-agent.timer awgc-agent.service >/dev/null 2>&1; rm -f /etc/systemd/system/awgc-agent.service /etc/systemd/system/awgc-agent.timer; systemctl daemon-reload; rm -rf /root/awg/awgc-agent /root/awg/awgc-agent.conf /root/awg/awgc-agent.sh`
+	botPath     = "/root/awg/awgc-bot.py"
+	agentUninst = `systemctl disable --now awgc-agent.timer awgc-agent.service awgc-bot.service >/dev/null 2>&1; rm -f /etc/systemd/system/awgc-agent.service /etc/systemd/system/awgc-agent.timer /etc/systemd/system/awgc-bot.service; systemctl daemon-reload; rm -rf /root/awg/awgc-agent /root/awg/awgc-agent.conf /root/awg/awgc-agent.sh /root/awg/awgc-bot.py`
 )
 
 type agentReq struct {
@@ -41,6 +45,7 @@ type agentReq struct {
 	Expiry  int                `json:"expiry"` // за сколько дней предупреждать; 0 — не следить
 	Limits  bool               `json:"limits"`
 	Rep     bool               `json:"rep"`
+	Bot     bool               `json:"bot"`    // бот-управление пользователями (только на сервере RU)
 	Backup  string             `json:"backup"` // off | daily | weekly
 	HourUTC int                `json:"hourUtc"`
 	LimitGB map[string]float64 `json:"limitGb"`
@@ -78,7 +83,7 @@ func readKV(out string) map[string]string {
 }
 
 func handleAgentGet(m *mctx, _ agentReq) (any, error) {
-	out, _, _, err := m.ruCmd(`cat `+agentConf+` 2>/dev/null; echo "@@S"; [ -f `+agentPath+` ] && bash `+agentPath+` status; echo "@@T"; cat /root/awg/awgc-agent/last-error 2>/dev/null | head -c 300`, nil, time.Minute)
+	out, _, _, err := m.ruCmd(`cat `+agentConf+` 2>/dev/null; echo "@@S"; [ -f `+agentPath+` ] && bash `+agentPath+` status; echo "@@BOT $(systemctl is-active awgc-bot 2>/dev/null)"; echo "@@T"; cat /root/awg/awgc-agent/last-error 2>/dev/null | head -c 300`, nil, time.Minute)
 	if err != nil {
 		return nil, err
 	}
@@ -102,6 +107,7 @@ func handleAgentGet(m *mctx, _ agentReq) (any, error) {
 	return map[string]any{
 		"configured": kv["TG_TOKEN"] != "", "active": s["ACTIVE"] == "active", "lastRunAge": age,
 		"tokenMasked": masked, "chat": kv["TG_CHAT"],
+		"bot": kv["BOT"] == "1", "botActive": s["BOT"] == "active",
 		"health": kv["A_HEALTH"] != "0", "expiry": exp, "limits": kv["A_LIMITS"] != "0", "rep": kv["A_REP"] != "0",
 		"backup": orDefault(kv["BACKUP"], "off"), "hourUtc": hour,
 		"servers": agentServers(m.p), "lastError": strings.TrimSpace(lastErr),
@@ -130,7 +136,7 @@ func agentConfText(p *Profile, role string, r agentReq) string {
 		"# AmneziaWG Cascade: настройки агента (пишет программа)",
 		"TG_TOKEN=" + shq(r.Token), "TG_CHAT=" + shq(r.Chat), "NAME=" + shq(p.Name),
 		"A_HEALTH=" + b01(r.Health), "A_EXPIRY=" + strconv.Itoa(r.Expiry), "A_LIMITS=" + b01(r.Limits), "A_REP=" + b01(r.Rep),
-		"BACKUP=" + r.Backup, "HOUR_UTC=" + strconv.Itoa(r.HourUTC),
+		"BACKUP=" + r.Backup, "HOUR_UTC=" + strconv.Itoa(r.HourUTC), "BOT=" + b01(r.Bot && role == "RU"),
 	}
 	switch role {
 	case "RU":
@@ -166,6 +172,25 @@ AccuracySec=30s
 WantedBy=timers.target
 EOF
 systemctl daemon-reload && systemctl enable --now awgc-agent.timer >/dev/null 2>&1 && echo @@OK`
+
+const botOffCmd = `systemctl disable --now awgc-bot.service >/dev/null 2>&1; rm -f /etc/systemd/system/awgc-bot.service ` + botPath + `; systemctl daemon-reload`
+
+const botOnCmd = `command -v python3 >/dev/null 2>&1 || { export DEBIAN_FRONTEND=noninteractive; apt-get install -y -q python3-minimal >/dev/null 2>&1 || { apt-get update -q >/dev/null 2>&1; apt-get install -y -q python3-minimal >/dev/null 2>&1; }; }
+command -v python3 >/dev/null 2>&1 || { echo "на сервере нет python3, и установить его не удалось"; exit 1; }
+cat > /etc/systemd/system/awgc-bot.service <<'UNIT'
+[Unit]
+Description=AmneziaWG Cascade Telegram bot (users and connection files)
+After=network-online.target awg-quick@awg0.service
+
+[Service]
+ExecStart=/usr/bin/env python3 /root/awg/awgc-bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload && systemctl enable awgc-bot.service >/dev/null 2>&1 && systemctl restart awgc-bot.service && sleep 2 && systemctl is-active --quiet awgc-bot.service && echo @@OK`
 
 // eachServer выполняет f на всех серверах агента параллельно и собирает итоги.
 func eachServer(p *Profile, f func(role string, c *conn) string) map[string]string {
@@ -227,6 +252,22 @@ func handleAgentSet(m *mctx, r agentReq) (any, error) {
 		if !strings.Contains(out, "@@OK") {
 			return "не удалось включить таймер: " + tail(se+out, 2)
 		}
+		if role == "RU" {
+			if !r.Bot {
+				_, _, _, _ = c.lockedRun(botOffCmd, nil, time.Minute)
+				return ""
+			}
+			if err := c.upload(botPath, botScript, "700"); err != nil {
+				return "бот: " + err.Error()
+			}
+			out, se, _, err := c.lockedRun(botOnCmd, nil, 5*time.Minute)
+			if err != nil {
+				return "бот: " + err.Error()
+			}
+			if !strings.Contains(out, "@@OK") {
+				return "бот не запустился: " + tail(se+out, 3)
+			}
+		}
 		return ""
 	})
 	logLine(fmt.Sprintf("[Агент] «%s»: включён на %s", m.p.Name, strings.Join(agentServers(m.p), ", ")))
@@ -285,7 +326,10 @@ func handleAgentChat(m *mctx, r agentReq) (any, error) {
 	if !tokenRe.MatchString(tok) {
 		return nil, errors.New("сначала вставьте токен бота")
 	}
+	// Бот сам читает getUpdates — на время поиска его останавливаем.
 	out, _, _, err := m.ruCmd(`T=`+shq(tok)+`
+B=0; systemctl is-active --quiet awgc-bot 2>/dev/null && { B=1; systemctl stop awgc-bot; sleep 1; }
+trap '[ $B = 1 ] && systemctl start awgc-bot' EXIT
 for i in awg1 ""; do
   if [ -n "$i" ]; then ip link show "$i" >/dev/null 2>&1 || continue; fi
   o=$(curl -s -m 30 ${i:+--interface $i} "https://api.telegram.org/bot$T/getUpdates") || continue
