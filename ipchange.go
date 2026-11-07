@@ -12,7 +12,8 @@ package main
 //     перегенерируем файлы подключения всех пользователей (ключи те же);
 //     устройства должны импортировать подключение заново;
 //   - сменился EU: на RU меняем адрес в туннеле awg1 и в маршрутизации;
-//     пользователей это не касается.
+//     пользователей это не касается;
+//   - сменился выход (три сервера): на транзите меняем адрес в его туннеле awg1.
 //
 // Что по новому адресу тот же сервер, а не чужой, проверяется криптографически:
 // туннель RU → EU устанавливает связь только при совпадающих ключах.
@@ -73,6 +74,21 @@ func handleIPChange(m *mctx, r ipReq) (any, error) {
 	ip, err := parseNewIP(r.NewHost)
 	if err != nil {
 		return nil, err
+	}
+	if role == "EX" {
+		if m.p.EX.Host == "" {
+			return nil, errors.New("в профиле нет сервера-выхода")
+		}
+		if ip == m.p.EX.Host {
+			return nil, errors.New("этот адрес уже указан для сервера-выхода")
+		}
+		if ip == m.p.RU.Host || ip == m.p.EU.Host {
+			return nil, errors.New("это адрес другого сервера каскада")
+		}
+		return ipChangeEX(m, ip, r.Force)
+	}
+	if ip == m.p.EX.Host && ip != "" {
+		return nil, errors.New("это адрес сервера-выхода")
 	}
 	if role == "RU" {
 		if ip == m.p.RU.Host {
@@ -289,6 +305,82 @@ true`, ip, manageSh), nil, 3*time.Minute)
 	}
 	logLine(fmt.Sprintf("[EU] Смена IP %s → %s: туннель %s", old, ip, map[bool]string{true: "работает", false: "пока не установил связь (сохранено принудительно)"}[connected]))
 	return map[string]any{"ok": true, "role": "EU", "old": old, "new": ip, "connected": connected, "note": euNote}, nil
+}
+
+// ---------- сменился адрес выхода (три сервера) ----------
+
+func ipChangeEX(m *mctx, ip string, force bool) (any, error) {
+	old := m.p.EX.Host
+	keep := "0"
+	if force {
+		keep = "1"
+	}
+	c, err := serverConn(m.p, "EU")
+	if err != nil {
+		return nil, err
+	}
+	// Всё на транзите: адрес в awg1.conf, перезапуск туннеля, проверка связи
+	// (связь есть — значит, по новому адресу наш выход: ключи совпали).
+	out, se, code, err := c.lockedRun(fmt.Sprintf(`set -u
+C=/etc/amnezia/amneziawg/awg1.conf; H=/root/mid_host.conf; N=%[1]s; KEEP=%[2]s
+[ -f $C ] || { echo "@@ERR notransit"; exit 0; }
+cur=$(sed -n -E 's/^Endpoint[[:space:]]*=[[:space:]]*//p' $C | head -1); port=${cur##*:}
+echo "@@CUR $cur"
+for f in $C $H; do [ -f $f ] && cp -p $f $f.bak-ipchange; done
+for f in $C $H; do [ -f $f ] && sed -i -E "s|^(Endpoint[[:space:]]*=[[:space:]]*).*|\1$N:$port|" $f; done
+systemctl restart awg-quick@awg1
+ok=0
+for i in $(seq 1 15); do
+  ping -c1 -W1 -I awg1 1.1.1.1 >/dev/null 2>&1
+  hs=$(awg show awg1 latest-handshakes 2>/dev/null | awk 'NR==1{print $2}'); t=$(date +%%s)
+  if [ -n "$hs" ] && [ "$hs" != 0 ] && [ $((t-hs)) -lt 90 ]; then ok=1; break; fi
+  sleep 2
+done
+if [ $ok = 1 ]; then echo "@@OK"; exit 0; fi
+if [ "$KEEP" = 1 ]; then echo "@@NOHS"; exit 0; fi
+for f in $C $H; do [ -f $f.bak-ipchange ] && cp -p $f.bak-ipchange $f; done
+systemctl restart awg-quick@awg1
+echo "@@ROLLBACK"`, ip, keep), nil, 5*time.Minute)
+	if err != nil {
+		return nil, fmt.Errorf("транзит (сервер EU): %v", err)
+	}
+	if code != 0 {
+		return nil, fmt.Errorf("транзит (сервер EU): %s", tail(se+out, 4))
+	}
+	kv := kvLines(out)
+	if kv["ERR"] == "notransit" {
+		return nil, errors.New("на транзите (сервер EU) нет туннеля к выходу")
+	}
+	if _, rb := kv["ROLLBACK"]; rb {
+		return map[string]any{"needForce": true,
+			"reason": "По адресу " + ip + " сервер-выход каскада не ответил: туннель не установил связь, поэтому прежние настройки возвращены. Проверьте адрес и что сервер включён. Если сервер ещё загружается, можно сохранить новый адрес принудительно."}, nil
+	}
+	_, connected := kv["OK"]
+	np := *m.p
+	np.EX.Host = ip
+	if np.Dir == "" {
+		np.Dir = profileDir(m.p)
+	}
+	saved, err := saveProfile(np)
+	if err != nil {
+		return nil, fmt.Errorf("туннель перенастроен, но профиль не сохранился: %v — укажите новый адрес во вкладке «Профиль»", err)
+	}
+	dropConns(np.ID)
+	note := ""
+	if saved.EX.Password != "" || saved.EX.Key != "" {
+		c := getConn(saved, "EX")
+		_, _, code, err := c.lockedRun(fmt.Sprintf(`I=/root/awg/awgsetup_cfg.init; N=%[1]s
+[ -f /etc/amnezia/amneziawg/awg0.conf ] || exit 3
+touch $I
+if grep -qE '^[[:space:]]*(export[[:space:]]+)?AWG_ENDPOINT=' $I; then sed -i -E "s|^[[:space:]]*(export[[:space:]]+)?AWG_ENDPOINT=.*|export AWG_ENDPOINT='$N'|" $I; else echo "export AWG_ENDPOINT='$N'" >> $I; fi
+grep -qxF '#_Name = mid_host' /etc/amnezia/amneziawg/awg0.conf && bash %[2]s --yes --no-color regen mid_host >/dev/null 2>&1
+true`, ip, manageSh), nil, 3*time.Minute)
+		if err != nil || code != 0 {
+			note = "На самом сервере-выходе адрес не обновлён (нет связи по SSH) — на работу каскада это не влияет."
+		}
+	}
+	logLine(fmt.Sprintf("[EX] Смена IP %s → %s: туннель %s", old, ip, map[bool]string{true: "работает", false: "пока не установил связь (сохранено принудительно)"}[connected]))
+	return map[string]any{"ok": true, "role": "EX", "old": old, "new": ip, "connected": connected, "note": note}, nil
 }
 
 // logLine пишет строку в журнал log.txt (действия вкладок управления).

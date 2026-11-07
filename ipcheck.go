@@ -250,12 +250,17 @@ func checkAddr(role, host string) *addrReport {
 		if r.Country != "" && r.Country != "RU" {
 			r.Warnings = append(r.Warnings, "ipinfo.io считает адрес расположенным в стране "+r.Country+", а не в России.")
 		}
+	} else if role == "TR" {
+		// транзит наружу не виден: страна его адреса сайтам безразлична
+		if len(isRU) > 0 {
+			r.Notes = append(r.Notes, "Адрес считается российским, но для транзита это не важно — сайты видят адрес сервера-выхода.")
+		}
 	} else {
 		if len(isRU) > 0 {
-			r.Warnings = append(r.Warnings, "Адрес считается российским в базах: "+strings.Join(isRU, ", ")+". Для выхода EU нужен зарубежный адрес — иначе сайты увидят Россию.")
+			r.Warnings = append(r.Warnings, "Адрес считается российским в базах: "+strings.Join(isRU, ", ")+". Для выхода нужен зарубежный адрес — иначе сайты увидят Россию.")
 		}
 		if r.Country == "RU" {
-			r.Warnings = append(r.Warnings, "ipinfo.io считает адрес российским — для выхода EU нужен зарубежный.")
+			r.Warnings = append(r.Warnings, "ipinfo.io считает адрес российским — для выхода нужен зарубежный.")
 		}
 	}
 	if strings.Contains(strings.ToLower(r.Org), "aeza") {
@@ -271,6 +276,7 @@ func checkAddr(role, host string) *addrReport {
 type ipCheckReq struct {
 	RU string `json:"ru"`
 	EU string `json:"eu"`
+	EX string `json:"ex"` // третий сервер (выход); тогда EU — транзит
 }
 
 func handleIPCheck(w http.ResponseWriter, r *http.Request) {
@@ -280,24 +286,42 @@ func handleIPCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var out []*addrReport
-	var ru, eu *addrReport
+	var ru, eu, ex *addrReport
 	var wg sync.WaitGroup
+	three := strings.TrimSpace(req.EX) != ""
 	if strings.TrimSpace(req.RU) != "" {
 		wg.Add(1)
 		go func() { defer wg.Done(); ru = checkAddr("RU", req.RU) }()
 	}
 	if strings.TrimSpace(req.EU) != "" {
 		wg.Add(1)
-		go func() { defer wg.Done(); eu = checkAddr("EU", req.EU) }()
+		role := "EU"
+		if three {
+			role = "TR"
+		}
+		go func() { defer wg.Done(); eu = checkAddr(role, req.EU) }()
+	}
+	if three {
+		wg.Add(1)
+		go func() { defer wg.Done(); ex = checkAddr("EX", req.EX) }()
 	}
 	wg.Wait()
-	if ru != nil && eu != nil && ru.ASN != "" && ru.ASN == eu.ASN {
-		w := "Серверы RU и EU в одной сети (" + ru.ASN + "): если сервисы не доверяют этому хостеру, не поможет ни один из адресов. Лучше разные хостеры."
-		ru.Warnings = append(ru.Warnings, w)
-		eu.Warnings = append(eu.Warnings, w)
-		ru.OK, eu.OK = false, false
+	// Входной и выходной серверы в одной сети — плохо: если сервисы не доверяют
+	// хостеру, не поможет ни один адрес.
+	exit := eu
+	if three {
+		exit = ex
 	}
-	for _, x := range []*addrReport{ru, eu} {
+	if ru != nil && exit != nil && ru.ASN != "" && ru.ASN == exit.ASN {
+		w := "Вход (RU) и выход в одной сети (" + ru.ASN + "): если сервисы не доверяют этому хостеру, не поможет ни один из адресов. Лучше разные хостеры."
+		ru.Warnings = append(ru.Warnings, w)
+		exit.Warnings = append(exit.Warnings, w)
+		ru.OK, exit.OK = false, false
+	}
+	if three && eu != nil && ex != nil && eu.ASN != "" && eu.ASN == ex.ASN {
+		eu.Notes = append(eu.Notes, "Транзит и выход у одного хостера ("+eu.ASN+"): если хостер заблокирует или отключит оба сервера сразу, каскад встанет. Надёжнее разные хостеры.")
+	}
+	for _, x := range []*addrReport{ru, eu, ex} {
 		if x != nil {
 			out = append(out, x)
 		}

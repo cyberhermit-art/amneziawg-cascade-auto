@@ -25,7 +25,7 @@ var indexHTML string
 const appPort = 47821
 
 // version задаётся при сборке: -ldflags "-X main.version=1.4.0"
-var version = "1.10.1"
+var version = "1.11.0"
 
 var (
 	token   string
@@ -223,7 +223,11 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 	if in.SkipUpdate {
 		opts += ", без обновления системы"
 	}
-	hub.Log("", fmt.Sprintf("Старт (программа v%s): RU = %s, EU = %s, %s", version, in.RU.Host, in.EU.Host, opts))
+	if in.threeHop() {
+		hub.Log("", fmt.Sprintf("Старт (программа v%s): три сервера — RU = %s, транзит = %s, выход = %s, %s", version, in.RU.Host, in.EU.Host, in.EX.Host, opts))
+	} else {
+		hub.Log("", fmt.Sprintf("Старт (программа v%s): RU = %s, EU = %s, %s", version, in.RU.Host, in.EU.Host, opts))
+	}
 	go func() {
 		defer hub.SetRunning(false)
 		defer cancel()

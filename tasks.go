@@ -36,6 +36,8 @@ func roleOf(target string) (string, error) {
 		return "RU", nil
 	case "eu":
 		return "EU", nil
+	case "ex":
+		return "EX", nil
 	}
 	return "", errors.New("неизвестный сервер")
 }
@@ -44,10 +46,7 @@ func validTask(t string) bool { return t == "update" || t == "uninstall" }
 
 // serverConn — подключение к нужному серверу профиля с проверкой, что есть данные для входа.
 func serverConn(p *Profile, role string) (*conn, error) {
-	s := p.RU
-	if role == "EU" {
-		s = p.EU
-	}
+	s := cfgOf(p, role)
 	if strings.TrimSpace(s.Host) == "" || (s.Password == "" && s.Key == "") {
 		return nil, fmt.Errorf("в профиле нет данных для входа на сервер %s — добавьте их во вкладке «Профиль»", role)
 	}
@@ -107,6 +106,14 @@ rm -f /root/awgc-* /root/.awgc-* /root/cascade-setup.sh /root/ru_host.conf /root
 exit $rc`
 
 const uninstallEU = `set +e
+if [ -f /etc/amnezia/amneziawg/awg1.conf ]; then
+  echo "== Убираю туннель к серверу-выходу (транзит)"
+  systemctl disable --now awg-quick@awg1 >/dev/null 2>&1
+  while ip rule del iif awg0 lookup 100 priority 10000 2>/dev/null; do :; done
+  ip route flush table 100 2>/dev/null
+  while iptables -t nat -D POSTROUTING -o awg1 -j MASQUERADE 2>/dev/null; do :; done
+  rm -f /etc/amnezia/amneziawg/awg1.conf /root/mid_host.conf
+fi
 echo "== Удаляю AmneziaWG (установщик сохранит свою резервную копию в /root)"
 rm -f /etc/cron.d/awgc-stats
 bash /root/install_amneziawg.sh --uninstall --yes

@@ -68,6 +68,7 @@ type actReq struct {
 	Custom  string          `json:"custom"`
 	RU      json.RawMessage `json:"ru"`
 	EU      json.RawMessage `json:"eu"`
+	EX      json.RawMessage `json:"ex"`
 }
 
 // hostOf: поле ru/eu — строка (проверка адресов) или объект с host (профиль).
@@ -95,9 +96,11 @@ func (a *actReq) describe(path string) string {
 		add("название", "«"+a.Name+"»")
 		add("RU", hostOf(a.RU))
 		add("EU", hostOf(a.EU))
+		add("выход", hostOf(a.EX))
 	case "/api/ipcheck":
 		add("RU", hostOf(a.RU))
 		add("EU", hostOf(a.EU))
+		add("выход", hostOf(a.EX))
 	case "/api/m/rename":
 		add("", a.Name+" → "+a.NewName)
 	case "/api/m/add":

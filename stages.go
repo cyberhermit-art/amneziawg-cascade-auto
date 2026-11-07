@@ -28,9 +28,13 @@ func (j *Job) logf(src, f string, a ...any) { j.hub.Log(src, fmt.Sprintf(f, a...
 
 func (j *Job) Run() {
 	res := &FinalResult{RUIP: j.in.RU.Host, EUIP: j.in.EU.Host}
+	if j.in.threeHop() {
+		// сайты видят адрес выхода, а не транзита
+		res.EUIP, res.ThreeHop = j.in.EX.Host, true
+	}
 	// Профиль сохраняем сразу: даже если установка прервётся, данные для
 	// входа не придётся вводить заново.
-	if p, perr := saveProfile(Profile{Name: j.in.ProfileName, RU: j.in.RU, EU: j.in.EU, RUSubnet: j.in.RUSubnet, EUSubnet: j.in.EUSubnet}); perr == nil {
+	if p, perr := saveProfile(Profile{Name: j.in.ProfileName, RU: j.in.RU, EU: j.in.EU, EX: j.in.EX, RUSubnet: j.in.RUSubnet, EUSubnet: j.in.EUSubnet, EXSubnet: j.in.EXSubnet}); perr == nil {
 		res.Profile = p.ID
 		j.hub.Log("", "Данные серверов сохранены в профиль «"+p.Name+"».")
 	} else {
@@ -62,6 +66,11 @@ func (j *Job) run(res *FinalResult) error {
 	eu := NewRemote(j.in.EU, func(s string) { j.hub.Log("EU", s) })
 	defer ru.Close()
 	defer eu.Close()
+	var ex *Remote
+	if j.in.threeHop() {
+		ex = NewRemote(j.in.EX, func(s string) { j.hub.Log("EX", s) })
+		defer ex.Close()
+	}
 
 	// 0. Сразу проверяем доступ к обоим серверам — чтобы ошибку в пароле
 	//    к EU узнать сейчас, а не через час.
@@ -69,7 +78,13 @@ func (j *Job) run(res *FinalResult) error {
 		if err := j.precheck(ru); err != nil {
 			return err
 		}
-		return j.precheck(eu)
+		if err := j.precheck(eu); err != nil {
+			return err
+		}
+		if ex != nil {
+			return j.precheck(ex)
+		}
+		return nil
 	}); err != nil {
 		return err
 	}
@@ -122,6 +137,33 @@ func (j *Job) run(res *FinalResult) error {
 		return nil
 	}); err != nil {
 		return err
+	}
+
+	// 2a. Три сервера: выход ставится так же, как EU, а EU становится транзитом —
+	//     всё, что приходит от RU, он отправляет в туннель к выходу.
+	if ex != nil {
+		if err := j.updateStage("ex-update", ex); err != nil {
+			return err
+		}
+		if err := j.stage("ex-install", func() error {
+			if err := j.installServer(ex, j.in.EXSubnet, ruProto); err != nil {
+				return err
+			}
+			exProto, err := j.serverProto(ex)
+			if err != nil {
+				return err
+			}
+			if exProto != ruProto {
+				return fmt.Errorf("на серверах разные версии протокола: RU и транзит — AmneziaWG %s, выход — %s. Туннель к выходу не заработает. Удалите VPN с сервера-выхода (вкладка «Сервер») и запустите установку ещё раз", ruProto, exProto)
+			}
+			j.logf("EX", "Версия протокола на сервере-выходе: AmneziaWG %s — совпадает с остальными.", exProto)
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := j.stage("transit", func() error { return j.transit(eu, ex) }); err != nil {
+			return err
+		}
 	}
 
 	// 3. Каскад и файлы подключения.
@@ -805,6 +847,38 @@ func (j *Job) cascade(ru, eu *Remote) error {
 	}
 	if code != 0 {
 		return errors.New("настройка каскада завершилась с ошибкой — причина в логе выше")
+	}
+	return nil
+}
+
+// ---------- шаг «транзит» (только для трёх серверов) ----------
+
+// transit: на выходе создаётся клиент mid_host, его конфиг уходит на транзит
+// (сервер EU), и там поднимается туннель awg1 к выходу с правилом «всё, что
+// пришло через awg0, — в awg1».
+func (j *Job) transit(eu, ex *Remote) error {
+	j.hub.Log("EX", "Создаю на сервере-выходе подключение для транзита (клиент mid_host)…")
+	out, code, err := j.exec(ex, `[ -f /root/awg/mid_host.conf ] || bash /root/awg/manage_amneziawg.sh add mid_host >/tmp/mid_host_add.log 2>&1 || { cat /tmp/mid_host_add.log; exit 1; }; cat /root/awg/mid_host.conf`, nil, 5*time.Minute)
+	if err != nil {
+		return err
+	}
+	if code != 0 || !strings.Contains(out, "[Peer]") {
+		j.hub.Log("EX", out)
+		return errors.New("сервер-выход: не удалось создать клиента mid_host")
+	}
+	j.hub.Log("EU", "Передаю настройки на транзит и поднимаю туннель к выходу…")
+	if err := j.upload(eu, "/root/mid_host.conf", []byte(out), "600"); err != nil {
+		return err
+	}
+	if err := j.upload(eu, "/root/awg/awgc-transit.sh", transitScript, "700"); err != nil {
+		return err
+	}
+	code, err = eu.Stream("bash /root/awg/awgc-transit.sh setup /root/mid_host.conf", func(l string) { j.hub.Log("EU", l) }, 5*time.Minute)
+	if err != nil {
+		return fmt.Errorf("транзит: %v", err)
+	}
+	if code != 0 {
+		return errors.New("настройка транзита завершилась с ошибкой — причина в логе выше")
 	}
 	return nil
 }

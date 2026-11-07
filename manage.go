@@ -44,11 +44,19 @@ func sigOf(s ServerCfg) string {
 	return fmt.Sprintf("%s|%d|%s|%d|%d|%d", s.Host, s.Port, s.User, len(s.Password), len(s.Key), len(s.KeyPass)) + s.Password + s.Key
 }
 
-func getConn(p *Profile, role string) *conn {
-	cfg := p.RU
-	if role == "EU" {
-		cfg = p.EU
+// cfgOf — данные входа на сервер профиля по роли (RU, EU — транзит или выход, EX — выход).
+func cfgOf(p *Profile, role string) ServerCfg {
+	switch role {
+	case "EU":
+		return p.EU
+	case "EX":
+		return p.EX
 	}
+	return p.RU
+}
+
+func getConn(p *Profile, role string) *conn {
+	cfg := cfgOf(p, role)
 	cfg.Role = role
 	if cfg.Port == 0 {
 		cfg.Port = 22
@@ -214,6 +222,7 @@ type profileForm struct {
 	Name string    `json:"name"`
 	RU   ServerCfg `json:"ru"`
 	EU   ServerCfg `json:"eu"`
+	EX   ServerCfg `json:"ex"`
 	Test bool      `json:"test"`
 }
 
@@ -223,8 +232,8 @@ func handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"error": "неверные данные"})
 		return
 	}
-	p := Profile{ID: f.ID, Name: f.Name, RU: f.RU, EU: f.EU}
-	for _, s := range []*ServerCfg{&p.RU, &p.EU} {
+	p := Profile{ID: f.ID, Name: f.Name, RU: f.RU, EU: f.EU, EX: f.EX}
+	for _, s := range []*ServerCfg{&p.RU, &p.EU, &p.EX} {
 		s.Host = strings.TrimSpace(s.Host)
 		if s.Port == 0 {
 			s.Port = 22
@@ -245,7 +254,12 @@ func handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		if old, err := getProfile(f.ID); err == nil {
 			keepSecrets(&p.RU, old.RU)
 			keepSecrets(&p.EU, old.EU)
+			keepSecrets(&p.EX, old.EX)
 		}
+	}
+	if p.EX.Host != "" && (p.EX.Host == p.RU.Host || p.EX.Host == p.EU.Host) {
+		writeJSON(w, map[string]string{"error": "у сервера-выхода тот же адрес, что у другого сервера"})
+		return
 	}
 	if f.Test {
 		// Проверяем, что к серверу RU можно подключиться и на нём стоит AmneziaWG.
@@ -283,31 +297,89 @@ func handleProfileDelete(w http.ResponseWriter, r *http.Request) {
 
 // ---------- состояние ----------
 
+// transitInfo — состояние туннеля транзит → выход (три сервера).
+type transitInfo struct {
+	Conf     bool   `json:"conf"`
+	Active   string `json:"active"`
+	Age      int64  `json:"age"`
+	Rule     bool   `json:"rule"`
+	Endpoint string `json:"endpoint"`
+	Proto    string `json:"proto"`
+	Error    string `json:"error,omitempty"`
+}
+
+func transitStatus(p *Profile) *transitInfo {
+	t := &transitInfo{Age: -1}
+	c, err := serverConn(p, "EU")
+	if err != nil {
+		t.Error = err.Error()
+		return t
+	}
+	out, _, _, err := c.lockedRun(`F=/etc/amnezia/amneziawg/awg1.conf
+echo "@@CONF $([ -f $F ] && echo 1 || echo 0)"
+echo "@@ACTIVE $(systemctl is-active awg-quick@awg1 2>/dev/null)"
+H=$(awg show awg1 latest-handshakes 2>/dev/null | awk 'NR==1{print $2}'); N=$(date +%s)
+if [ -n "$H" ] && [ "$H" != 0 ]; then echo "@@AGE $((N-H))"; else echo "@@AGE -1"; fi
+echo "@@RULE $(ip rule 2>/dev/null | grep -q 'iif awg0 lookup 100' && echo 1 || echo 0)"
+echo "@@EP $(sed -n -E 's/^Endpoint[[:space:]]*=[[:space:]]*//p' $F 2>/dev/null | head -1)"
+[ -f $F ] && { grep -qi '^[[:space:]]*HeaderProtectionKey[[:space:]]*=' $F && echo "@@P 3.1" || echo "@@P 2.0"; }`, nil, 45*time.Second)
+	if err != nil {
+		t.Error = "сервер EU: " + err.Error()
+		return t
+	}
+	for _, l := range strings.Split(out, "\n") {
+		f := strings.SplitN(strings.TrimSpace(l), " ", 2)
+		v := ""
+		if len(f) == 2 {
+			v = strings.TrimSpace(f[1])
+		}
+		switch f[0] {
+		case "@@CONF":
+			t.Conf = v == "1"
+		case "@@ACTIVE":
+			t.Active = v
+		case "@@AGE":
+			t.Age, _ = strconv.ParseInt(v, 10, 64)
+		case "@@RULE":
+			t.Rule = v == "1"
+		case "@@EP":
+			t.Endpoint = v
+		case "@@P":
+			t.Proto = v
+		}
+	}
+	return t
+}
+
 type statusResp struct {
-	RUReachable bool     `json:"ruReachable"`
-	RUError     string   `json:"ruError,omitempty"`
-	PingMs      int      `json:"pingMs"`
-	EUReachable bool     `json:"euReachable"`
-	EUPingMs    int      `json:"euPingMs"`
-	Uptime      int64    `json:"uptime"`
-	Load        string   `json:"load"`
-	MemTotal    int      `json:"memTotal"`
-	MemUsed     int      `json:"memUsed"`
-	Disk        string   `json:"disk"`
-	OS          string   `json:"os"`
-	AWG0        string   `json:"awg0"`
-	AWG1        string   `json:"awg1"`
-	Routing     string   `json:"routing"`
-	TunnelAge   int64    `json:"tunnelAge"` // секунд с последнего рукопожатия с EU, -1 = не было
-	RUNets      int      `json:"ruNets"`
-	Peers       int      `json:"peers"`
-	Endpoint    string   `json:"endpoint"`
-	Reboot      bool     `json:"rebootRequired"`
-	ExtraList   bool     `json:"extraList"` // скрипт маршрутизации с актуальным набором списков RU-сетей
-	Sources     string   `json:"sources"`
-	RUProto     string   `json:"ruProto"` // поколение AmneziaWG на RU: 3.1 / 2.0
-	EUProto     string   `json:"euProto"` // поколение EU по конфигу туннеля awg1 ("" — туннеля нет)
-	Problems    []string `json:"problems"`
+	ThreeHop    bool         `json:"threeHop"`
+	Transit     *transitInfo `json:"transit,omitempty"`
+	EXReachable bool         `json:"exReachable"`
+	EXPingMs    int          `json:"exPingMs"`
+	RUReachable bool         `json:"ruReachable"`
+	RUError     string       `json:"ruError,omitempty"`
+	PingMs      int          `json:"pingMs"`
+	EUReachable bool         `json:"euReachable"`
+	EUPingMs    int          `json:"euPingMs"`
+	Uptime      int64        `json:"uptime"`
+	Load        string       `json:"load"`
+	MemTotal    int          `json:"memTotal"`
+	MemUsed     int          `json:"memUsed"`
+	Disk        string       `json:"disk"`
+	OS          string       `json:"os"`
+	AWG0        string       `json:"awg0"`
+	AWG1        string       `json:"awg1"`
+	Routing     string       `json:"routing"`
+	TunnelAge   int64        `json:"tunnelAge"` // секунд с последнего рукопожатия с EU, -1 = не было
+	RUNets      int          `json:"ruNets"`
+	Peers       int          `json:"peers"`
+	Endpoint    string       `json:"endpoint"`
+	Reboot      bool         `json:"rebootRequired"`
+	ExtraList   bool         `json:"extraList"` // скрипт маршрутизации с актуальным набором списков RU-сетей
+	Sources     string       `json:"sources"`
+	RUProto     string       `json:"ruProto"` // поколение AmneziaWG на RU: 3.1 / 2.0
+	EUProto     string       `json:"euProto"` // поколение EU по конфигу туннеля awg1 ("" — туннеля нет)
+	Problems    []string     `json:"problems"`
 }
 
 func tcpPing(host string, port int) (bool, int) {
@@ -329,6 +401,12 @@ func mStatus(m *mctx) (any, error) {
 	if m.p.EU.Host != "" {
 		wg.Add(1)
 		go func() { defer wg.Done(); st.EUReachable, st.EUPingMs = tcpPing(m.p.EU.Host, m.p.EU.Port) }()
+	}
+	if m.p.EX.Host != "" {
+		st.ThreeHop = true
+		wg.Add(2)
+		go func() { defer wg.Done(); st.EXReachable, st.EXPingMs = tcpPing(m.p.EX.Host, m.p.EX.Port) }()
+		go func() { defer wg.Done(); st.Transit = transitStatus(m.p) }()
 	}
 	t0 := time.Now()
 	out, _, _, err := m.ruCmd(`echo "@@UP $(cut -d' ' -f1 /proc/uptime)"
@@ -411,6 +489,26 @@ F=/etc/amnezia/amneziawg/awg1.conf; [ -f $F ] && { grep -qi '^[[:space:]]*Header
 	}
 	if m.p.EU.Host != "" && !st.EUReachable {
 		st.Problems = append(st.Problems, "Сервер EU не отвечает по SSH с этого компьютера")
+	}
+	if t := st.Transit; t != nil {
+		switch {
+		case t.Error != "":
+			st.Problems = append(st.Problems, "Не удалось проверить транзит: "+t.Error)
+		case !t.Conf:
+			st.Problems = append(st.Problems, "На транзите (сервер EU) не настроен туннель к выходу — трафик уходит в интернет с транзита. Запустите установку ещё раз с теми же данными")
+		case t.Active != "active":
+			st.Problems = append(st.Problems, "Туннель транзит → выход не запущен (awg-quick@awg1 на транзите: "+t.Active+")")
+		case t.Age < 0 || t.Age > 300:
+			st.Problems = append(st.Problems, "Туннель транзит → выход не отвечает: сервер-выход недоступен или его VPN остановлен. Если хостер сменил IP выхода — в «Обслуживании серверов» есть «Сменить IP»")
+		case !t.Rule:
+			st.Problems = append(st.Problems, "На транзите нет правила «трафик от RU — к выходу» — перезапустите туннель awg1 на транзите или установку")
+		}
+		if t.Proto != "" && st.RUProto != "" && t.Proto != st.RUProto {
+			st.Problems = append(st.Problems, "Разные версии протокола: RU — AmneziaWG "+st.RUProto+", туннель транзит → выход — "+t.Proto+". Все три сервера должны быть на одной версии")
+		}
+	}
+	if m.p.EX.Host != "" && !st.EXReachable {
+		st.Problems = append(st.Problems, "Сервер-выход не отвечает по SSH с этого компьютера")
 	}
 	go m.prepareRU()
 	logStateChange(m.p, st.Problems)
@@ -791,6 +889,24 @@ func mBackup(m *mctx) (any, error) {
 	} else {
 		info.Note = "Сервер EU не сохранён: в профиле нет данных для входа на него"
 	}
+	// Выход (три сервера): там живёт подключение mid_host для транзита.
+	if m.p.EX.Host != "" {
+		if m.p.EX.Password != "" || m.p.EX.Key != "" {
+			c := getConn(m.p, "EX")
+			so, se, code, err := c.lockedRun(backupList, nil, 3*time.Minute)
+			if err == nil && code == 0 && len(so) > 100 {
+				_ = os.WriteFile(filepath.Join(dir, "ex.tar.gz"), []byte(so), 0o600)
+				info.Files = append(info.Files, "ex.tar.gz")
+			} else {
+				if err == nil {
+					err = errors.New(tail(se, 2))
+				}
+				info.Note = strings.TrimSpace(info.Note + " Сервер-выход не сохранён: " + err.Error())
+			}
+		} else {
+			info.Note = strings.TrimSpace(info.Note + " Сервер-выход не сохранён: в профиле нет данных для входа на него")
+		}
+	}
 	b, _ := json.MarshalIndent(info, "", "  ")
 	_ = os.WriteFile(filepath.Join(dir, "info.json"), b, 0o600)
 	info.Size = dirSize(dir)
@@ -823,7 +939,7 @@ func mBackups(m *mctx) (any, error) {
 		}
 		bi.Name = e.Name()
 		bi.Files = nil
-		for _, f := range []string{"ru.tar.gz", "eu.tar.gz"} {
+		for _, f := range []string{"ru.tar.gz", "eu.tar.gz", "ex.tar.gz"} {
 			if _, err := os.Stat(filepath.Join(dir, f)); err == nil {
 				bi.Files = append(bi.Files, f)
 			}
@@ -860,7 +976,7 @@ func mRestore(m *mctx) (any, error) {
 	}
 	dir := filepath.Join(backupsDir(m.p), m.req.Backup)
 	done := []string{}
-	for _, role := range []string{"RU", "EU"} {
+	for _, role := range []string{"RU", "EU", "EX"} {
 		if m.req.Target != "both" && !strings.EqualFold(m.req.Target, role) {
 			continue
 		}
@@ -870,6 +986,9 @@ func mRestore(m *mctx) (any, error) {
 				continue
 			}
 			return nil, fmt.Errorf("в копии нет архива сервера %s", role)
+		}
+		if role == "EX" && m.p.EX.Host == "" {
+			continue
 		}
 		c := getConn(m.p, role)
 		c.mu.Lock()

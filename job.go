@@ -15,6 +15,9 @@ import (
 //go:embed assets/cascade-setup.sh
 var cascadeScript []byte
 
+//go:embed assets/awgc-transit.sh
+var transitScript []byte
+
 //go:embed assets/vps-update.sh
 var updateScript []byte
 
@@ -32,6 +35,8 @@ type JobInput struct {
 	EU           ServerCfg `json:"eu"`
 	RUSubnet     string    `json:"ruSubnet"`
 	EUSubnet     string    `json:"euSubnet"`
+	EX           ServerCfg `json:"ex"` // третий сервер (выход); пусто — обычный каскад из двух
+	EXSubnet     string    `json:"exSubnet"`
 	ExtraClients string    `json:"extraClients"`
 	SkipUpdate   bool      `json:"skipUpdate"`
 	ProfileName  string    `json:"profileName"`
@@ -40,9 +45,15 @@ type JobInput struct {
 
 var nameRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,32}$`)
 
+func (in *JobInput) threeHop() bool { return strings.TrimSpace(in.EX.Host) != "" }
+
 func (in *JobInput) validate() error {
-	in.RU.Role, in.EU.Role = "RU", "EU"
-	for _, s := range []*ServerCfg{&in.RU, &in.EU} {
+	in.RU.Role, in.EU.Role, in.EX.Role = "RU", "EU", "EX"
+	srv := []*ServerCfg{&in.RU, &in.EU}
+	if in.threeHop() {
+		srv = append(srv, &in.EX)
+	}
+	for _, s := range srv {
 		s.Host = strings.TrimSpace(s.Host)
 		if s.Host == "" {
 			return fmt.Errorf("не указан IP-адрес сервера %s", s.Role)
@@ -59,6 +70,9 @@ func (in *JobInput) validate() error {
 	}
 	if in.RU.addr() == in.EU.addr() {
 		return errors.New("у серверов RU и EU одинаковый адрес — нужны два разных сервера")
+	}
+	if in.threeHop() && (in.EX.addr() == in.RU.addr() || in.EX.addr() == in.EU.addr()) {
+		return errors.New("у сервера-выхода тот же адрес, что у RU или транзита — нужны три разных сервера")
 	}
 	switch in.Protocol {
 	case "", "3.1", "auto":
@@ -80,6 +94,20 @@ func (in *JobInput) validate() error {
 	}
 	if n1.Contains(n2.IP) || n2.Contains(n1.IP) {
 		return errors.New("подсети серверов пересекаются — они должны быть разными")
+	}
+	if in.threeHop() {
+		if in.EXSubnet == "" {
+			in.EXSubnet = "172.16.62.1/24"
+		}
+		_, n3, err3 := net.ParseCIDR(in.EXSubnet)
+		if err3 != nil || n3.IP.To4() == nil {
+			return errors.New("подсеть сервера-выхода указана неверно (пример: 172.16.62.1/24)")
+		}
+		if n3.Contains(n1.IP) || n1.Contains(n3.IP) || n3.Contains(n2.IP) || n2.Contains(n3.IP) {
+			return errors.New("подсеть сервера-выхода пересекается с другими — нужна отдельная")
+		}
+	} else {
+		in.EX, in.EXSubnet = ServerCfg{}, ""
 	}
 	for _, n := range extraNames(in.ExtraClients) {
 		if !nameRe.MatchString(n) {

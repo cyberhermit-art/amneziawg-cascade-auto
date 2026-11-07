@@ -31,13 +31,14 @@ type ClientFile struct {
 }
 
 type FinalResult struct {
-	Error   string       `json:"error,omitempty"`
-	Clients []ClientFile `json:"clients,omitempty"`
-	Folder  string       `json:"folder,omitempty"`
-	EUIP    string       `json:"euIp,omitempty"`
-	RUIP    string       `json:"ruIp,omitempty"`
-	Profile string       `json:"profile,omitempty"`
-	Proto   string       `json:"proto,omitempty"` // поколение AmneziaWG каскада: 3.1 или 2.0
+	Error    string       `json:"error,omitempty"`
+	Clients  []ClientFile `json:"clients,omitempty"`
+	Folder   string       `json:"folder,omitempty"`
+	EUIP     string       `json:"euIp,omitempty"`
+	RUIP     string       `json:"ruIp,omitempty"`
+	Profile  string       `json:"profile,omitempty"`
+	ThreeHop bool         `json:"threeHop,omitempty"`
+	Proto    string       `json:"proto,omitempty"` // поколение AmneziaWG каскада: 3.1 или 2.0
 }
 
 type Hub struct {

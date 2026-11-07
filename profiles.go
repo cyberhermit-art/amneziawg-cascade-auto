@@ -17,14 +17,17 @@ import (
 	"time"
 )
 
-// Profile — один каскад (пара серверов RU + EU) с данными для входа.
+// Profile — один каскад (серверы RU + EU, и в трёхзвенном каскаде ещё выход EX)
+// с данными для входа. В трёхзвенном каскаде EU — транзитный (средний) сервер.
 type Profile struct {
 	ID       string    `json:"id"`
 	Name     string    `json:"name"`
 	RU       ServerCfg `json:"ru"`
 	EU       ServerCfg `json:"eu"`
+	EX       ServerCfg `json:"ex"` // выход трёхзвенного каскада (пусто — каскад из двух серверов)
 	RUSubnet string    `json:"ruSubnet,omitempty"`
 	EUSubnet string    `json:"euSubnet,omitempty"`
+	EXSubnet string    `json:"exSubnet,omitempty"`
 	Created  string    `json:"created,omitempty"`
 	Dir      string    `json:"dir,omitempty"` // папка профиля (фиксируется при смене IP сервера RU)
 }
@@ -43,8 +46,10 @@ type storedProfile struct {
 	Name     string       `json:"name"`
 	RU       storedServer `json:"ru"`
 	EU       storedServer `json:"eu"`
+	EX       storedServer `json:"ex,omitempty"`
 	RUSubnet string       `json:"ruSubnet,omitempty"`
 	EUSubnet string       `json:"euSubnet,omitempty"`
+	EXSubnet string       `json:"exSubnet,omitempty"`
 	Created  string       `json:"created,omitempty"`
 	Dir      string       `json:"dir,omitempty"`
 }
@@ -173,8 +178,8 @@ func listProfiles() ([]Profile, string, error) {
 }
 
 func fromStored(sp storedProfile) Profile {
-	return Profile{ID: sp.ID, Name: sp.Name, RU: decodeServer(sp.RU, "RU"), EU: decodeServer(sp.EU, "EU"),
-		RUSubnet: sp.RUSubnet, EUSubnet: sp.EUSubnet, Created: sp.Created, Dir: sp.Dir}
+	return Profile{ID: sp.ID, Name: sp.Name, RU: decodeServer(sp.RU, "RU"), EU: decodeServer(sp.EU, "EU"), EX: decodeServer(sp.EX, "EX"),
+		RUSubnet: sp.RUSubnet, EUSubnet: sp.EUSubnet, EXSubnet: sp.EXSubnet, Created: sp.Created, Dir: sp.Dir}
 }
 
 func getProfile(id string) (*Profile, error) {
@@ -200,7 +205,7 @@ func saveProfile(p Profile) (*Profile, error) {
 		return nil, err
 	}
 	p.Name = strings.TrimSpace(p.Name)
-	for _, sv := range []*ServerCfg{&p.RU, &p.EU} {
+	for _, sv := range []*ServerCfg{&p.RU, &p.EU, &p.EX} {
 		if sv.User == "" {
 			sv.User = "root"
 		}
@@ -233,6 +238,16 @@ func saveProfile(p Profile) (*Profile, error) {
 		}
 		keepSecrets(&p.RU, old.RU)
 		keepSecrets(&p.EU, old.EU)
+		keepSecrets(&p.EX, old.EX)
+		if p.RUSubnet == "" {
+			p.RUSubnet = old.RUSubnet
+		}
+		if p.EUSubnet == "" {
+			p.EUSubnet = old.EUSubnet
+		}
+		if p.EXSubnet == "" && p.EX.Host != "" {
+			p.EXSubnet = old.EXSubnet
+		}
 	} else {
 		b := make([]byte, 6)
 		_, _ = rand.Read(b)
@@ -243,11 +258,18 @@ func saveProfile(p Profile) (*Profile, error) {
 	if err != nil {
 		return nil, err
 	}
+	ex := storedServer{}
+	if p.EX.Host != "" {
+		var err error
+		if ex, err = encodeServer(p.EX); err != nil {
+			return nil, err
+		}
+	}
 	eu, err := encodeServer(p.EU)
 	if err != nil {
 		return nil, err
 	}
-	sp := storedProfile{ID: p.ID, Name: p.Name, RU: ru, EU: eu, RUSubnet: p.RUSubnet, EUSubnet: p.EUSubnet, Created: p.Created, Dir: p.Dir}
+	sp := storedProfile{ID: p.ID, Name: p.Name, RU: ru, EU: eu, EX: ex, RUSubnet: p.RUSubnet, EUSubnet: p.EUSubnet, EXSubnet: p.EXSubnet, Created: p.Created, Dir: p.Dir}
 	if idx >= 0 {
 		sf.Profiles[idx] = sp
 	} else {
@@ -307,10 +329,15 @@ type publicProfile struct {
 	EUPort   int    `json:"euPort"`
 	EUUser   string `json:"euUser"`
 	EUHasKey bool   `json:"euHasKey"`
+	EXHost   string `json:"exHost"`
+	EXPort   int    `json:"exPort"`
+	EXUser   string `json:"exUser"`
+	EXHasKey bool   `json:"exHasKey"`
 	Created  string `json:"created"`
 }
 
 func toPublic(p Profile) publicProfile {
 	return publicProfile{ID: p.ID, Name: p.Name, RUHost: p.RU.Host, RUPort: p.RU.Port, RUUser: p.RU.User, RUHasKey: p.RU.Key != "",
-		EUHost: p.EU.Host, EUPort: p.EU.Port, EUUser: p.EU.User, EUHasKey: p.EU.Key != "", Created: p.Created}
+		EUHost: p.EU.Host, EUPort: p.EU.Port, EUUser: p.EU.User, EUHasKey: p.EU.Key != "",
+		EXHost: p.EX.Host, EXPort: p.EX.Port, EXUser: p.EX.User, EXHasKey: p.EX.Key != "", Created: p.Created}
 }

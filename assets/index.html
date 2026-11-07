@@ -8,7 +8,7 @@
 :root{
   --bg:#f4f5f7; --card:#fff; --ink:#1b1f24; --muted:#5f6b7a; --line:#dfe3e8;
   --accent:#2f6fed; --accent-ink:#fff; --ok:#1f8a4c; --err:#c62f2f; --warn:#b7791f;
-  --log-bg:#0f1419; --log-ink:#d5dde6; --ru:#e7a63b; --eu:#5aa9ff; --field:#fff;
+  --log-bg:#0f1419; --log-ink:#d5dde6; --ru:#e7a63b; --eu:#5aa9ff; --ex:#a78bfa; --field:#fff;
   --s1:#2a78d6; --s2:#eb6834;
 }
 @media (prefers-color-scheme: dark){
@@ -26,7 +26,7 @@ h1{font-size:21px;margin:0 0 2px}
 .card h2{font-size:15px;margin:0 0 2px;display:flex;align-items:center;gap:8px}
 .card .hint{color:var(--muted);font-size:12.5px;margin:0 0 12px}
 .tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;color:#111}
-.tag.ru{background:var(--ru)} .tag.eu{background:var(--eu)}
+.tag.ru{background:var(--ru)} .tag.eu{background:var(--eu)} .tag.ex{background:var(--ex)}
 label{display:block;font-size:12.5px;color:var(--muted);margin:10px 0 4px}
 input[type=text],input[type=password],input[type=number]{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--field);color:var(--ink);font:inherit}
 input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
@@ -48,11 +48,12 @@ summary{cursor:pointer;color:var(--muted);font-size:13px}
 .err.on{display:block}
 .okbox{background:color-mix(in srgb,var(--ok) 12%,transparent);border:1px solid var(--ok);border-radius:8px;padding:12px 14px}
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.steps.four{grid-template-columns:repeat(4,1fr)}
 @media (max-width:760px){.steps{grid-template-columns:1fr}}
 .grp{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
 .grp h4{margin:0 0 8px;font-size:13.5px}
 .grp u,.step u{text-decoration:none;font-size:10.5px;font-weight:700;padding:1px 5px;border-radius:4px;color:#111}
-u.ru{background:var(--ru)} u.eu{background:var(--eu)}
+u.ru{background:var(--ru)} u.eu{background:var(--eu)} u.ex{background:var(--ex)}
 .step{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
 .grp h4+.step{border-top:0}
 .step b{font-weight:500;flex:1}
@@ -67,7 +68,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
 .tabs button{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:4px 10px;border-radius:6px;font:12.5px "Segoe UI",system-ui;cursor:pointer;margin-right:4px}
 .tabs button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 #log{background:var(--log-bg);color:var(--log-ink);border-radius:9px;height:380px;overflow:auto;padding:10px 12px;font:12.5px/1.5 Consolas,"Cascadia Mono",monospace;white-space:pre-wrap;word-break:break-word}
-#log .t{color:#6b7785} #log .s-RU{color:var(--ru)} #log .s-EU{color:var(--eu)} #log .e{color:#ff7b7b}
+#log .t{color:#6b7785} #log .s-RU{color:var(--ru)} #log .s-EU{color:var(--eu)} #log .s-EX{color:var(--ex)} #log .e{color:#ff7b7b}
 .clients{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:14px}
 .client{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center}
 .client h3{margin:0 0 8px;font-size:15px}
@@ -232,6 +233,10 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
   <!-- ================= ФОРМА ================= -->
   <section id="formView">
     <div class="card" style="margin-bottom:16px"><label style="margin-top:0">Название каскада (для списка профилей)</label><input type="text" id="prof-name" placeholder="например: Дом, Москва → Амстердам" autocomplete="off"></div>
+    <div class="card" style="margin-bottom:16px">
+      <label class="check" style="margin-top:0"><input type="checkbox" id="three"> <b>Три сервера: вход RU → транзит → выход</b></label>
+      <p class="note" style="margin:4px 0 0">Между входом и выходом встаёт ещё один зарубежный сервер — транзит. Сайты видят только адрес выхода, а адрес транзита нигде не светится. Если адрес выхода попадёт в чёрные списки, меняется только выход: сервер RU и файлы подключения пользователей остаются прежними. Стоит третьего VPS и немного задержки.</p>
+    </div>
     <div class="grid">
       <div class="card" id="card-ru">
         <h2><span class="tag ru">RU</span> Входной сервер (в России)</h2>
@@ -250,8 +255,8 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
         </div>
       </div>
       <div class="card" id="card-eu">
-        <h2><span class="tag eu">EU</span> Выходной сервер (за границей)</h2>
-        <p class="hint">Через него пойдёт весь остальной трафик. Сайты будут видеть его IP.</p>
+        <h2><span class="tag eu">EU</span> <span id="eu-title">Выходной сервер (за границей)</span></h2>
+        <p class="hint" id="eu-hint">Через него пойдёт весь остальной трафик. Сайты будут видеть его IP.</p>
         <div class="row">
           <div><label>IP-адрес</label><input type="text" id="eu-host" placeholder="например, 91.200.10.20" autocomplete="off"></div>
           <div><label>Порт SSH</label><input type="number" id="eu-port" value="22" min="1" max="65535"></div>
@@ -265,14 +270,30 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
           <label>Пароль ключа (если есть)</label><input type="password" id="eu-keypass" autocomplete="new-password">
         </div>
       </div>
+      <div class="card hidden" id="card-ex">
+        <h2><span class="tag ex">EX</span> Сервер-выход (за границей)</h2>
+        <p class="hint">Транзит отправляет в него весь зарубежный трафик. Сайты будут видеть IP этого сервера. Лучше у другого хостера, чем транзит.</p>
+        <div class="row">
+          <div><label>IP-адрес</label><input type="text" id="ex-host" placeholder="например, 45.90.10.20" autocomplete="off"></div>
+          <div><label>Порт SSH</label><input type="number" id="ex-port" value="22" min="1" max="65535"></div>
+        </div>
+        <label>Логин</label><input type="text" id="ex-user" value="root" autocomplete="off">
+        <label>Пароль root</label><input type="password" id="ex-pass" autocomplete="new-password">
+        <label class="check"><input type="checkbox" id="ex-usekey"> Вход по SSH-ключу</label>
+        <div class="keybox" id="ex-keybox">
+          <label>Файл приватного ключа</label><input type="file" id="ex-keyfile">
+          <div class="file" id="ex-keyname"></div>
+          <label>Пароль ключа (если есть)</label><input type="password" id="ex-keypass" autocomplete="new-password">
+        </div>
+      </div>
     </div>
 
     <div class="card" style="margin-top:16px">
       <h2>Версия протокола AmneziaWG</h2>
-      <p class="hint">Оба сервера каскада всегда ставятся на одну версию — иначе туннель между ними не заработает.</p>
+      <p class="hint">Все серверы каскада всегда ставятся на одну версию — иначе туннели между ними не заработают.</p>
       <label class="popt"><input type="radio" name="proto" value="3.1" checked><div><b>AmneziaWG 3.1 — рекомендуется</b><span>Новое поколение: шифрование заголовков и добавочный паддинг, трафик сложнее распознать. Нужны свежие приложения: AmneziaVPN 5.0.1.5+, AmneziaWG 3.1+ (Windows, Android, iOS), WG Tunnel. Если сервер не поддерживает 3.1 (старое ядро, ARM), установщик сам поставит 2.0 — программа об этом скажет.</span></div></label>
       <label class="popt"><input type="radio" name="proto" value="2.0"><div><b>AmneziaWG 2.0 — для роутеров и старых приложений</b><span>Выбирайте, если подключать будете роутер на стоковой прошивке (Keenetic, GL.iNet, старый OpenWrt), Hiddify или приложения, которые давно не обновлялись. Клиент без поддержки 3.1 к серверу 3.1 не подключится.</span></div></label>
-      <p class="note">Сменить версию потом можно только переустановкой обоих серверов с выдачей всех ключей заново.</p>
+      <p class="note">Сменить версию потом можно только переустановкой всех серверов с выдачей всех ключей заново.</p>
     </div>
 
     <details class="card" style="margin-top:16px">
@@ -281,6 +302,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
         <div><label>Подсеть VPN сервера RU</label><input type="text" id="ru-subnet" value="172.16.17.1/24"></div>
         <div><label>Подсеть VPN сервера EU</label><input type="text" id="eu-subnet" value="172.16.61.1/24"></div>
       </div>
+      <div class="row2 hidden" id="ex-subnet-row"><div><label>Подсеть VPN сервера-выхода</label><input type="text" id="ex-subnet" value="172.16.62.1/24"></div><div></div></div>
       <label class="check"><input type="checkbox" id="skipUpdate"> Не обновлять систему перед установкой (только если серверы уже обновлены)</label>
       <label>Дополнительные клиенты (через запятую, латиницей)</label>
       <input type="text" id="extra" placeholder="например: tablet, office_pc">
@@ -291,7 +313,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
     <div class="actions">
       <button class="btn ghost" id="ipChkBtn">Проверить адреса серверов</button>
       <button class="btn" id="startBtn">Начать установку</button>
-      <span class="note">Серверы настраиваются по очереди: сначала RU, потом EU, затем каскад. Обычно 30–60 минут, серверы несколько раз перезагрузятся. Лучше ставить на чистые VPS (Ubuntu 24.04 или Debian 13). Данные для входа сохранятся в профиль на этом компьютере в зашифрованном виде.</span>
+      <span class="note">Серверы настраиваются по очереди: сначала RU, потом EU (и выход, если серверов три), затем каскад. Обычно 30–60 минут, серверы несколько раз перезагрузятся. Лучше ставить на чистые VPS (Ubuntu 24.04 или Debian 13). Данные для входа сохранятся в профиль на этом компьютере в зашифрованном виде.</span>
     </div>
   </section>
 
@@ -302,9 +324,13 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
       <div class="grp"><h4>Шаг 1 · <u class="ru">RU</u> входной сервер</h4>
         <div class="step" id="st-ru-update"><i class="dot"></i><b>Обновление системы</b><span>ожидание</span></div>
         <div class="step" id="st-ru-install"><i class="dot"></i><b>Установка AmneziaWG</b><span>ожидание</span></div></div>
-      <div class="grp"><h4>Шаг 2 · <u class="eu">EU</u> выходной сервер</h4>
+      <div class="grp"><h4>Шаг 2 · <u class="eu">EU</u> <span id="grp-eu-t">выходной сервер</span></h4>
         <div class="step" id="st-eu-update"><i class="dot"></i><b>Обновление системы</b><span>ожидание</span></div>
         <div class="step" id="st-eu-install"><i class="dot"></i><b>Установка AmneziaWG</b><span>ожидание</span></div></div>
+      <div class="grp hidden" id="grp-ex"><h4>Шаг 2б · <u class="ex">EX</u> выход и транзит</h4>
+        <div class="step" id="st-ex-update"><i class="dot"></i><b>Обновление системы</b><span>ожидание</span></div>
+        <div class="step" id="st-ex-install"><i class="dot"></i><b>Установка AmneziaWG</b><span>ожидание</span></div>
+        <div class="step" id="st-transit"><i class="dot"></i><b>Туннель транзит → выход</b><span>ожидание</span></div></div>
       <div class="grp"><h4>Шаг 3 · Каскад</h4>
         <div class="step" id="st-cascade"><i class="dot"></i><b>Связка серверов</b><span>ожидание</span></div>
         <div class="step" id="st-clients"><i class="dot"></i><b>Файлы подключения</b><span>ожидание</span></div></div>
@@ -313,7 +339,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
     <div id="resultBox" class="hidden" style="margin-bottom:16px"></div>
 
     <div class="logbar">
-      <div class="tabs"><button data-f="" class="on">Все</button><button data-f="RU">RU</button><button data-f="EU">EU</button></div>
+      <div class="tabs"><button data-f="" class="on">Все</button><button data-f="RU">RU</button><button data-f="EU">EU</button><button data-f="EX" id="tabEX" class="hidden">EX</button></div>
       <div><span class="elapsed" id="elapsed"></span>
         <button class="btn ghost small" id="cancelBtn">Остановить</button>
         <button class="btn ghost small hidden" id="backBtn">К форме</button></div>
@@ -382,14 +408,20 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
           <div class="mrow"><div><b>Сервер сменил IP-адрес</b><span>Хостер поменял адрес или его пришлось сменить из-за блокировки. Ключи сохраняются, пользователям нужно заново импортировать подключение.</span></div><button class="btn ghost small" data-mt="ip" data-s="ru">Сменить IP…</button></div>
           <div class="mrow"><div><b>Удалить VPN с сервера</b><span>Отключает каскад и полностью удаляет AmneziaWG, пользователей и ключи.</span></div><button class="btn ghost small danger" data-mt="uninstall" data-s="ru">Удалить…</button></div>
         </div>
-        <div class="mcard"><h3><span class="tag eu">EU</span> Выходной сервер <span class="note" id="mtEuHost"></span></h3>
+        <div class="mcard"><h3><span class="tag eu">EU</span> <span id="mtEuTitle">Выходной сервер</span> <span class="note" id="mtEuHost"></span></h3>
           <div class="mrow"><div><b>Обновить пакеты</b><span>apt update + upgrade. Перезагрузка — только если вы разрешите.</span></div><button class="btn ghost small" data-mt="update" data-s="eu">Обновить</button></div>
           <div class="mrow"><div><b>Перезагрузить сервер</b><span>Каскад будет недоступен 1–3 минуты.</span></div><button class="btn ghost small" data-mt="reboot" data-s="eu">Перезагрузить</button></div>
-          <div class="mrow"><div><b>Сервер сменил IP-адрес</b><span>Программа перенастроит туннель с сервера RU. Пользователям ничего делать не нужно.</span></div><button class="btn ghost small" data-mt="ip" data-s="eu">Сменить IP…</button></div>
+          <div class="mrow"><div><b>Сервер сменил IP-адрес</b><span id="mtEuIPText">Программа перенастроит туннель с сервера RU. Пользователям ничего делать не нужно.</span></div><button class="btn ghost small" data-mt="ip" data-s="eu">Сменить IP…</button></div>
           <div class="mrow"><div><b>Удалить VPN с сервера</b><span>Полностью удаляет AmneziaWG. Каскад перестанет работать.</span></div><button class="btn ghost small danger" data-mt="uninstall" data-s="eu">Удалить…</button></div>
         </div>
+        <div class="mcard hidden" id="mcard-ex"><h3><span class="tag ex">EX</span> Сервер-выход <span class="note" id="mtExHost"></span></h3>
+          <div class="mrow"><div><b>Обновить пакеты</b><span>apt update + upgrade. Перезагрузка — только если вы разрешите.</span></div><button class="btn ghost small" data-mt="update" data-s="ex">Обновить</button></div>
+          <div class="mrow"><div><b>Перезагрузить сервер</b><span>Зарубежный трафик будет недоступен 1–3 минуты.</span></div><button class="btn ghost small" data-mt="reboot" data-s="ex">Перезагрузить</button></div>
+          <div class="mrow"><div><b>Сервер сменил IP-адрес</b><span>Программа перенастроит туннель на транзите. Сервер RU и пользователей это не касается.</span></div><button class="btn ghost small" data-mt="ip" data-s="ex">Сменить IP…</button></div>
+          <div class="mrow"><div><b>Удалить VPN с сервера</b><span>Полностью удаляет AmneziaWG. Зарубежный трафик перестанет работать.</span></div><button class="btn ghost small danger" data-mt="uninstall" data-s="ex">Удалить…</button></div>
+        </div>
       </div>
-      <div class="dzone"><div><b>Удалить весь каскад</b><span>VPN будет удалён с обоих серверов (сначала RU, затем EU). Серверы вернутся к состоянию до установки, сами VPS останутся.</span></div><button class="btn small danger solid" id="mtAll">Удалить каскад…</button></div>
+      <div class="dzone"><div><b>Удалить весь каскад</b><span id="mtAllText">VPN будет удалён с обоих серверов (сначала RU, затем EU). Серверы вернутся к состоянию до установки, сами VPS останутся.</span></div><button class="btn small danger solid" id="mtAll">Удалить каскад…</button></div>
     </div>
 
     <div class="mtab hidden" id="t-bypass">
@@ -493,6 +525,13 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
         <label>Или файл SSH-ключа</label><input type="file" class="pf-eu-keyfile"><div class="file pf-eu-keyname"></div>
         <p class="note">Сервер EU нужен для резервного копирования и проверки доступности. Можно оставить пустым.</p>
       </div>
+      <div class="card"><h2><span class="tag ex">EX</span> Сервер-выход (если серверов три)</h2>
+        <div class="row"><div><label>IP-адрес</label><input type="text" class="pf-ex-host" autocomplete="off"></div><div><label>Порт SSH</label><input type="number" class="pf-ex-port" value="22"></div></div>
+        <label>Логин</label><input type="text" class="pf-ex-user" value="root">
+        <label>Пароль</label><input type="password" class="pf-ex-pass" autocomplete="new-password">
+        <label>Или файл SSH-ключа</label><input type="file" class="pf-ex-keyfile"><div class="file pf-ex-keyname"></div>
+        <p class="note">Только для каскада из трёх серверов: тогда сервер EU — транзит, а этот — выход. Для обычного каскада оставьте пустым.</p>
+      </div>
     </div>
     <div class="err pf-err"></div>
     <div class="actions"><button class="btn pf-save">Проверить и сохранить</button><button class="btn ghost pf-cancel">Отмена</button><span class="grow"></span><button class="btn ghost danger pf-delete hidden">Удалить профиль</button></div>
@@ -508,15 +547,30 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)}
 <script>
 const TOKEN = "__TOKEN__";
 const $ = id => document.getElementById(id);
-const keys = {ru:"", eu:""};
-const saveFields = ["ru-host","ru-port","ru-user","eu-host","eu-port","eu-user","ru-subnet","eu-subnet","extra"];
+const keys = {ru:"", eu:"", ex:""};
+const saveFields = ["ru-host","ru-port","ru-user","eu-host","eu-port","eu-user","ex-host","ex-port","ex-user","ru-subnet","eu-subnet","ex-subnet","extra"];
 let installActive = false;
 
 const protoVal = () => (document.querySelector('input[name="proto"]:checked')||{}).value || "3.1";
 try { const s = JSON.parse(localStorage.getItem("awgc-form")||"{}"); for (const k of saveFields) if (s[k]) $(k).value = s[k];
-  if (s.proto) { const r=document.querySelector('input[name="proto"][value="'+s.proto+'"]'); if (r) r.checked=true; } } catch(e) {}
+  if (s.proto) { const r=document.querySelector('input[name="proto"][value="'+s.proto+'"]'); if (r) r.checked=true; }
+  if (s.three) $("three").checked=true; } catch(e) {}
+const isThree = () => $("three").checked;
+// Три сервера: EU становится транзитом, появляется карточка выхода.
+function applyThree(){
+  const t=isThree();
+  $("card-ex").classList.toggle("hidden",!t); $("ex-subnet-row").classList.toggle("hidden",!t);
+  $("eu-title").textContent = t ? "Транзитный сервер (за границей)" : "Выходной сервер (за границей)";
+  $("eu-hint").textContent = t ? "Посредник: принимает трафик от сервера RU и передаёт его выходу. Сайты его адрес не видят." : "Через него пойдёт весь остальной трафик. Сайты будут видеть его IP.";
+}
+$("three").onchange=applyThree; applyThree();
+function runLayout(t){
+  $("grp-ex").classList.toggle("hidden",!t); $("tabEX").classList.toggle("hidden",!t);
+  document.querySelector("#runView .steps").classList.toggle("four",t);
+  $("grp-eu-t").textContent = t ? "транзит" : "выходной сервер";
+}
 
-for (const r of ["ru","eu"]) {
+for (const r of ["ru","eu","ex"]) {
   $(r+"-usekey").onchange = e => $(r+"-keybox").classList.toggle("on", e.target.checked);
   $(r+"-keyfile").onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
@@ -551,27 +605,28 @@ function ipReportsHTML(reps){
     return h+'</div>';
   }).join("");
 }
-async function runIPCheck(ru, eu){ return await call("/api/ipcheck",{ru,eu}); }
+async function runIPCheck(ru, eu, ex){ return await call("/api/ipcheck",{ru,eu,ex:ex||""}); }
 let lastIPCheck=null;
 $("ipChkBtn").onclick=async()=>{
-  const ru=$("ru-host").value.trim(), eu=$("eu-host").value.trim();
+  const ru=$("ru-host").value.trim(), eu=$("eu-host").value.trim(), ex=isThree()?$("ex-host").value.trim():"";
   if(!ru&&!eu){ toast("Сначала введите адреса серверов",true); return; }
   modal('<h2>Проверка адресов серверов</h2><p class="note"><span class="spin"></span> Проверяю по базам RIPE, MaxMind, DB-IP и ipinfo.io…</p>');
-  try { const r=await runIPCheck(ru,eu); lastIPCheck={ru,eu,warn:r.warn};
-    modal('<h2>Проверка адресов серверов</h2><p class="note">Для входа RU адрес должен везде считаться российским, для выхода EU — зарубежным, и лучше, чтобы серверы были у разных хостеров.</p>'+ipReportsHTML(r.reports)+'<div class="actions"><button class="btn" id="ipcOk">Понятно</button></div>');
+  try { const r=await runIPCheck(ru,eu,ex); lastIPCheck={ru,eu,ex,warn:r.warn};
+    modal('<h2>Проверка адресов серверов</h2><p class="note">Для входа RU адрес должен везде считаться российским, для выхода — зарубежным, и лучше, чтобы серверы были у разных хостеров.</p>'+ipReportsHTML(r.reports)+'<div class="actions"><button class="btn" id="ipcOk">Понятно</button></div>');
     $("mBody").parentElement.classList.add("wide"); $("ipcOk").onclick=closeModal;
   } catch(e){ modal('<h2>Проверка адресов серверов</h2><div class="err on">'+esc(e.message)+'</div>'); }
 };
 $("startBtn").onclick = async () => {
   $("formErr").classList.remove("on");
   // Проверка адресов перед установкой: при замечаниях — спросить, продолжать ли.
-  const ruH=$("ru-host").value.trim(), euH=$("eu-host").value.trim();
-  if (ruH && euH && !(lastIPCheck && lastIPCheck.ru===ruH && lastIPCheck.eu===euH && lastIPCheck.accepted)) {
+  const ruH=$("ru-host").value.trim(), euH=$("eu-host").value.trim(), exH=isThree()?$("ex-host").value.trim():"";
+  if (isThree() && !exH) { $("formErr").textContent="Укажите IP-адрес сервера-выхода или снимите галочку «Три сервера»"; $("formErr").classList.add("on"); return; }
+  if (ruH && euH && !(lastIPCheck && lastIPCheck.ru===ruH && lastIPCheck.eu===euH && (lastIPCheck.ex||"")===exH && lastIPCheck.accepted)) {
     $("startBtn").disabled=true; $("startBtn").textContent="Проверяю адреса…";
-    let r=null; try { r=await runIPCheck(ruH,euH); } catch(e) {}
+    let r=null; try { r=await runIPCheck(ruH,euH,exH); } catch(e) {}
     $("startBtn").disabled=false; $("startBtn").textContent="Начать установку";
     if (r && r.warn) {
-      lastIPCheck={ru:ruH,eu:euH,warn:true};
+      lastIPCheck={ru:ruH,eu:euH,ex:exH,warn:true};
       modal('<h2>У адресов серверов есть замечания</h2>'+ipReportsHTML(r.reports)+'<div class="actions"><button class="btn" id="ipcGo">Всё равно установить</button><button class="btn ghost" id="ipcNo">Отмена</button></div>');
       $("mBody").parentElement.classList.add("wide");
       $("ipcNo").onclick=closeModal;
@@ -579,12 +634,12 @@ $("startBtn").onclick = async () => {
       return;
     }
   }
-  const s = {proto:protoVal()}; for (const k of saveFields) s[k] = $(k).value; try { localStorage.setItem("awgc-form", JSON.stringify(s)); } catch(e) {}
+  const s = {proto:protoVal(), three:isThree()}; for (const k of saveFields) s[k] = $(k).value; try { localStorage.setItem("awgc-form", JSON.stringify(s)); } catch(e) {}
   $("startBtn").disabled = true;
-  const res = await post("/api/start", { ru:server("ru"), eu:server("eu"), ruSubnet:$("ru-subnet").value.trim(), euSubnet:$("eu-subnet").value.trim(), extraClients:$("extra").value, skipUpdate:$("skipUpdate").checked, profileName:$("prof-name").value.trim(), protocol:protoVal() });
+  const res = await post("/api/start", { ru:server("ru"), eu:server("eu"), ruSubnet:$("ru-subnet").value.trim(), euSubnet:$("eu-subnet").value.trim(), ex:isThree()?server("ex"):{host:""}, exSubnet:isThree()?$("ex-subnet").value.trim():"", extraClients:$("extra").value, skipUpdate:$("skipUpdate").checked, profileName:$("prof-name").value.trim(), protocol:protoVal() });
   $("startBtn").disabled = false;
   if (res.error) { $("formErr").textContent = res.error; $("formErr").classList.add("on"); return; }
-  showRun();
+  runLayout(isThree()); showRun();
 };
 
 function showRun(){ $("formView").classList.add("hidden"); $("runView").classList.remove("hidden"); }
@@ -620,9 +675,9 @@ function addLine(e){
   box.appendChild(lineEl(e)); if (stick) box.scrollTop=box.scrollHeight;
 }
 const stageText = {run:"выполняется…", ok:"готово", err:"ошибка", skip:"пропущено"};
-function setStage(id,state){ const el=$("st-"+id); if(!el) return; el.className="step "+state+(id==="connect"?" solo":""); el.querySelector("span").textContent=stageText[state]||state; }
+function setStage(id,state){ const el=$("st-"+id); if(!el) return; if (/^(ex-|transit)/.test(id)) runLayout(true); el.className="step "+state+(id==="connect"?" solo":""); el.querySelector("span").textContent=stageText[state]||state; }
 function resetRun(){
-  lines=[]; renderLog(); for (const id of ["connect","ru-update","ru-install","eu-update","eu-install","cascade","clients"]) { $("st-"+id).className="step"+(id==="connect"?" solo":""); $("st-"+id).querySelector("span").textContent="ожидание"; }
+  lines=[]; renderLog(); for (const id of ["connect","ru-update","ru-install","eu-update","eu-install","ex-update","ex-install","transit","cascade","clients"]) { $("st-"+id).className="step"+(id==="connect"?" solo":""); $("st-"+id).querySelector("span").textContent="ожидание"; }
   $("resultBox").classList.add("hidden"); $("resultBox").textContent=""; $("cancelBtn").classList.remove("hidden"); $("backBtn").classList.add("hidden");
   startedAt = Date.now(); running = true;
 }
@@ -648,7 +703,7 @@ function finish(e){
     pn.textContent = r.proto==="3.1" ? "Версия протокола: AmneziaWG 3.1. Нужно приложение с поддержкой 3.1: AmneziaVPN 5.0.1.5 и новее, AmneziaWG 3.1 и новее (Windows, Android, iOS), WG Tunnel. Роутеры на стоковой прошивке и Hiddify к такому серверу не подключатся."
                                      : "Версия протокола: AmneziaWG 2.0 — подходит любое приложение AmneziaVPN или AmneziaWG и роутеры с поддержкой AmneziaWG.";
     ok.appendChild(pn); }
-  const bs=ok.querySelectorAll("b"); bs[3].textContent="IP сервера EU ("+(r.euIp||"")+")"; bs[4].textContent="IP сервера RU ("+(r.ruIp||"")+")";
+  const bs=ok.querySelectorAll("b"); bs[3].textContent=(r.threeHop?"IP сервера-выхода (":"IP сервера EU (")+(r.euIp||"")+")"; bs[4].textContent="IP сервера RU ("+(r.ruIp||"")+")";
   if (r.folder){ const p=document.createElement("div"); p.style.marginTop="8px"; p.className="note"; p.textContent="Файлы сохранены: "+r.folder+"  ";
     const b=document.createElement("button"); b.className="btn ghost small"; b.textContent="Открыть папку"; b.onclick=()=>post("/api/open-folder"); p.appendChild(b); ok.appendChild(p); }
   if (r.profile){ const b=document.createElement("button"); b.className="btn small"; b.style.marginTop="10px"; b.textContent="Перейти к управлению каскадом"; b.onclick=()=>openProfile(r.profile); ok.appendChild(b); }
@@ -673,7 +728,7 @@ function connect(){
   es.onmessage = m => {
     const e = JSON.parse(m.data);
     if (e.t==="reset"){ resetRun(); installActive = true; showRun(); return; }
-    if (e.t==="log"){ if(!startedAt){ resetRun(); showRun(); running=false; } addLine(e); }
+    if (e.t==="log"){ if(!startedAt){ resetRun(); showRun(); running=false; } if (e.src==="EX") runLayout(true); addLine(e); }
     else if (e.t==="stage"){ setStage(e.id,e.state); }
     else if (e.t==="finish"){ running=true; finish(e); if (e.ok && e.result && e.result.profile) loadProfiles(); }
   };
@@ -723,7 +778,7 @@ function openProfile(id){
   const p = profiles.find(x=>x.id===id); if(!p) return;
   cur = p; $("profSelect").value=id; post("/api/profile-use",{id});
   $("mTitle").textContent = p.name;
-  $("mSub").textContent = "RU " + p.ruHost + (p.euHost ? "  →  EU " + p.euHost : "");
+  $("mSub").textContent = "RU " + p.ruHost + (p.euHost ? (p.exHost ? "  →  транзит " + p.euHost + "  →  выход " + p.exHost : "  →  EU " + p.euHost) : "");
   go("manage"); showTab(curTab==="profile" ? "users" : curTab, true);
   refreshStatus(true);
 }
@@ -766,7 +821,7 @@ function renderStatus(st){
   const box=$("vCards"), pr=$("vProblems");
   if (!st){ pr.innerHTML='<p class="note"><span class="spin"></span> Проверяю серверы…</p>'; box.textContent=""; return; }
   const upd = (st.ruReachable && st.routing==="active" && !st.extraList) ? '<div class="hintbox">Доступно обновление маршрутизации: к списку российских сетей добавлена база DB-IP (ipdeny + MaxMind + DB-IP) — больше российских сайтов на небольших хостингах пойдут напрямую. Кнопка «Обновить маршрутизацию» — ниже, в карточке сервера RU.</div>' : '';
-  pr.innerHTML = upd + (st.problems.length ? st.problems.map(p=>'<div class="problem">'+esc(p)+'</div>').join("") : '<div class="allgood">Всё в порядке: VPN работает, туннель до EU активен, раздельная маршрутизация включена.</div>');
+  pr.innerHTML = upd + (st.problems.length ? st.problems.map(p=>'<div class="problem">'+esc(p)+'</div>').join("") : '<div class="allgood">Всё в порядке: VPN работает, '+(st.threeHop?'туннели RU → транзит → выход активны':'туннель до EU активен')+', раздельная маршрутизация включена.</div>');
   $("vInfo").textContent = "Проверено в "+new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})+" · обновляется каждые 30 с";
   if (!st.ruReachable){ box.textContent=""; return; }
   const card=(cls,title,rows)=>'<div class="scard '+cls+'"><h3><i class="dot"></i>'+esc(title)+'</h3><dl>'+rows.map(r=>'<dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd>').join("")+'</dl></div>';
@@ -775,19 +830,27 @@ function renderStatus(st){
   box.innerHTML =
     card("ok","Сервер RU",[["Адрес",cur.ruHost],["Отклик SSH",st.pingMs+" мс"],["Работает",fmtUptime(st.uptime)],["Нагрузка",st.load],["Память",mem],["Диск",st.disk],["Система",st.os]].concat(st.rebootRequired?[["Обновления","ждут перезагрузки"]]:[])) +
     card(st.awg0==="active"?"ok":"err","VPN для пользователей",[["Служба awg0",st.awg0==="active"?"работает":st.awg0],["Пользователей",String(st.peers)]].concat(st.ruProto?[["Протокол","AmneziaWG "+st.ruProto],["Приложения",st.ruProto==="3.1"?"нужна поддержка 3.1":"любые AmneziaWG"]]:[])) +
-    card(st.awg1!=="active"?"err":(st.tunnelAge<0||st.tunnelAge>300?"warn":"ok"),"Туннель RU → EU",[["Служба awg1",st.awg1==="active"?"работает":st.awg1],["Связь с EU",tun],["Сервер EU",st.endpoint||cur.euHost||"—"]].concat(st.euProto?[["Протокол EU","AmneziaWG "+st.euProto+(st.ruProto&&st.ruProto!==st.euProto?" — не совпадает с RU!":"")]]:[])) +
+    card(st.awg1!=="active"?"err":(st.tunnelAge<0||st.tunnelAge>300?"warn":"ok"),st.threeHop?"Туннель RU → транзит":"Туннель RU → EU",[["Служба awg1",st.awg1==="active"?"работает":st.awg1],[st.threeHop?"Связь с транзитом":"Связь с EU",tun],[st.threeHop?"Транзит":"Сервер EU",st.endpoint||cur.euHost||"—"]].concat(st.euProto?[["Протокол EU","AmneziaWG "+st.euProto+(st.ruProto&&st.ruProto!==st.euProto?" — не совпадает с RU!":"")]]:[])) +
     card(st.routing!=="active"?"err":(st.ruNets<1000?"warn":"ok"),"Раздельная маршрутизация",[["Состояние",st.routing==="active"?"включена":st.routing],["Российских сетей",String(st.ruNets)],["Источники",st.sources||"—"]]) +
-    (cur.euHost ? card(st.euReachable?"ok":"err","Сервер EU",[["Адрес",cur.euHost],["SSH с этого ПК",st.euReachable?"доступен, "+st.euPingMs+" мс":"не отвечает"]]) : "");
+    (cur.euHost ? card(st.euReachable?"ok":"err",st.threeHop?"Транзитный сервер (EU)":"Сервер EU",[["Адрес",cur.euHost],["SSH с этого ПК",st.euReachable?"доступен, "+st.euPingMs+" мс":"не отвечает"]]) : "") +
+    (st.transit ? (()=>{ const t=st.transit, bad=t.error||!t.conf||t.active!=="active"; const ta=t.age<0?"не было":fmtAgo(t.age);
+      return card(bad?"err":(t.age<0||t.age>300||!t.rule?"warn":"ok"),"Туннель транзит → выход", t.error?[["Ошибка",t.error]]:
+        [["Служба awg1 на транзите",t.active==="active"?"работает":(t.conf?t.active:"не настроена")],["Связь с выходом",ta],["Правило «от RU — к выходу»",t.rule?"есть":"нет"],["Выход",t.endpoint||cur.exHost||"—"]].concat(t.proto?[["Протокол","AmneziaWG "+t.proto]]:[])); })() : "") +
+    (cur.exHost ? card(st.exReachable?"ok":"err","Сервер-выход (EX)",[["Адрес",cur.exHost],["SSH с этого ПК",st.exReachable?"доступен, "+st.exPingMs+" мс":"не отвечает"]]) : "");
 }
 $("vRefresh").onclick = async () => { $("vProblems").innerHTML='<p class="note"><span class="spin"></span> Проверяю…</p>'; await refreshStatus(false); renderStatus(lastStatus); };
 $("vRestart").onclick = () => confirmBox("Перезапустить VPN?", "Службы VPN и туннеля перезапустятся. У пользователей связь пропадёт на несколько секунд и восстановится сама.", "Перезапустить", async () => {
   await call("/api/m/restart-vpn",{id:cur.id}); toast("VPN перезапущен"); refreshStatus(false);
 });
 // ================= обслуживание серверов =================
-const SRV = t => t==="ru" ? "RU" : "EU";
-const hostOf = t => t==="ru" ? cur.ruHost : cur.euHost;
-function hasCreds(t){ return t==="ru" || !!(cur && cur.euHost); }
+const SRV = t => t==="ru" ? "RU" : t==="ex" ? "EX (выход)" : (cur && cur.exHost ? "EU (транзит)" : "EU");
+const hostOf = t => t==="ru" ? cur.ruHost : t==="ex" ? cur.exHost : cur.euHost;
+function hasCreds(t){ return t==="ru" || !!(cur && hostOf(t)); }
 function renderMaint(){ if(!cur) return; $("mtRuHost").textContent=cur.ruHost; $("mtEuHost").textContent=cur.euHost||"не указан в профиле";
+  $("mtExHost").textContent=cur.exHost||""; $("mcard-ex").classList.toggle("hidden",!cur.exHost);
+  $("mtEuTitle").textContent = cur.exHost ? "Транзитный сервер" : "Выходной сервер";
+  $("mtEuIPText").textContent = cur.exHost ? "Программа перенастроит туннель с сервера RU. Пользователям и выходу ничего делать не нужно." : "Программа перенастроит туннель с сервера RU. Пользователям ничего делать не нужно.";
+  $("mtAllText").textContent = cur.exHost ? "VPN будет удалён со всех трёх серверов (RU, транзит, выход). Серверы вернутся к состоянию до установки, сами VPS останутся." : "VPN будет удалён с обоих серверов (сначала RU, затем EU). Серверы вернутся к состоянию до установки, сами VPS останутся.";
   document.querySelectorAll('[data-s="eu"]').forEach(b=>b.disabled=!cur.euHost); }
 document.querySelector(".maint").onclick = e => {
   const b=e.target.closest("button[data-mt]"); if(!b||!cur) return;
@@ -803,7 +866,8 @@ function askIPChange(t){
   const ru = t==="ru";
   modal('<h2>Сервер '+SRV(t)+' сменил IP-адрес</h2><p class="note">Сейчас в профиле: '+esc(hostOf(t)||"—")+'</p>'+
     (ru ? '<p>Программа подключится к серверу по новому адресу (с теми же логином и паролем), проверит, что это тот же сервер RU, пропишет на нём новый адрес и перевыпустит <b>файлы подключения</b> всех пользователей. <b>Ключи, имена и сроки не меняются</b>, но на каждом устройстве подключение нужно импортировать заново (QR-код или .conf) — старое смотрит на прежний адрес.</p>'
-        : '<p>Программа пропишет новый адрес в туннеле RU → EU и в маршрутизации на сервере RU и проверит связь. Если по новому адресу не ответит именно ваш сервер EU (ключи не совпадут), прежние настройки вернутся. <b>Пользователям ничего делать не нужно.</b></p>')+
+        : t==="ex" ? '<p>Программа пропишет новый адрес в туннеле транзит → выход на транзитном сервере и проверит связь. Если по новому адресу не ответит именно ваш выход (ключи не совпадут), прежние настройки вернутся. <b>Серверу RU и пользователям ничего делать не нужно.</b></p>'
+        : '<p>Программа пропишет новый адрес в туннеле RU → '+(cur.exHost?'транзит':'EU')+' и в маршрутизации на сервере RU и проверит связь. Если по новому адресу не ответит именно ваш сервер (ключи не совпадут), прежние настройки вернутся. <b>Пользователям ничего делать не нужно.</b></p>')+
     '<label>Новый IP-адрес сервера '+SRV(t)+'</label><input type="text" id="ipNew" placeholder="например, 203.0.113.25" spellcheck="false">'+
     '<label class="check hidden" id="ipForceRow"><input type="checkbox" id="ipForce"> <span id="ipForceText"></span></label>'+
     '<div class="err" id="ipErr"></div><div class="actions"><button class="btn" id="ipOk">Сменить адрес</button><button class="btn ghost" id="ipNo">Отмена</button></div>');
@@ -813,7 +877,7 @@ function askIPChange(t){
     try {
       const r=await call("/api/m/ip-change",{id:cur.id,target:t,newHost:$("ipNew").value.trim(),force:$("ipForce").checked});
       if (r.needForce){ er.textContent=r.reason+(r.fingerprint?" Ключ SSH сервера: "+r.fingerprint:""); er.classList.add("on");
-        $("ipForceRow").classList.remove("hidden"); $("ipForceText").textContent = ru ? "Я уверен, что это тот же сервер — продолжить" : "Сохранить новый адрес, хотя сервер EU пока не ответил"; return; }
+        $("ipForceRow").classList.remove("hidden"); $("ipForceText").textContent = ru ? "Я уверен, что это тот же сервер — продолжить" : "Сохранить новый адрес, хотя сервер "+SRV(t)+" пока не ответил"; return; }
       const id=cur.id; await loadProfiles(); openProfile(id);
       if (ru) {
         modal('<h2>Адрес сервера RU изменён</h2><p>'+esc(r.old)+' → <b>'+esc(r.new)+'</b>. Файлы подключения перевыпущены: '+r.clients.length+'.</p>'+
@@ -825,7 +889,7 @@ function askIPChange(t){
         $("ipDone").onclick=()=>{ closeModal(); showTab("users"); };
         if (r.folder) $("ipOpen").onclick=()=>call("/api/m/open-folder",{id:cur.id,dir:r.folder}).catch(e=>toast(e.message,true));
       } else {
-        closeModal(); toast(r.connected ? "Адрес сервера EU изменён: "+r.new+". Туннель работает." : "Адрес сервера EU сохранён: "+r.new+". Туннель заработает, когда сервер станет доступен.", !r.connected);
+        closeModal(); toast(r.connected ? "Адрес сервера "+SRV(t)+" изменён: "+r.new+". Туннель работает." : "Адрес сервера "+SRV(t)+" сохранён: "+r.new+". Туннель заработает, когда сервер станет доступен.", !r.connected);
         if (r.note) setTimeout(()=>toast(r.note,true),3500);
         refreshStatus(false);
       }
@@ -835,12 +899,12 @@ function askIPChange(t){
 }
 $("mtIPChk").onclick=async()=>{
   modal('<h2>Проверка адресов серверов</h2><p class="note"><span class="spin"></span> Проверяю по базам RIPE, MaxMind, DB-IP и ipinfo.io…</p>');
-  try { const r=await runIPCheck(cur.ruHost||"", cur.euHost||"");
+  try { const r=await runIPCheck(cur.ruHost||"", cur.euHost||"", cur.exHost||"");
     modal('<h2>Проверка адресов серверов</h2>'+ipReportsHTML(r.reports)+'<div class="actions"><button class="btn" id="ipcOk">Понятно</button></div>');
     $("mBody").parentElement.classList.add("wide"); $("ipcOk").onclick=closeModal;
   } catch(e){ modal('<h2>Проверка адресов серверов</h2><div class="err on">'+esc(e.message)+'</div>'); }
 };
-$("mtAll").onclick = () => askUninstall(cur.euHost ? ["ru","eu"] : ["ru"]);
+$("mtAll").onclick = () => askUninstall(["ru","eu","ex"].filter(t=>t==="ru"||hostOf(t)));
 
 async function waitBack(t){
   const id=cur.id;
@@ -850,14 +914,15 @@ async function waitBack(t){
   for (let i=0;i<36 && cur && cur.id===id;i++){
     try { const st=await call("/api/m/status",{id});
       if (t==="ru" && st.ruReachable){ lastStatus=st; toast("Сервер RU снова на связи"); refreshStatus(false); renderStatus(st); return; }
-      if (t==="eu" && st.euReachable && st.tunnelAge>=0 && st.tunnelAge<200){ lastStatus=st; toast("Сервер EU снова на связи"); refreshStatus(false); return; }
+      if (t==="eu" && st.euReachable && st.tunnelAge>=0 && st.tunnelAge<200){ lastStatus=st; toast("Сервер "+SRV(t)+" снова на связи"); refreshStatus(false); return; }
+      if (t==="ex" && st.exReachable && st.transit && st.transit.age>=0 && st.transit.age<200){ lastStatus=st; toast("Сервер-выход снова на связи"); refreshStatus(false); return; }
     } catch(e){}
     await new Promise(r=>setTimeout(r,10000));
   }
   toast("Сервер "+SRV(t)+" пока не отвечает — проверьте позже", true);
 }
 function askReboot(t){
-  confirmBox("Перезагрузить сервер "+SRV(t)+"?", t==="ru" ? "VPN будет недоступен 1–3 минуты. Программа дождётся, пока сервер снова станет доступен." : "Каскад (зарубежный трафик) будет недоступен 1–3 минуты.", "Перезагрузить", async()=>{
+  confirmBox("Перезагрузить сервер "+SRV(t)+"?", t==="ru" ? "VPN будет недоступен 1–3 минуты. Программа дождётся, пока сервер снова станет доступен." : "Зарубежный трафик будет недоступен 1–3 минуты.", "Перезагрузить", async()=>{
     await call("/api/m/server-reboot",{id:cur.id,target:t}); toast("Сервер "+SRV(t)+" перезагружается…"); waitBack(t);
   }, true);
 }
@@ -873,9 +938,9 @@ function askUninstall(targets){
   const both=targets.length>1, names=targets.map(SRV).join(" и ");
   const word = both ? "УДАЛИТЬ" : hostOf(targets[0]);
   modal('<h2>'+(both?"Удалить весь каскад":"Удалить VPN с сервера "+names)+'</h2>'+
-    '<p>С сервер'+(both?"ов RU и EU":"а "+esc(hostOf(targets[0])))+' будут удалены AmneziaWG, все пользователи и их ключи, настройки каскада и статистика. Подключения на устройствах перестанут работать. Сами VPS и их система останутся.</p>'+
-    (!both && targets[0]==="eu" ? '<p class="note">Сервер RU продолжит работать, но весь зарубежный трафик пропадёт, пока не будет нового сервера EU.</p>' : '')+
-    (!both && targets[0]==="ru" ? '<p class="note">Сервер EU останется с установленным AmneziaWG — его можно удалить отдельно.</p>' : '')+
+    '<p>С сервер'+(both?"ов "+esc(names):"а "+esc(hostOf(targets[0])))+' будут удалены AmneziaWG, все пользователи и их ключи, настройки каскада и статистика. Подключения на устройствах перестанут работать. Сами VPS и их система останутся.</p>'+
+    (!both && targets[0]!=="ru" ? '<p class="note">Сервер RU продолжит работать, но весь зарубежный трафик пропадёт, пока не будет нового сервера.</p>' : '')+
+    (!both && targets[0]==="ru" ? '<p class="note">Зарубежные серверы останутся с установленным AmneziaWG — их можно удалить отдельно.</p>' : '')+
     '<label class="check"><input type="checkbox" id="xBak" checked> Сначала создать резервную копию на этом компьютере</label>'+
     '<label>Для подтверждения введите <b>'+esc(word)+'</b></label><input type="text" id="xWord" autocomplete="off">'+
     '<div class="err" id="xErr"></div><div class="actions"><button class="btn danger solid" id="xGo" disabled>Удалить</button><button class="btn ghost" id="xNo">Отмена</button></div>');
@@ -883,7 +948,7 @@ function askUninstall(targets){
   $("xWord").oninput=e=>$("xGo").disabled = e.target.value.trim()!==word;
   $("xGo").onclick=async()=>{ const b=$("xGo"); b.disabled=true;
     if ($("xBak").checked){ b.innerHTML='<span class="spin"></span> Создаю резервную копию…';
-      try { const r=await call("/api/m/backup",{id:cur.id}); if (r.note && targets.includes("eu")) throw new Error(r.note+". Удаление отменено — снимите галочку резервной копии, если она не нужна."); }
+      try { const r=await call("/api/m/backup",{id:cur.id}); if (r.note && targets.some(t=>t!=="ru")) throw new Error(r.note+". Удаление отменено — снимите галочку резервной копии, если она не нужна."); }
       catch(e){ $("xErr").textContent=e.message; $("xErr").classList.add("on"); b.disabled=false; b.textContent="Удалить"; return; } }
     runTasks(targets.map(t=>({target:t,task:"uninstall"})), both?"Удаление каскада":"Удаление VPN с сервера "+names);
   };
@@ -1122,7 +1187,7 @@ async function loadBackups(){
   try {
     const r=await call("/api/m/backups",{id}); if(!cur||cur.id!==id) return;
     const list=r.backups||[];
-    tb.innerHTML = list.length ? list.map(b=>'<tr><td>'+esc(b.created)+'</td><td>'+b.files.map(f=>f.startsWith("ru")?'<span class="tag ru">RU</span>':'<span class="tag eu">EU</span>').join(" ")+'</td><td class="num">'+fmtBytes(b.size)+'</td><td class="note">'+esc(b.note||"")+'</td><td><div class="acts"><button data-b="'+esc(b.name)+'" data-f="'+b.files.join(",")+'">Восстановить…</button></div></td></tr>').join("")
+    tb.innerHTML = list.length ? list.map(b=>'<tr><td>'+esc(b.created)+'</td><td>'+b.files.map(f=>f.startsWith("ru")?'<span class="tag ru">RU</span>':f.startsWith("ex")?'<span class="tag ex">EX</span>':'<span class="tag eu">EU</span>').join(" ")+'</td><td class="num">'+fmtBytes(b.size)+'</td><td class="note">'+esc(b.note||"")+'</td><td><div class="acts"><button data-b="'+esc(b.name)+'" data-f="'+b.files.join(",")+'">Восстановить…</button></div></td></tr>').join("")
       : '<tr><td colspan="5" class="empty">Резервных копий пока нет</td></tr>';
   } catch(e){ tb.innerHTML='<tr><td colspan="5" class="empty">'+esc(e.message)+'</td></tr>'; }
 }
@@ -1131,7 +1196,7 @@ $("bCreate").onclick=async()=>{ const b=$("bCreate"); b.disabled=true; b.innerHT
   try { const r=await call("/api/m/backup",{id:cur.id}); toast("Резервная копия создана"+(r.note?". "+r.note:""), !!r.note); loadBackups(); }
   catch(e){ toast(e.message,true); } finally { b.disabled=false; b.textContent="Создать резервную копию"; } };
 $("bTable").onclick=e=>{ const b=e.target.closest("button[data-b]"); if(!b) return; const name=b.dataset.b, files=b.dataset.f.split(",");
-  const opts=[]; if(files.includes("ru.tar.gz")&&files.includes("eu.tar.gz")) opts.push(["both","Оба сервера (RU и EU)"]); if(files.includes("ru.tar.gz")) opts.push(["ru","Только сервер RU"]); if(files.includes("eu.tar.gz")) opts.push(["eu","Только сервер EU"]);
+  const opts=[]; if(files.length>1) opts.push(["both",files.length>2?"Все серверы (RU, EU, выход)":"Оба сервера (RU и EU)"]); if(files.includes("ru.tar.gz")) opts.push(["ru","Только сервер RU"]); if(files.includes("eu.tar.gz")) opts.push(["eu","Только сервер EU"]); if(files.includes("ex.tar.gz")) opts.push(["ex","Только сервер-выход"]);
   modal('<h2>Восстановить из копии</h2><p class="note">Копия от '+esc(name.replace("_"," ").replace(/-(\\d\\d)-(\\d\\d)$/,":$1:$2"))+'. Текущие настройки, пользователи и ключи на выбранных серверах будут заменены теми, что были в копии. Пользователи, созданные после копии, перестанут работать.</p>'+
     '<label>Что восстановить</label><select id="rT" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:7px;background:var(--field);color:var(--ink)">'+opts.map(o=>'<option value="'+o[0]+'">'+o[1]+'</option>').join("")+'</select>'+
     '<label class="check"><input type="checkbox" id="rC"> Я понимаю, что текущие настройки будут заменены</label><div class="err" id="rErr"></div>'+
@@ -1267,17 +1332,17 @@ $("openLog").onclick=e=>{ e.preventDefault(); call("/api/open-log").catch(er=>to
 // ================= форма профиля =================
 function renderProfileForm(host, p){
   host.textContent=""; host.appendChild($("profileFormTpl").content.cloneNode(true));
-  const q=c=>host.querySelector(".pf-"+c), keys2={ru:"",eu:""};
+  const q=c=>host.querySelector(".pf-"+c), keys2={ru:"",eu:"",ex:""};
   q("title").textContent = p ? "Профиль каскада" : "Подключить существующий каскад";
   q("sub").textContent = p ? "Здесь можно поменять название и данные для входа. Пустой пароль — оставить прежний." : "Каскад уже установлен (этой программой или вручную по инструкции). Укажите данные для входа — программа проверит подключение и сохранит профиль.";
-  if (p){ q("name").value=p.name; for (const r of ["ru","eu"]){ q(r+"-host").value=p[r+"Host"]||""; q(r+"-port").value=p[r+"Port"]||22; q(r+"-user").value=p[r+"User"]||"root";
-      q(r+"-pass").placeholder="сохранён — оставьте пустым"; if (p[r+"HasKey"]) q(r+"-keyname").textContent="Используется сохранённый ключ"; }
+  if (p){ q("name").value=p.name; for (const r of ["ru","eu","ex"]){ q(r+"-host").value=p[r+"Host"]||""; q(r+"-port").value=p[r+"Port"]||22; q(r+"-user").value=p[r+"User"]||"root";
+      if (p[r+"Host"]) q(r+"-pass").placeholder="сохранён — оставьте пустым"; if (p[r+"HasKey"]) q(r+"-keyname").textContent="Используется сохранённый ключ"; }
     q("delete").classList.remove("hidden"); q("cancel").classList.add("hidden"); }
-  for (const r of ["ru","eu"]) q(r+"-keyfile").onchange=async e=>{ const f=e.target.files[0]; if(!f) return; keys2[r]=await f.text(); q(r+"-keyname").textContent = keys2[r].includes("PRIVATE KEY") ? "Ключ загружен: "+f.name : "Это не похоже на приватный ключ"; };
+  for (const r of ["ru","eu","ex"]) q(r+"-keyfile").onchange=async e=>{ const f=e.target.files[0]; if(!f) return; keys2[r]=await f.text(); q(r+"-keyname").textContent = keys2[r].includes("PRIVATE KEY") ? "Ключ загружен: "+f.name : "Это не похоже на приватный ключ"; };
   q("cancel").onclick=()=> cur ? openProfile(cur.id) : go(profiles.length?"manage":"welcome");
   q("save").onclick=async()=>{ const er=q("err"); er.classList.remove("on"); const b=q("save"); b.disabled=true; b.innerHTML='<span class="spin"></span> Проверяю подключение…';
     const srv=r=>({host:q(r+"-host").value.trim(),port:parseInt(q(r+"-port").value)||22,user:q(r+"-user").value.trim()||"root",password:q(r+"-pass").value,key:keys2[r]});
-    try { const res=await call("/api/profile-save",{id:p?p.id:"",name:q("name").value.trim(),ru:srv("ru"),eu:srv("eu"),test:true});
+    try { const res=await call("/api/profile-save",{id:p?p.id:"",name:q("name").value.trim(),ru:srv("ru"),eu:srv("eu"),ex:srv("ex"),test:true});
       await loadProfiles(); toast("Профиль сохранён"); openProfile(res.profile.id); }
     catch(e){ er.textContent=e.message; er.classList.add("on"); } finally { b.disabled=false; b.textContent="Проверить и сохранить"; } };
   q("delete").onclick=()=>confirmBox("Удалить профиль «"+p.name+"»?","Удаляется только запись в этой программе (данные для входа). Сами серверы и пользователи VPN не затрагиваются. Резервные копии в папке «Документы» останутся.","Удалить профиль", async()=>{
