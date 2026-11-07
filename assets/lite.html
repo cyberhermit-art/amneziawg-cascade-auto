@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<!-- Copyright (c) 2026 AACH · SPDX-License-Identifier: MIT · AmneziaWG Cascade Lite -->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AmneziaWG Cascade Lite</title>
+<style>
+:root{
+  --bg:#f4f5f7; --card:#fff; --ink:#1b1f24; --muted:#5f6b7a; --line:#dfe3e8; --line2:#eef0f3; --field:#fff; --fline:#c9cfd8;
+  --accent:#2f6fed; --accent-h:#245bd0; --accent-ink:#2456c4; --accent-soft:#e3ebfc;
+  --ok:#1f7a45; --ok-ink:#17613a; --ok-bg:#e3f4ea; --ok-line:#b8dfc7;
+  --warn:#c27a0e; --warn-ink:#6b4105; --warn-bg:#fdf0dc; --warn-line:#f0d3a2;
+  --err:#b42d2d; --err-ink:#a32626; --err-bg:#fdf3f3; --err-line:#ecc4c4;
+  --ru:#f5c46e; --eu:#9cc8ff; --ex:#c9b8ff; --tag-ink:#1b1f24;
+  --log-bg:#0f1419; --log-ink:#d5dde6; --hover:#eef1f5; --shadow:0 8px 24px rgba(20,25,35,.14);
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#14171c; --card:#1c2027; --ink:#e7ebf0; --muted:#9aa5b4; --line:#2c323c; --line2:#262b33; --field:#14171c; --fline:#3a414c;
+    --accent:#4f86f5; --accent-h:#3f74e0; --accent-ink:#8fb1ff; --accent-soft:#1f2b45;
+    --ok:#3fae6c; --ok-ink:#8fdcae; --ok-bg:#16291f; --ok-line:#24503a;
+    --warn:#e0a03a; --warn-ink:#f2c987; --warn-bg:#2d2414; --warn-line:#5a4520;
+    --err:#d65454; --err-ink:#ff9a9a; --err-bg:#2c1a1b; --err-line:#5a2c2e; --hover:#252a33; --shadow:0 8px 24px rgba(0,0,0,.5); }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:14px/1.45 "Segoe UI",system-ui,sans-serif}
+a{color:var(--accent-ink)}
+.hidden{display:none !important}
+button,input,select,textarea{font:inherit;color:inherit}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;padding:10px 24px;border-bottom:1px solid var(--line);background:var(--card);position:relative}
+.logo{width:30px;height:30px;border-radius:8px;background:#1b1f24;display:flex;align-items:center;justify-content:center;flex:none}
+.brand{font-weight:700;font-size:15px}
+.lite{font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--accent-soft);color:var(--accent-ink)}
+.grow{flex:1}
+.lang{display:flex;border:1px solid var(--fline);border-radius:8px;overflow:hidden}
+.lang button{border:0;background:var(--card);padding:0 12px;min-height:34px;font-weight:600;color:var(--muted);cursor:pointer}
+.lang button.on{background:var(--ink);color:var(--bg)}
+.icon{width:38px;height:38px;border:1px solid var(--fline);border-radius:8px;background:var(--card);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink)}
+.menu{position:absolute;right:24px;top:54px;z-index:50;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px;display:flex;flex-direction:column;min-width:17rem}
+.menu button{display:flex;align-items:center;min-height:40px;padding:0 12px;border-radius:7px;border:0;background:none;text-align:left;cursor:pointer}
+.menu button:hover{background:var(--hover)}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+.wrap{max-width:1040px;margin:0 auto;padding:26px 24px 48px;display:flex;flex-direction:column;gap:20px}
+h1{font-size:24px;margin:0;line-height:1.25}
+h2{font-size:16px;margin:0}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 20px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-weight:600;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--accent-h)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn.ghost{background:var(--card);color:var(--ink);border-color:var(--fline)}
+.btn.ghost:hover{background:var(--hover)}
+.btn.danger{background:var(--card);color:var(--err-ink);border-color:var(--err-line)}
+.btn.dsolid{background:var(--err);border-color:var(--err);color:#fff}
+.btn.sm{min-height:34px;padding:0 12px;font-size:13px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;color:var(--tag-ink);line-height:1.4}
+.tag.ru{background:var(--ru)}.tag.eu{background:var(--eu)}.tag.ex{background:var(--ex)}
+label.l{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin:0 0 4px}
+input[type=text],input[type=password],input[type=number],select,textarea{width:100%;min-height:40px;padding:0 11px;border:1px solid var(--fline);border-radius:8px;background:var(--field)}
+textarea{padding:8px 11px;min-height:70px;font-family:Consolas,monospace;font-size:12px}
+.check{display:flex;align-items:center;gap:8px;cursor:pointer}
+.check input{width:18px;height:18px;flex:none}
+.err{display:none;background:var(--err-bg);border:1px solid var(--err-line);color:var(--err-ink);border-radius:9px;padding:10px 14px;white-space:pre-wrap}
+.err.on{display:block}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.hint{display:flex;gap:10px;align-items:flex-start;background:var(--accent-soft);border:1px solid transparent;border-radius:10px;padding:12px 16px}
+/* мастер */
+.wsteps{display:flex;flex-wrap:wrap;gap:8px}
+.ws{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-weight:600;color:var(--muted);font-size:13px}
+.ws i{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--hover);font-style:normal;font-size:12px}
+.ws.cur{border-color:var(--accent);color:var(--accent-ink)}.ws.cur i{background:var(--accent);color:#fff}
+.ws.done{color:var(--ink)}.ws.done i{background:var(--ok);color:#fff}
+.chain{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.node{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);min-width:7rem;text-align:center}
+.node.opt{border-style:dashed}
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(20rem,1fr));gap:16px}
+.choice{display:flex;flex-direction:column;gap:12px;text-align:left;background:var(--card);border:2px solid var(--line);border-radius:12px;padding:18px 20px;cursor:pointer}
+.choice:hover{border-color:#9db8f2}
+.choice.sel{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.radio{width:20px;height:20px;border-radius:50%;border:2px solid #8a94a3;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.choice.sel .radio{border-color:var(--accent)}
+.choice.sel .radio::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.mini{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px;border-radius:9px;background:var(--bg);font-size:12px}
+.mini b{font-weight:600;padding:3px 8px;border-radius:6px;background:var(--card);border:1px solid var(--line)}
+ul.pro{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.srvgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr));gap:16px}
+.srv{display:flex;flex-direction:column;gap:11px}
+.g2{display:grid;grid-template-columns:minmax(0,1fr) 6rem;gap:10px}
+.keyfile{display:flex;flex-direction:column;gap:6px}
+.adv{display:flex;align-items:center;gap:8px;border:0;background:none;padding:0;font-weight:600;cursor:pointer;min-height:40px}
+.verdict{display:inline-flex;align-items:center;font-weight:700;font-size:13px;padding:3px 10px;border-radius:999px}
+.verdict.ok{background:var(--ok-bg);color:var(--ok-ink)}.verdict.warn{background:var(--warn-bg);color:var(--warn-ink)}.verdict.bad{background:var(--err-bg);color:var(--err-ink)}
+.link{border:0;background:none;padding:0;font-weight:600;color:var(--accent-ink);cursor:pointer;min-height:32px}
+table{border-collapse:collapse;width:100%}
+th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--line)}
+td{padding:9px 14px;border-bottom:1px solid var(--line2);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.tscroll{overflow-x:auto}
+.tscroll table{min-width:44rem}
+.bar{height:10px;border-radius:999px;background:var(--line);overflow:hidden}
+.bar span{display:block;height:100%;width:0;background:var(--accent);border-radius:999px;transition:width .4s}
+.st{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line2)}
+.st:first-child{border-top:0}
+.st .dot{width:12px;height:12px;border-radius:50%;flex:none;background:var(--fline)}
+.st.ok .dot,.st.skip .dot{background:var(--ok)}
+.st.run .dot{background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.st.run b{color:var(--accent-ink)}
+.st.err .dot{background:var(--err)}
+.st.err b{color:var(--err-ink)}
+.st em{font-style:normal;font-size:13px;color:var(--muted);margin-left:auto;text-align:right}
+.log{margin:0;background:var(--log-bg);color:var(--log-ink);border-radius:9px;padding:12px 14px;font:12px/1.5 Consolas,monospace;white-space:pre-wrap;word-break:break-word;max-height:22rem;overflow:auto}
+.log .e{color:#ff8a8a}.log .s-RU{color:#f5c46e}.log .s-EU{color:#9cc8ff}.log .s-EX{color:#c9b8ff}.log .tm{color:#6b7785}
+.okbox{display:flex;gap:14px;align-items:flex-start;background:var(--ok-bg);border:1px solid var(--ok-line);border-radius:12px;padding:16px 20px}
+.okbox h1{color:var(--ok-ink)}
+.clients{display:grid;grid-template-columns:repeat(auto-fit,minmax(17rem,1fr));gap:16px}
+.client{display:flex;flex-direction:column;align-items:center;gap:10px}
+.qrimg{width:13rem;height:13rem;image-rendering:pixelated;background:#fff;border-radius:8px;padding:6px;cursor:zoom-in;border:1px solid var(--line)}
+.qrfull{position:fixed;inset:0;z-index:1000;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;cursor:zoom-out}
+.qrfull img{width:min(92vh,92vw);height:min(92vh,92vw);max-height:calc(100vh - 60px);image-rendering:pixelated;object-fit:contain}
+.qrfull span{color:#333;font-size:13px}
+/* управление */
+.pill{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:13px;padding:5px 12px;border-radius:999px;background:var(--hover);color:var(--muted)}
+.pill i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.pill.ok{background:var(--ok-bg);color:var(--ok-ink)}.pill.warn{background:var(--warn-bg);color:var(--warn-ink)}.pill.err{background:var(--err-bg);color:var(--err-ink)}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--line)}
+.tabs button{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;color:var(--muted);font-weight:600;border:0;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
+.tabs button:hover{color:var(--ink)}
+.tabs button.on{color:var(--accent-ink);border-bottom-color:var(--accent)}
+.ust{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+.ust i{width:8px;height:8px;border-radius:50%;background:var(--fline)}
+.ust.on i{background:var(--ok)}
+.acts{display:flex;flex-wrap:wrap;gap:6px}
+.acts button{min-height:32px;padding:0 10px;border:1px solid var(--fline);border-radius:7px;background:var(--card);font-size:13px;cursor:pointer}
+.acts button:hover{background:var(--hover)}
+.acts button.del{color:var(--err-ink);border-color:var(--err-line)}
+.banner{display:flex;gap:12px;align-items:flex-start;border-radius:12px;padding:14px 18px;border:1px solid}
+.banner.ok{background:var(--ok-bg);border-color:var(--ok-line);color:var(--ok-ink)}
+.banner.warn{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-ink)}
+.banner.err{background:var(--err-bg);border-color:var(--err-line);color:var(--err-ink)}
+.banner ul{margin:4px 0 0;padding-left:18px}
+.hnode{display:flex;flex-direction:column;gap:3px;padding:10px 14px;border-radius:10px;background:var(--card);border:1px solid var(--line);min-width:8.5rem}
+.hnode.bad{border-color:var(--warn);box-shadow:0 0 0 3px var(--warn-bg)}
+.hlink{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:var(--muted);min-width:5.5rem;flex:1 1 5.5rem;max-width:10rem}
+.hlink .ln{width:100%;height:2px;background:var(--ok)}
+.hlink .ln.bad{background:repeating-linear-gradient(90deg,var(--warn) 0 6px,transparent 6px 10px)}
+.scards{display:grid;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr));gap:14px}
+dl.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:13px}
+dl.kv dt{color:var(--muted)}dl.kv dd{margin:0;text-align:right}
+.dzone{display:flex;flex-wrap:wrap;align-items:center;gap:12px;border:1px solid var(--err-line);background:var(--err-bg);border-radius:12px;padding:14px 18px}
+/* окна */
+.overlay{position:fixed;inset:0;background:rgba(15,20,25,.5);display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;z-index:100;overflow:auto}
+.modal{background:var(--card);border-radius:14px;padding:22px 24px;width:min(32rem,100%);display:flex;flex-direction:column;gap:12px;box-shadow:0 16px 40px rgba(0,0,0,.25);position:relative}
+.modal.wide{width:min(48rem,100%)}
+.modal .x{position:absolute;right:10px;top:8px;width:36px;height:36px;border:0;background:none;font-size:22px;color:var(--muted);cursor:pointer;border-radius:8px}
+.modal .x:hover{background:var(--hover)}
+.modal h2{font-size:18px;padding-right:30px}
+.modal img.qr{width:15rem;height:15rem;align-self:center;image-rendering:pixelated;background:#fff;padding:6px;border-radius:8px;cursor:zoom-in}
+.opt{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.opt input{width:18px;height:18px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1b1f24;color:#fff;padding:10px 18px;border-radius:9px;z-index:200;max-width:min(40rem,90vw);box-shadow:var(--shadow);display:none}
+.toast.err{background:#a32626}
+.foot{max-width:1040px;margin:0 auto;padding:16px 24px 24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line)}
+.foot a,.foot button.lnk{color:inherit;background:none;border:0;padding:0;text-decoration:underline;cursor:pointer;font-size:12px}
+@media (max-width:640px){ .wrap{padding:18px 16px 40px} .top{padding:10px 16px} .menu{right:16px} }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 12h6M14 12h6M10 8l4 4-4 4"/></svg></div>
+  <span class="brand">AmneziaWG Cascade</span><span class="lite">Lite</span>
+  <span class="grow"></span>
+  <span id="profWrap" class="row hidden" style="gap:8px"><label for="profSel" class="muted" data-t="cascade"></label><select id="profSel" style="width:auto;min-width:9rem"></select></span>
+  <div class="lang" role="group" aria-label="Language"><button id="lRu">RU</button><button id="lEn">EN</button></div>
+  <button class="icon" id="menuBtn" aria-haspopup="true" aria-expanded="false" data-ta="menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  <nav class="menu hidden" id="menu">
+    <button data-m="profile" data-t="mProfile"></button>
+    <button data-m="log" data-t="mLog"></button>
+    <hr>
+    <button data-m="new" data-t="mNew"></button>
+    <button data-m="attach" data-t="mAttach"></button>
+  </nav>
+</header>
+
+<!-- ======== первый запуск ======== -->
+<main class="wrap hidden" id="vWelcome">
+  <section style="display:flex;flex-direction:column;gap:10px;max-width:46rem">
+    <h1 style="font-size:30px" data-t="wTitle"></h1>
+    <p class="muted" style="margin:0;font-size:16px" data-t="wLead"></p>
+  </section>
+  <section class="card" style="display:flex;flex-direction:column;gap:14px">
+    <div class="chain">
+      <div class="node"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg><b data-t="nDevices"></b></div>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="muted" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      <div class="node"><span class="tag ru">RU</span><b data-t="nEntry"></b><span class="muted small" data-t="nEntryNote"></span></div>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="muted" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      <div class="node opt"><span class="tag eu">EU</span><b data-t="nTransit"></b><span class="muted small" data-t="nOptional"></span></div>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="muted" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      <div class="node"><span class="tag ex">EX</span><b data-t="nExit"></b><span class="muted small" data-t="nExitNote"></span></div>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="muted" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      <div class="node"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg><b data-t="nSites"></b></div>
+    </div>
+    <p class="muted" style="margin:0" data-t="wScheme"></p>
+  </section>
+  <section class="choices">
+    <button class="card" id="wNew" style="display:flex;flex-direction:column;gap:8px;text-align:left;cursor:pointer">
+      <span style="font-size:18px;font-weight:700" data-t="wNewT"></span><span class="muted" data-t="wNewD"></span>
+      <span class="btn" style="align-self:flex-start;margin-top:6px" data-t="wNewB"></span>
+    </button>
+    <button class="card" id="wAttach" style="display:flex;flex-direction:column;gap:8px;text-align:left;cursor:pointer">
+      <span style="font-size:18px;font-weight:700" data-t="wOldT"></span><span class="muted" data-t="wOldD"></span>
+      <span class="btn ghost" style="align-self:flex-start;margin-top:6px" data-t="wOldB"></span>
+    </button>
+  </section>
+  <section style="display:flex;flex-direction:column;gap:8px">
+    <h2 data-t="needT"></h2>
+    <ul style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px"><li data-t="need1"></li><li data-t="need2"></li><li data-t="need3"></li></ul>
+  </section>
+</main>
+
+<!-- ======== мастер: схема ======== -->
+<main class="wrap hidden" id="vScheme">
+  <nav class="wsteps" data-step="1"></nav>
+  <div><h1 data-t="sTitle"></h1><p class="muted" style="margin:4px 0 0" data-t="sSub"></p></div>
+  <div class="choices">
+    <button class="choice" id="c2" aria-pressed="false">
+      <span class="row"><span class="radio"></span><span style="font-size:18px;font-weight:700" data-t="two"></span></span>
+      <span class="mini"><b data-t="dev"></b>→<b><span class="tag ru">RU</span> <span data-t="entry"></span></b>→<b><span class="tag eu">EU</span> <span data-t="exit"></span></b>→<b data-t="nSites"></b></span>
+      <ul class="pro"><li data-t="two1"></li><li data-t="two2"></li></ul>
+    </button>
+    <button class="choice" id="c3" aria-pressed="false">
+      <span class="row"><span class="radio"></span><span style="font-size:18px;font-weight:700" data-t="three"></span></span>
+      <span class="mini"><b data-t="dev"></b>→<b><span class="tag ru">RU</span> <span data-t="entry"></span></b>→<b><span class="tag eu">EU</span> <span data-t="transit"></span></b>→<b><span class="tag ex">EX</span> <span data-t="exit"></span></b>→<b data-t="nSites"></b></span>
+      <ul class="pro"><li data-t="three1"></li><li data-t="three2"></li><li data-t="three3"></li></ul>
+    </button>
+  </div>
+  <div class="hint"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:none;margin-top:1px" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span data-t="sHint"></span></div>
+  <div class="row"><button class="btn ghost" data-go="welcome" data-t="back"></button><button class="btn" data-go="servers" data-t="sNext"></button></div>
+</main>
+
+<!-- ======== мастер: серверы ======== -->
+<main class="wrap hidden" id="vServers">
+  <nav class="wsteps" data-step="2"></nav>
+  <div class="row" style="align-items:flex-end">
+    <div style="flex:1 1 24rem"><h1 data-t="fTitle"></h1><p class="muted" style="margin:4px 0 0" data-t="fSub"></p></div>
+    <span class="muted small"><span id="fScheme"></span> · <button class="link" data-go="scheme" data-t="change"></button></span>
+  </div>
+  <div class="card" style="max-width:32rem"><label class="l" for="pname" data-t="nameL"></label><input type="text" id="pname" autocomplete="off" data-tp="namePh"></div>
+  <div class="srvgrid" id="srvGrid"></div>
+  <section class="card" style="padding-top:6px;padding-bottom:8px">
+    <button class="adv" id="advBtn" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path id="advChev" d="M9 6l6 6-6 6"/></svg><span data-t="adv"></span></button>
+    <div id="advBox" class="hidden" style="padding:0 0 10px 24px;display:flex;flex-direction:column;gap:6px">
+      <label class="check"><input type="checkbox" id="compat"> <span data-t="compat"></span></label>
+      <p class="muted small" style="margin:0 0 0 26px" data-t="compatNote"></p>
+    </div>
+  </section>
+  <p class="muted small" style="margin:0" data-t="secret"></p>
+  <div class="err" id="fErr"></div>
+  <div class="row"><button class="btn ghost" data-go="scheme" data-t="back"></button><button class="btn" id="fNext" data-t="fNext"></button></div>
+</main>
+
+<!-- ======== мастер: проверка адресов ======== -->
+<main class="wrap hidden" id="vCheck">
+  <nav class="wsteps" data-step="3"></nav>
+  <div><h1 data-t="cTitle"></h1><p class="muted" style="margin:4px 0 0" data-t="cSub"></p></div>
+  <div id="chkList" style="display:flex;flex-direction:column;gap:12px"></div>
+  <p class="muted small" style="margin:0" data-t="cNote"></p>
+  <div class="err" id="cErr"></div>
+  <div class="row"><button class="btn ghost" data-go="servers" data-t="cBack"></button><button class="btn" id="cGo" data-t="cGo"></button></div>
+</main>
+
+<!-- ======== мастер: установка ======== -->
+<main class="wrap hidden" id="vProgress">
+  <nav class="wsteps" data-step="4"></nav>
+  <section class="card" style="display:flex;flex-direction:column;gap:12px">
+    <div class="row" style="align-items:baseline"><h1 style="font-size:22px" id="pTitle"></h1><span class="grow"></span><span class="muted" id="pElapsed"></span></div>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="pBar"><span></span></div>
+    <p class="muted" style="margin:0" id="pNow"></p>
+  </section>
+  <div class="err" id="pErr"></div>
+  <section class="card" id="pStages"></section>
+  <section class="card" style="padding-top:6px;padding-bottom:10px">
+    <button class="adv" id="logBtn" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path id="logChev" d="M9 6l6 6-6 6"/></svg><span data-t="pLog"></span></button>
+    <pre class="log hidden" id="pLog"></pre>
+  </section>
+  <div class="row">
+    <button class="btn ghost" id="pStop" data-t="pStop"></button>
+    <button class="btn ghost hidden" id="pBack" data-t="pBack"></button>
+    <span class="muted" style="flex:1 1 20rem" id="pClose" data-t="pClose"></span>
+  </div>
+</main>
+
+<!-- ======== мастер: готово ======== -->
+<main class="wrap hidden" id="vDone">
+  <nav class="wsteps" data-step="6"></nav>
+  <section class="okbox">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="flex:none;color:var(--ok-ink)" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>
+    <div style="display:flex;flex-direction:column;gap:6px"><h1 style="font-size:22px" data-t="dTitle"></h1><p style="margin:0" data-t="dHow"></p><p style="margin:0" id="dVerify"></p><p style="margin:0" id="dProto"></p></div>
+  </section>
+  <div class="clients" id="dClients"></div>
+  <p class="muted" style="margin:0" id="dFolder"></p>
+  <div class="row"><button class="btn" id="dManage" data-t="dManage"></button></div>
+</main>
+
+<!-- ======== управление ======== -->
+<main class="wrap hidden" id="vManage">
+  <div class="row">
+    <div style="display:flex;flex-direction:column;gap:2px"><h1 style="font-size:22px" id="mTitle"></h1><span class="muted small" id="mSub"></span></div>
+    <span class="grow"></span><span class="pill" id="mPill"><i></i><span></span></span>
+  </div>
+  <nav class="tabs" id="mTabs"><button data-tab="users" data-t="tUsers"></button><button data-tab="servers" data-t="tServers"></button><button data-tab="backups" data-t="tBackups"></button></nav>
+
+  <section id="tab-users" style="display:flex;flex-direction:column;gap:14px">
+    <div class="row"><button class="btn" id="uAdd" data-t="uAdd"></button><input type="text" id="uSearch" style="width:14rem" data-tp="uSearch" data-ta="uSearch"><button class="btn ghost sm" id="uRefresh" data-t="refresh"></button><span class="grow"></span><span class="muted" id="uInfo"></span></div>
+    <div class="card tscroll" style="padding:0"><table id="uTable"><thead><tr><th data-t="cName"></th><th data-t="cStatus"></th><th data-t="cToday"></th><th data-t="cTotal"></th><th data-t="cExp"></th><th></th></tr></thead><tbody></tbody></table></div>
+    <p class="muted small" style="margin:0" data-t="uNote"></p>
+  </section>
+
+  <section id="tab-servers" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+    <div id="sBanner"></div>
+    <section class="card chain" id="sChain"></section>
+    <div class="scards" id="sCards"></div>
+    <div class="row"><button class="btn ghost" id="sIPChk" data-t="sCheck"></button><button class="btn ghost" id="sRestart" data-t="sRestart"></button><button class="btn ghost" id="sRefresh" data-t="refresh"></button><span class="grow"></span><span class="muted small" id="sInfo"></span></div>
+    <div id="sFull"></div>
+    <div class="dzone"><div style="flex:1 1 24rem;display:flex;flex-direction:column;gap:2px"><b data-t="delAll"></b><span class="muted small" id="delAllText"></span></div><button class="btn dsolid" id="sDelAll" data-t="delAllB"></button></div>
+  </section>
+
+  <section id="tab-backups" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+    <p style="margin:0;max-width:46rem" data-t="bIntro"></p>
+    <div class="row"><button class="btn" id="bCreate" data-t="bCreate"></button><button class="btn ghost" id="bOpen" data-t="bOpen"></button></div>
+    <div class="card tscroll" style="padding:0"><table id="bTable"><thead><tr><th data-t="bDate"></th><th data-t="bWhat"></th><th data-t="bSize"></th><th></th></tr></thead><tbody></tbody></table></div>
+  </section>
+</main>
+
+<!-- ======== профиль ======== -->
+<main class="wrap hidden" id="vProfile">
+  <div><h1 id="pfTitle"></h1><p class="muted" style="margin:4px 0 0" id="pfSub"></p></div>
+  <div class="card" style="max-width:32rem"><label class="l" for="pfName" data-t="nameL"></label><input type="text" id="pfName" autocomplete="off"></div>
+  <div class="srvgrid" id="pfGrid"></div>
+  <p class="muted small" style="margin:0" data-t="secret"></p>
+  <div class="err" id="pfErr"></div>
+  <div class="row"><button class="btn" id="pfSave" data-t="pfSave"></button><button class="btn ghost" id="pfCancel" data-t="cancel"></button><span class="grow"></span><button class="btn danger hidden" id="pfDel" data-t="pfDel"></button></div>
+</main>
+
+<footer class="foot">AmneziaWG Cascade Lite __VERSION__ · © 2026 AACH · <span data-t="footer"></span> · <button class="lnk" id="openLog" data-t="mLog"></button> · <a href="https://github.com/bivlked/amneziawg-installer" target="_blank" rel="noopener">amneziawg-installer</a></footer>
+
+<div class="overlay hidden" id="ov"><div class="modal" id="mdl" role="dialog" aria-modal="true"><button class="x" id="mdlX" aria-label="×">×</button><div id="mdlBody" style="display:flex;flex-direction:column;gap:12px"></div></div></div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+"use strict";
+const TOKEN = "__TOKEN__";
+// ================= тексты =================
+const I18N = {
+ru: {
+  cascade:"Каскад", menu:"Меню", mProfile:"Профиль и доступ к серверам", mLog:"Журнал действий", mNew:"Новый каскад", mAttach:"Подключить существующий",
+  footer:"код написан Claude (Anthropic) · лицензия MIT",
+  wTitle:"Свой VPN-каскад на ваших серверах",
+  wLead:"Программа сама установит AmneziaWG на серверы, свяжет их в каскад и выдаст QR-коды для телефонов и компьютеров. Российские сайты открываются напрямую, остальные — через зарубежный сервер.",
+  nDevices:"Ваши устройства", nEntry:"Вход", nEntryNote:"сервер в России", nTransit:"Транзит", nOptional:"по желанию", nExit:"Выход", nExitNote:"сервер за границей", nSites:"Сайты",
+  wScheme:"Транзит — третий сервер для тех, кому важно, чтобы адрес выхода можно было сменить, не трогая ключи пользователей.",
+  wNewT:"Новый каскад", wNewD:"У вас есть 2 или 3 чистых VPS — программа установит всё за 30–60 минут.", wNewB:"Начать установку",
+  wOldT:"Каскад уже установлен", wOldD:"Подключите работающий каскад, чтобы управлять пользователями и серверами.", wOldB:"Подключить существующий",
+  needT:"Что понадобится", need1:"2 или 3 VPS на Ubuntu 24.04 или Debian 13: один в России, остальные за границей.", need2:"Пароль root или SSH-ключ от каждого сервера.", need3:"30–60 минут: серверы несколько раз перезагрузятся, программа подождёт сама.",
+  s1:"Схема", s2:"Серверы", s3:"Проверка", s4:"Установка", s5:"Готово",
+  sTitle:"Сколько серверов в каскаде?", sSub:"Поменять это потом можно только переустановкой. Управлять одинаково просто в обоих случаях.",
+  dev:"Устройства", entry:"вход", transit:"транзит", exit:"выход",
+  two:"Два сервера", two1:"Проще и дешевле: один сервер в России, один за границей.", two2:"Если адрес выхода заблокируют, программа перенастроит сервер RU на новый адрес — ключи пользователей останутся прежними.",
+  three:"Три сервера", three1:"Сайты видят только адрес выхода, адрес транзита нигде не светится.", three2:"Если адрес выхода попал в чёрные списки — меняется только выход, сервер RU и ключи пользователей не трогаются.", three3:"Нужен третий VPS, задержка чуть больше.",
+  sHint:"Не уверены — берите два сервера: их проще и дешевле обслуживать.", back:"Назад", sNext:"Далее: данные серверов",
+  fTitle:"Данные для входа на серверы", fSub:"Нужны адрес и пароль root (или SSH-ключ). Больше ничего вводить не придётся.", change:"изменить",
+  nameL:"Название каскада", namePh:"например: Дом",
+  ip:"IP-адрес", port:"Порт SSH", login:"Логин", pass:"Пароль root", passKeep:"сохранён — оставьте пустым", useKey:"Вход по SSH-ключу", keyFile:"Файл приватного ключа", keyPass:"Пароль ключа (если есть)",
+  keyOk:"Ключ загружен: ", keyBad:"Это не похоже на приватный ключ (нужен файл без .pub)", keySaved:"Используется сохранённый ключ",
+  ruT:"Вход — сервер в России", ruH:"К нему подключаются телефоны и компьютеры. Российские сайты открываются через него напрямую.",
+  euT2:"Выход — сервер за границей", euH2:"Через него идёт остальной трафик. Сайты видят его адрес.",
+  euT3:"Транзит — сервер за границей", euH3:"Передаёт трафик от сервера RU к выходу. Его адрес никто не видит.",
+  exT:"Выход — сервер за границей", exH:"Сайты видят его адрес. Лучше у другого хостера, чем транзит.",
+  adv:"Дополнительно", compat:"Совместимость с роутерами и старыми приложениями (протокол 2.0)",
+  compatNote:"Включайте, только если будете подключать роутер на стоковой прошивке (Keenetic, GL.iNet) или приложение, которое давно не обновлялось. Иначе ставится протокол 3.1 — его сложнее распознать. Поменять потом можно только переустановкой.",
+  secret:"Пароли и ключи хранятся только на этом компьютере в зашифрованном виде.", fNext:"Проверить адреса и продолжить",
+  eHost:"Укажите IP-адрес сервера: ", eCred:"Укажите пароль или SSH-ключ для сервера: ", eSame:"У серверов должны быть разные адреса.",
+  cTitle:"Проверка адресов серверов", cSub:"Как эти адреса видят сервисы в интернете. Установке это не мешает — просто полезно знать заранее.",
+  cNote:"Проверка — по базам RIPE, MaxMind, DB-IP и данным ipinfo.io. Базы обновляются раз в несколько недель.",
+  cBack:"Изменить адреса", cGo:"Установить", cChecking:"Проверяю адреса…", cFail:"Не удалось проверить адреса — установку можно начать и так.",
+  ok:"Подходит", okNote:"Подходит, с примечанием", warn:"Есть замечание", bad:"Ошибка", more:"Подробнее", less:"Скрыть подробности",
+  rRU:"Вход", rTR:"Транзит", rEU:"Выход", rEX:"Выход", russia:"Россия", notRussia:"не Россия", noData:"нет данных", owner:"Сеть и владелец", place:"Страна и город",
+  vRU:"Адрес везде считается российским — российские сервисы увидят Россию.", vTR:"Сайты этот адрес не видят, поэтому его страна не важна.", vEU:"Адрес зарубежный — сайты увидят заграницу.",
+  pTitle:"Идёт установка", pTitleOk:"Установка завершена", pTitleErr:"Установка остановилась", pLog:"Подробный журнал", pStop:"Остановить", pBack:"Назад к данным серверов",
+  pClose:"Окно можно закрыть: установка на серверах продолжится, а программа подхватит её при следующем запуске.",
+  pElapsed:"Прошло {0}", pLeft:" · осталось примерно {0}", pNow:"Сейчас: {0}.", pNowWait:"Готовлюсь…",
+  pErrHint:"Исправьте причину и нажмите «Назад к данным серверов» → «Установить» ещё раз: уже сделанные шаги повторяться не будут.",
+  pStopQ:"Остановить установку? То, что уже запущено на сервере, доработает само. Потом можно запустить установку снова — она продолжит с того же места.",
+  stConnect:"Проверка доступа к серверам", stUpdate:"Обновление системы", stInstall:"Установка AmneziaWG", stTransit:"Туннель транзит → выход", stCascade:"Связка серверов в каскад", stClients:"Файлы подключения",
+  stOk:"готово", stRun:"выполняется…", stWait:"ожидание", stErr:"ошибка", stSkip:"пропущено",
+  nowConnect:"проверяю доступ к серверам", nowUpdate:"обновляю систему на сервере {0}", nowInstall:"устанавливаю AmneziaWG на сервер {0}", nowTransit:"связываю транзит с выходом", nowCascade:"связываю серверы в каскад", nowClients:"готовлю файлы подключения",
+  srvRU:"RU", srvEU:"EU", srvTR:"EU (транзит)", srvEX:"EX (выход)",
+  dTitle:"Каскад готов", dHow:"Установите на устройство приложение AmneziaVPN или AmneziaWG и отсканируйте QR-код (или откройте файл .conf).",
+  dVerify:"Проверка: ifconfig.me должен показать адрес выхода ({0}), а yandex.ru/internet — адрес сервера RU ({1}).",
+  dProto31:"Протокол AmneziaWG 3.1: нужно свежее приложение — AmneziaVPN 5.0.1.5 и новее, AmneziaWG 3.1 и новее, WG Tunnel.",
+  dProto20:"Протокол AmneziaWG 2.0: подходит любое приложение AmneziaVPN или AmneziaWG и роутеры с поддержкой AmneziaWG.",
+  dFolder:"Файлы подключения сохранены в папку: {0}", openFolder:"Открыть папку", dManage:"Перейти к управлению",
+  qrHint:"Нажмите на код, чтобы открыть его во весь экран", dlConf:"Скачать .conf", dlQr:"Скачать QR", copyUri:"Копировать vpn://", copied:"Скопировано", qrFull:"QR во весь экран", qrClose:"нажмите или Esc, чтобы закрыть", noQr:"QR-код на сервере не найден.",
+  tUsers:"Пользователи", tServers:"Серверы", tBackups:"Резервные копии", refresh:"Обновить",
+  pillCheck:"проверяю…", pillOk:"Каскад работает", pillWarn:"Есть проблема", pillErr:"Сервер RU недоступен", pillFail:"Ошибка проверки",
+  uAdd:"Добавить пользователя", uSearch:"Поиск по имени", uInfo:"Пользователей: {0} · в сети: {1}", uLoading:"Загружаю список…", uEmpty:"Пользователей пока нет — добавьте первого", uNone:"Никого не найдено",
+  cName:"Имя", cStatus:"Статус", cToday:"Сегодня", cTotal:"Всего", cExp:"Срок",
+  uOnline:"в сети", uSeen:"был {0}", uNever:"не подключался", uForever:"бессрочно", uExpired:"истёк", uHours:"{0} ч", uDays:"{0} дн",
+  uNote:"Трафик — загрузка и отдача вместе. «Всего» — с момента создания пользователя или последнего перезапуска VPN.",
+  aQr:"QR и ключ", aEdit:"Изменить", aDel:"Удалить",
+  addT:"Новый пользователь", addName:"Имя (латиницей, без пробелов)", addExp:"Срок действия", e0:"Бессрочно", e1:"1 день", e7:"7 дней", e30:"30 дней", e90:"90 дней", e365:"1 год",
+  addNote:"После создания откроется QR-код — его можно сразу отсканировать на устройстве.", create:"Создать", cancel:"Отмена", close:"Закрыть",
+  nameBad:"Имя: только латинские буквы, цифры, _ и - (до 32 символов)", nameDup:"Пользователь с таким именем уже есть", created:"Пользователь создан. Передайте ему QR-код или файл.",
+  editT:"Пользователь {0}", newName:"Новое имя", renNote:"Ключ при переименовании не меняется — на устройстве ничего переделывать не нужно.", saveName:"Сохранить имя", renamed:"Переименовано: {0} → {1}",
+  reT:"Перевыпустить ключ", reNote:"Будет создан новый ключ и QR-код, старый сразу перестанет работать. Используйте, если ключ мог попасть к посторонним.", reB:"Перевыпустить ключ",
+  reQ:"Перевыпустить ключ «{0}»?", reQText:"Старый ключ перестанет работать сразу. Пользователю нужно будет заново отсканировать QR-код.", reDone:"Новый ключ готов. Старый больше не работает.",
+  delQ:"Удалить пользователя «{0}»?", delText:"Его ключ перестанет работать сразу. Отменить это нельзя — только создать пользователя заново с новым ключом.", deleted:"Пользователь {0} удалён",
+  working:"Выполняю…", loading:"Загружаю…",
+  bOk:"Всё в порядке", bOkText:"VPN работает, туннели между серверами на связи, российские сайты идут напрямую.", bWarn:"Есть проблемы", bErr:"Нет связи с сервером RU",
+  chUsers:"Пользователи", chOnline:"в сети: {0}", chEntry:"Вход", chTransit:"Транзит", chExit:"Выход",
+  hsAgo:"связь {0}", hsNone:"нет связи", hsDown:"нет связи {0}",
+  kAddr:"Адрес", kUp:"Работает", kLoad:"Нагрузка", kProto:"Протокол", kUpd:"Обновления", kSSH:"SSH с этого ПК", kTunnel:"Туннель",
+  updNone:"не требуются", updReboot:"ждут перезагрузки", sshOk:"доступен, {0} мс", sshBad:"не отвечает",
+  srvRUcard:"Вход (Россия)", srvEUcard2:"Выход", srvEUcard3:"Транзит", srvEXcard:"Выход",
+  aUpdate:"Обновить пакеты", aReboot:"Перезагрузить", aIp:"Сменить IP…", aUninst:"Удалить VPN…",
+  sCheck:"Проверить адреса серверов", sRestart:"Перезапустить VPN", sInfo:"Проверено в {0} · обновляется каждые 30 с",
+  restartQ:"Перезапустить VPN?", restartText:"Службы VPN и туннеля перезапустятся. У пользователей связь пропадёт на несколько секунд и восстановится сама.", restartB:"Перезапустить", restarted:"VPN перезапущен",
+  routingT:"Доступно обновление маршрутизации", routingText:"Свежий список российских сетей (три базы вместо двух) — больше российских сайтов пойдут напрямую. Пользователей это не затронет.", routingB:"Обновить маршрутизацию", routingDone:"Маршрутизация обновлена: российских сетей — {0}",
+  fullNote:"На этом каскаде включены функции полной версии программы: {0}. Lite их не показывает и не меняет — они продолжают работать. Настроить их можно в полной версии.",
+  ffdns:"«Домены РФ»", ffeu:"«Через EU»", ffexcl:"«Мимо VPN»",
+  delAll:"Удалить весь каскад", delAllText2:"VPN будет удалён с обоих серверов (сначала RU, затем EU). Сами VPS останутся.", delAllText3:"VPN будет удалён со всех трёх серверов (RU, транзит, выход). Сами VPS останутся.", delAllB:"Удалить каскад…",
+  pr_ru:"{0}. Если хостер сменил адрес сервера — нажмите «Сменить IP…» в карточке сервера RU.",
+  pr_awg0:"VPN-сервер на RU не запущен — попробуйте «Перезапустить VPN».",
+  pr_awg1:"Туннель от сервера RU не запущен — попробуйте «Перезапустить VPN».",
+  pr_tun:"Сервер {0} не отвечает в туннеле: он выключен, завис или сменил адрес. Перезагрузите его или укажите новый адрес («Сменить IP…»).",
+  pr_routing:"Раздельная маршрутизация не работает — весь трафик идёт через заграницу. Попробуйте «Перезапустить VPN».",
+  pr_nets:"Список российских сетей пуст — весь трафик идёт через заграницу. Нажмите «Обновить маршрутизацию».",
+  pr_proto:"На серверах разные версии протокола (RU — {0}, другой сервер — {1}): туннель между ними не работает. Нужна переустановка зарубежного сервера.",
+  pr_trErr:"Не удалось проверить транзит: {0}",
+  pr_trConf:"На транзите не настроен туннель к выходу — трафик уходит в интернет с транзита. Запустите установку ещё раз с теми же данными.",
+  pr_trSvc:"Туннель транзит → выход не запущен. Перезагрузите транзит.",
+  pr_trTun:"Выход не отвечает: сервер выключен, завис или сменил адрес. Перезагрузите его или укажите новый адрес («Сменить IP…» в карточке выхода).",
+  pr_trRule:"На транзите нет правила «трафик от RU — к выходу». Перезагрузите транзит.",
+  pr_ssh:"Сервер {0} не отвечает по SSH с этого компьютера (это мешает только обслуживанию, не VPN).",
+  ipT:"Сервер {0} сменил IP-адрес", ipNow:"Сейчас в профиле: {0}",
+  ipRU:"Программа подключится к серверу по новому адресу (с теми же логином и паролем), проверит, что это тот же сервер, и перевыпустит файлы подключения всех пользователей. Ключи, имена и сроки не меняются, но на каждом устройстве подключение нужно импортировать заново.",
+  ipEU:"Программа пропишет новый адрес в туннеле на сервере RU и проверит связь. Если по новому адресу ответит не ваш сервер (ключи не совпадут), прежние настройки вернутся. Пользователям ничего делать не нужно.",
+  ipEX:"Программа пропишет новый адрес в туннеле на транзите и проверит связь. Если по новому адресу ответит не ваш выход, прежние настройки вернутся. Серверу RU и пользователям ничего делать не нужно.",
+  ipNew:"Новый IP-адрес", ipGo:"Сменить адрес", ipBusyRU:"Проверяю сервер и перевыпускаю файлы…", ipBusy:"Перенастраиваю туннель и проверяю связь…",
+  ipForceRU:"Я уверен, что это тот же сервер — продолжить", ipForce:"Сохранить новый адрес, хотя сервер пока не ответил", ipKey:" Ключ SSH сервера: {0}",
+  ipDoneRU:"Адрес сервера RU изменён", ipDoneRUText:"{0} → {1}. Файлы подключения перевыпущены: {2}.", ipBadRU:"Не удалось обновить: {0} — перевыпустите их ключи во вкладке «Пользователи».",
+  ipDevices:"Что сделать на устройствах: заново импортировать подключение — новый QR-код или файл .conf (вкладка «Пользователи» → «QR и ключ»). Можно и просто поменять адрес сервера в настройках подключения в приложении.",
+  ipSaved:"Новые файлы всех пользователей сохранены в папку: {0}", ipDone:"Адрес сервера {0} изменён: {1}. Туннель работает.", ipDoneWait:"Адрес сервера {0} сохранён: {1}. Туннель заработает, когда сервер станет доступен.", done:"Готово",
+  rbQ:"Перезагрузить сервер {0}?", rbRU:"VPN будет недоступен 1–3 минуты. Программа дождётся, пока сервер снова станет доступен.", rbOther:"Зарубежный трафик будет недоступен 1–3 минуты.", rbB:"Перезагрузить", rbGo:"Сервер {0} перезагружается…", rbBack:"Сервер {0} снова на связи", rbLate:"Сервер {0} пока не отвечает — проверьте позже",
+  updT:"Обновить пакеты на сервере {0}", updText:"Будут выполнены apt update и apt upgrade: пакеты только обновляются, ничего не удаляется. VPN продолжает работать. На медленном канале это может занять до часа.",
+  updRb:"Перезагрузить сервер автоматически, если обновления этого потребуют", updRbNote:"Если не отмечать — после обновления программа скажет, нужна ли перезагрузка.", updGo:"Начать обновление",
+  unT:"Удалить VPN с сервера {0}", unAllT:"Удалить весь каскад",
+  unText:"С сервера будут удалены AmneziaWG, все пользователи и их ключи, настройки каскада и статистика. Подключения на устройствах перестанут работать. Сам VPS и его система останутся.",
+  unAllText:"Со всех серверов каскада будут удалены AmneziaWG, все пользователи и их ключи, настройки каскада и статистика. Подключения на устройствах перестанут работать. Сами VPS останутся.",
+  unNoteRU:"Зарубежные серверы останутся с установленным AmneziaWG — их можно удалить отдельно.", unNoteOther:"Сервер RU продолжит работать, но зарубежный трафик пропадёт, пока не будет нового сервера.",
+  unBak:"Сначала создать резервную копию на этом компьютере", unWord:"Для подтверждения введите {0}", unAllWord:"УДАЛИТЬ", unGo:"Удалить", unBakBusy:"Создаю резервную копию…",
+  unBakFail:"{0}. Удаление отменено — снимите галочку резервной копии, если она не нужна.",
+  tkUpd:"Обновление пакетов", tkUn:"Удаление VPN", tkUnAll:"Удаление каскада", tkStart:"Запускаю…", tkUpdRun:"Обновляю пакеты на сервере {0}…", tkUnRun:"Удаляю VPN с сервера {0}…",
+  tkOffline:"Сервер {0} сейчас недоступен (перезагрузка?) — жду…", tkOffLong:"Сервер {0} не отвечает больше 20 минут", tkFail:"Сервер {0}: задача завершилась с ошибкой{1} — подробности в журнале", tkCode:" (код {0})",
+  tkHide:"Свернуть", tkNote:"Задача выполняется на сервере: окно можно закрыть, она не прервётся. Чтобы снова увидеть журнал, нажмите ту же кнопку ещё раз.",
+  tkUpdNeed:"Обновление завершено. Нужна перезагрузка сервера {0}, чтобы применить обновления ядра", tkUpdRb:"Обновление завершено, сервер перезагружается", tkUpdOk:"Обновление завершено, перезагрузка не нужна",
+  tkRbNow:"Перезагрузить {0} сейчас", tkUnAllDone:"VPN удалён с серверов. Каскад больше не существует.", tkUnOne:"VPN удалён с сервера {0}.", tkDelProf:"Удалить профиль из программы", profDeleted:"Профиль удалён", tkServer:"Сервер {0} ({1})",
+  chkT:"Проверка адресов серверов", chkBusy:"Проверяю по базам RIPE, MaxMind, DB-IP и ipinfo.io…", gotIt:"Понятно",
+  bIntro:"Копия хранит настройки всех серверов, пользователей и их ключи. Если сервер придётся переустановить, из копии всё вернётся — пользователям ничего менять не придётся.",
+  bCreate:"Создать резервную копию", bOpen:"Открыть папку с копиями", bDate:"Дата", bWhat:"Серверы", bSize:"Размер", bRestore:"Восстановить…", bEmpty:"Резервных копий пока нет", bBusy:"Создаю копию…", bDone:"Резервная копия создана",
+  rsT:"Восстановить из копии от {0}", rsText:"Текущие настройки и пользователи на выбранных серверах заменятся теми, что были в копии. Пользователи, добавленные после неё, перестанут работать.",
+  rsWhat:"Что восстановить", rsAll:"Все серверы из копии", rsRU:"Только вход (RU)", rsEU2:"Только выход (EU)", rsEU3:"Только транзит (EU)", rsEX:"Только выход", rsConfirm:"Я понимаю, что текущие настройки будут заменены", rsGo:"Восстановить", rsBusy:"Восстанавливаю…", rsDone:"Восстановлено: {0}",
+  pfNew:"Подключить существующий каскад", pfNewSub:"Каскад уже установлен (этой программой или вручную по инструкции). Укажите данные для входа — программа проверит подключение и сохранит профиль.",
+  pfEdit:"Профиль и доступ к серверам", pfEditSub:"Название и данные для входа. Пустой пароль — оставить прежний.",
+  pfEUnote:"Нужен для обслуживания и резервных копий. Можно оставить пустым.", pfEXnote:"Только для каскада из трёх серверов. Иначе оставьте пустым.",
+  pfSave:"Проверить и сохранить", pfBusy:"Проверяю подключение…", pfSaved:"Профиль сохранён", pfDel:"Удалить профиль",
+  pfDelQ:"Удалить профиль «{0}»?", pfDelText:"Удаляется только запись в этой программе (данные для входа). Сами серверы и пользователи VPN не затрагиваются, резервные копии останутся.",
+  noApp:"программа не отвечает — возможно, она закрыта", logEmpty:"журнал ещё пуст",
+  agoNow:"только что", agoMin:"{0} мин назад", agoH:"{0} ч назад", agoD:"{0} дн назад", durMin:"{0} мин", durH:"{0} ч {1} мин", upD:"{0} дн {1} ч", upH:"{0} ч {1} мин",
+  units:["Б","КБ","МБ","ГБ","ТБ"]
+},
+en: {
+  cascade:"Cascade", menu:"Menu", mProfile:"Profile and server access", mLog:"Activity log", mNew:"New cascade", mAttach:"Attach existing",
+  footer:"code written by Claude (Anthropic) · MIT license",
+  wTitle:"Your own VPN cascade on your servers",
+  wLead:"The app installs AmneziaWG on your servers, links them into a cascade and gives you QR codes for phones and computers. Russian sites open directly, everything else goes through the foreign server.",
+  nDevices:"Your devices", nEntry:"Entry", nEntryNote:"server in Russia", nTransit:"Transit", nOptional:"optional", nExit:"Exit", nExitNote:"server abroad", nSites:"Websites",
+  wScheme:"Transit is a third server for when you want to replace the exit address without touching user keys.",
+  wNewT:"New cascade", wNewD:"You have 2 or 3 clean VPS — the app sets everything up in 30–60 minutes.", wNewB:"Start setup",
+  wOldT:"Cascade already installed", wOldD:"Attach a running cascade to manage users and servers.", wOldB:"Attach existing",
+  needT:"What you need", need1:"2 or 3 VPS running Ubuntu 24.04 or Debian 13: one in Russia, the rest abroad.", need2:"The root password or an SSH key for each server.", need3:"30–60 minutes: servers reboot a few times, the app waits on its own.",
+  s1:"Layout", s2:"Servers", s3:"Check", s4:"Install", s5:"Done",
+  sTitle:"How many servers in the cascade?", sSub:"Changing this later means reinstalling. Both options are equally easy to manage.",
+  dev:"Devices", entry:"entry", transit:"transit", exit:"exit",
+  two:"Two servers", two1:"Simpler and cheaper: one server in Russia, one abroad.", two2:"If the exit address gets blocked, the app points the RU server at the new address — user keys stay the same.",
+  three:"Three servers", three1:"Websites only see the exit address; the transit address is never exposed.", three2:"If the exit address gets blacklisted, only the exit is replaced — the RU server and user keys are untouched.", three3:"Needs a third VPS, slightly higher latency.",
+  sHint:"Not sure? Pick two servers: they are simpler and cheaper to run.", back:"Back", sNext:"Next: server details",
+  fTitle:"Server login details", fSub:"Just the address and root password (or an SSH key). Nothing else to fill in.", change:"change",
+  nameL:"Cascade name", namePh:"e.g. Home",
+  ip:"IP address", port:"SSH port", login:"Login", pass:"Root password", passKeep:"saved — leave empty", useKey:"Log in with an SSH key", keyFile:"Private key file", keyPass:"Key passphrase (if any)",
+  keyOk:"Key loaded: ", keyBad:"This does not look like a private key (use the file without .pub)", keySaved:"Using the saved key",
+  ruT:"Entry — server in Russia", ruH:"Phones and computers connect to it. Russian sites open through it directly.",
+  euT2:"Exit — server abroad", euH2:"All other traffic goes through it. Websites see its address.",
+  euT3:"Transit — server abroad", euH3:"Passes traffic from the RU server to the exit. Nobody sees its address.",
+  exT:"Exit — server abroad", exH:"Websites see its address. Better at a different host than the transit.",
+  adv:"Advanced", compat:"Compatibility with routers and older apps (protocol 2.0)",
+  compatNote:"Turn on only if you will connect a router with stock firmware (Keenetic, GL.iNet) or an app that has not been updated for a long time. Otherwise protocol 3.1 is used — it is harder to detect. Changing it later means reinstalling.",
+  secret:"Passwords and keys are stored only on this computer, encrypted.", fNext:"Check addresses and continue",
+  eHost:"Enter the IP address of the server: ", eCred:"Enter a password or SSH key for the server: ", eSame:"The servers must have different addresses.",
+  cTitle:"Server address check", cSub:"How online services see these addresses. This does not block the installation — it is just good to know.",
+  cNote:"Checked against RIPE, MaxMind, DB-IP and ipinfo.io data. The databases update every few weeks.",
+  cBack:"Change addresses", cGo:"Install", cChecking:"Checking addresses…", cFail:"Could not check the addresses — you can start the installation anyway.",
+  ok:"Looks good", okNote:"Looks good, with a note", warn:"Heads-up", bad:"Error", more:"Details", less:"Hide details",
+  rRU:"Entry", rTR:"Transit", rEU:"Exit", rEX:"Exit", russia:"Russia", notRussia:"not Russia", noData:"no data", owner:"Network and owner", place:"Country and city",
+  vRU:"The address is Russian in every database — Russian services will see Russia.", vTR:"Websites never see this address, so its country does not matter.", vEU:"The address is foreign — websites will see a foreign location.",
+  pTitle:"Installing", pTitleOk:"Installation finished", pTitleErr:"Installation stopped", pLog:"Detailed log", pStop:"Stop", pBack:"Back to server details",
+  pClose:"You can close the window: setup keeps running on the servers, and the app picks it up on the next start.",
+  pElapsed:"{0} elapsed", pLeft:" · about {0} left", pNow:"Now: {0}.", pNowWait:"Getting ready…",
+  pErrHint:"Fix the cause and press “Back to server details” → “Install” again: steps already done will not be repeated.",
+  pStopQ:"Stop the installation? Whatever is already running on the server will finish on its own. You can start the installation again later — it continues where it left off.",
+  stConnect:"Checking access to servers", stUpdate:"System update", stInstall:"AmneziaWG install", stTransit:"Transit → exit tunnel", stCascade:"Linking servers into a cascade", stClients:"Connection files",
+  stOk:"done", stRun:"running…", stWait:"waiting", stErr:"error", stSkip:"skipped",
+  nowConnect:"checking access to the servers", nowUpdate:"updating the system on server {0}", nowInstall:"installing AmneziaWG on server {0}", nowTransit:"linking the transit to the exit", nowCascade:"linking the servers into a cascade", nowClients:"preparing connection files",
+  srvRU:"RU", srvEU:"EU", srvTR:"EU (transit)", srvEX:"EX (exit)",
+  dTitle:"Your cascade is ready", dHow:"Install AmneziaVPN or AmneziaWG on the device and scan the QR code (or open the .conf file).",
+  dVerify:"Check: ifconfig.me should show the exit address ({0}), and yandex.ru/internet the RU server address ({1}).",
+  dProto31:"Protocol AmneziaWG 3.1: needs a recent app — AmneziaVPN 5.0.1.5 or newer, AmneziaWG 3.1 or newer, WG Tunnel.",
+  dProto20:"Protocol AmneziaWG 2.0: any AmneziaVPN or AmneziaWG app works, as do routers with AmneziaWG support.",
+  dFolder:"Connection files are saved to: {0}", openFolder:"Open folder", dManage:"Go to management",
+  qrHint:"Click the code to open it full screen", dlConf:"Download .conf", dlQr:"Download QR", copyUri:"Copy vpn://", copied:"Copied", qrFull:"QR full screen", qrClose:"click or press Esc to close", noQr:"QR code not found on the server.",
+  tUsers:"Users", tServers:"Servers", tBackups:"Backups", refresh:"Refresh",
+  pillCheck:"checking…", pillOk:"Cascade is working", pillWarn:"Problem found", pillErr:"RU server unreachable", pillFail:"Check failed",
+  uAdd:"Add user", uSearch:"Search by name", uInfo:"Users: {0} · online: {1}", uLoading:"Loading…", uEmpty:"No users yet — add the first one", uNone:"Nobody found",
+  cName:"Name", cStatus:"Status", cToday:"Today", cTotal:"Total", cExp:"Expires",
+  uOnline:"online", uSeen:"seen {0}", uNever:"never connected", uForever:"never", uExpired:"expired", uHours:"{0} h", uDays:"{0} days",
+  uNote:"Traffic is download and upload combined. “Total” counts since the user was created or the VPN was last restarted.",
+  aQr:"QR & key", aEdit:"Edit", aDel:"Delete",
+  addT:"New user", addName:"Name (Latin letters, no spaces)", addExp:"Valid for", e0:"No limit", e1:"1 day", e7:"7 days", e30:"30 days", e90:"90 days", e365:"1 year",
+  addNote:"The QR code opens right after creation — scan it on the device straight away.", create:"Create", cancel:"Cancel", close:"Close",
+  nameBad:"Name: Latin letters, digits, _ and - only (up to 32 characters)", nameDup:"A user with this name already exists", created:"User created. Give them the QR code or the file.",
+  editT:"User {0}", newName:"New name", renNote:"Renaming does not change the key — nothing to redo on the device.", saveName:"Save name", renamed:"Renamed: {0} → {1}",
+  reT:"Re-issue key", reNote:"A new key and QR code are created, and the old key stops working at once. Use it if the key may have leaked.", reB:"Re-issue key",
+  reQ:"Re-issue the key for “{0}”?", reQText:"The old key stops working immediately. The user will need to scan the new QR code.", reDone:"The new key is ready. The old one no longer works.",
+  delQ:"Delete user “{0}”?", delText:"Their key stops working immediately. This cannot be undone — only a new user with a new key can be created.", deleted:"User {0} deleted",
+  working:"Working…", loading:"Loading…",
+  bOk:"All good", bOkText:"VPN is running, tunnels between servers are up, Russian sites go direct.", bWarn:"Problems found", bErr:"No connection to the RU server",
+  chUsers:"Users", chOnline:"online: {0}", chEntry:"Entry", chTransit:"Transit", chExit:"Exit",
+  hsAgo:"seen {0}", hsNone:"no link", hsDown:"down for {0}",
+  kAddr:"Address", kUp:"Uptime", kLoad:"Load", kProto:"Protocol", kUpd:"Updates", kSSH:"SSH from this PC", kTunnel:"Tunnel",
+  updNone:"none needed", updReboot:"waiting for reboot", sshOk:"reachable, {0} ms", sshBad:"not responding",
+  srvRUcard:"Entry (Russia)", srvEUcard2:"Exit", srvEUcard3:"Transit", srvEXcard:"Exit",
+  aUpdate:"Update packages", aReboot:"Reboot", aIp:"Change IP…", aUninst:"Remove VPN…",
+  sCheck:"Check server addresses", sRestart:"Restart VPN", sInfo:"Checked at {0} · refreshes every 30 s",
+  restartQ:"Restart VPN?", restartText:"The VPN and tunnel services restart. Users lose connection for a few seconds, then it comes back on its own.", restartB:"Restart", restarted:"VPN restarted",
+  routingT:"Routing update available", routingText:"A fresh list of Russian networks (three databases instead of two) — more Russian sites go direct. Users are not affected.", routingB:"Update routing", routingDone:"Routing updated: {0} Russian networks",
+  fullNote:"Full-edition features are enabled on this cascade: {0}. Lite does not show or change them — they keep working. Configure them in the full edition.",
+  ffdns:"Russian domains", ffeu:"Via EU", ffexcl:"Bypass VPN",
+  delAll:"Remove the whole cascade", delAllText2:"VPN is removed from both servers (RU first, then EU). The VPS themselves stay.", delAllText3:"VPN is removed from all three servers (RU, transit, exit). The VPS themselves stay.", delAllB:"Remove cascade…",
+  pr_ru:"{0}. If the host changed the server address, press “Change IP…” on the RU server card.",
+  pr_awg0:"The VPN server on RU is not running — try “Restart VPN”.",
+  pr_awg1:"The tunnel from the RU server is not running — try “Restart VPN”.",
+  pr_tun:"The {0} server does not answer in the tunnel: it is off, hung, or its address changed. Reboot it or enter the new address (“Change IP…”).",
+  pr_routing:"Split routing is not working — all traffic goes abroad. Try “Restart VPN”.",
+  pr_nets:"The list of Russian networks is empty — all traffic goes abroad. Press “Update routing”.",
+  pr_proto:"The servers run different protocol versions (RU — {0}, the other server — {1}): the tunnel between them does not work. The foreign server needs reinstalling.",
+  pr_trErr:"Could not check the transit: {0}",
+  pr_trConf:"The transit has no tunnel to the exit — traffic leaves from the transit. Run the installation again with the same details.",
+  pr_trSvc:"The transit → exit tunnel is not running. Reboot the transit.",
+  pr_trTun:"The exit is not responding: the server is off, hung, or its address changed. Reboot it or enter the new address (“Change IP…” on the exit card).",
+  pr_trRule:"The transit is missing the “traffic from RU goes to the exit” rule. Reboot the transit.",
+  pr_ssh:"The {0} server does not answer SSH from this computer (this only affects maintenance, not the VPN).",
+  ipT:"The {0} server changed its IP address", ipNow:"Currently in the profile: {0}",
+  ipRU:"The app connects to the server at the new address (same login and password), checks that it is the same server, and re-creates every user's connection files. Keys, names and expiry stay the same, but each device needs to import the connection again.",
+  ipEU:"The app writes the new address into the tunnel on the RU server and checks the link. If a different server answers at the new address (keys do not match), the old settings are restored. Users do not need to do anything.",
+  ipEX:"The app writes the new address into the tunnel on the transit and checks the link. If a different server answers, the old settings are restored. The RU server and users do not need to do anything.",
+  ipNew:"New IP address", ipGo:"Change address", ipBusyRU:"Checking the server and re-creating files…", ipBusy:"Reconfiguring the tunnel and checking the link…",
+  ipForceRU:"I am sure this is the same server — continue", ipForce:"Save the new address even though the server has not answered yet", ipKey:" Server SSH key: {0}",
+  ipDoneRU:"RU server address changed", ipDoneRUText:"{0} → {1}. Connection files re-created: {2}.", ipBadRU:"Could not update: {0} — re-issue their keys on the Users tab.",
+  ipDevices:"On devices: import the connection again — the new QR code or .conf file (Users tab → “QR & key”). Alternatively, change the server address in the app's connection settings.",
+  ipSaved:"New files for all users are saved to: {0}", ipDone:"The {0} server address changed to {1}. The tunnel works.", ipDoneWait:"The {0} server address saved: {1}. The tunnel will come up once the server is reachable.", done:"Done",
+  rbQ:"Reboot the {0} server?", rbRU:"VPN will be unavailable for 1–3 minutes. The app waits until the server is back.", rbOther:"Foreign traffic will be unavailable for 1–3 minutes.", rbB:"Reboot", rbGo:"The {0} server is rebooting…", rbBack:"The {0} server is back online", rbLate:"The {0} server is not answering yet — check later",
+  updT:"Update packages on the {0} server", updText:"Runs apt update and apt upgrade: packages are only updated, nothing is removed. VPN keeps working. On a slow link this can take up to an hour.",
+  updRb:"Reboot the server automatically if the updates require it", updRbNote:"If unchecked, the app tells you after the update whether a reboot is needed.", updGo:"Start update",
+  unT:"Remove VPN from the {0} server", unAllT:"Remove the whole cascade",
+  unText:"AmneziaWG, all users and their keys, cascade settings and statistics are removed from the server. Connections on devices stop working. The VPS and its system stay.",
+  unAllText:"AmneziaWG, all users and their keys, cascade settings and statistics are removed from every server of the cascade. Connections on devices stop working. The VPS themselves stay.",
+  unNoteRU:"The foreign servers keep AmneziaWG installed — remove it from them separately.", unNoteOther:"The RU server keeps working, but foreign traffic stops until there is a new server.",
+  unBak:"Create a backup on this computer first", unWord:"Type {0} to confirm", unAllWord:"DELETE", unGo:"Remove", unBakBusy:"Creating a backup…",
+  unBakFail:"{0}. Removal cancelled — uncheck the backup option if you do not need it.",
+  tkUpd:"Package update", tkUn:"VPN removal", tkUnAll:"Cascade removal", tkStart:"Starting…", tkUpdRun:"Updating packages on the {0} server…", tkUnRun:"Removing VPN from the {0} server…",
+  tkOffline:"The {0} server is unavailable right now (rebooting?) — waiting…", tkOffLong:"The {0} server has not answered for over 20 minutes", tkFail:"{0} server: the task failed{1} — see the log", tkCode:" (code {0})",
+  tkHide:"Hide", tkNote:"The task runs on the server: you can close this window, it will not be interrupted. Press the same button again to see the log.",
+  tkUpdNeed:"Update finished. The {0} server needs a reboot to apply kernel updates", tkUpdRb:"Update finished, the server is rebooting", tkUpdOk:"Update finished, no reboot needed",
+  tkRbNow:"Reboot {0} now", tkUnAllDone:"VPN removed from the servers. The cascade no longer exists.", tkUnOne:"VPN removed from the {0} server.", tkDelProf:"Remove the profile from the app", profDeleted:"Profile removed", tkServer:"{0} server ({1})",
+  chkT:"Server address check", chkBusy:"Checking against RIPE, MaxMind, DB-IP and ipinfo.io…", gotIt:"Got it",
+  bIntro:"A backup holds the settings of every server, the users and their keys. If a server has to be reinstalled, everything comes back from the backup — users do not need to change anything.",
+  bCreate:"Create backup", bOpen:"Open backups folder", bDate:"Date", bWhat:"Servers", bSize:"Size", bRestore:"Restore…", bEmpty:"No backups yet", bBusy:"Creating a backup…", bDone:"Backup created",
+  rsT:"Restore the backup from {0}", rsText:"Current settings and users on the selected servers are replaced with those in the backup. Users added after it will stop working.",
+  rsWhat:"What to restore", rsAll:"All servers in the backup", rsRU:"Entry only (RU)", rsEU2:"Exit only (EU)", rsEU3:"Transit only (EU)", rsEX:"Exit only", rsConfirm:"I understand the current settings will be replaced", rsGo:"Restore", rsBusy:"Restoring…", rsDone:"Restored: {0}",
+  pfNew:"Attach an existing cascade", pfNewSub:"The cascade is already installed (by this app or manually). Enter the login details — the app checks the connection and saves the profile.",
+  pfEdit:"Profile and server access", pfEditSub:"Name and login details. Leave the password empty to keep the saved one.",
+  pfEUnote:"Needed for maintenance and backups. Can be left empty.", pfEXnote:"Only for a three-server cascade. Otherwise leave empty.",
+  pfSave:"Check and save", pfBusy:"Checking the connection…", pfSaved:"Profile saved", pfDel:"Remove profile",
+  pfDelQ:"Remove profile “{0}”?", pfDelText:"Only the record in this app (login details) is removed. The servers and VPN users are not affected; backups stay.",
+  noApp:"the app is not responding — it may have been closed", logEmpty:"the log is empty",
+  agoNow:"just now", agoMin:"{0} min ago", agoH:"{0} h ago", agoD:"{0} days ago", durMin:"{0} min", durH:"{0} h {1} min", upD:"{0} d {1} h", upH:"{0} h {1} min",
+  units:["B","KB","MB","GB","TB"]
+}};
+// Сообщения от программы (ошибки, замечания проверки адресов) приходят на русском.
+// В английском интерфейсе переводим известные фразы; редкие остаются как есть.
+const TR_EN = [
+  [/^ОШИБКА: /, "ERROR: "],
+  [/сервер RU \(([^)]*)\): /g, "RU server ($1): "],
+  [/транзит \(сервер EU\): /g, "transit (EU server): "],
+  [/сервер (RU|EU|EX): /g, "$1 server: "],
+  [/сервер-выход: /g, "exit server: "],
+  [/транзит: /g, "transit: "],
+  [/неверный логин, пароль или ключ/g, "wrong login, password or key"],
+  [/порт SSH закрыт \(сервер ещё загружается или указан не тот порт\)/g, "SSH port is closed (the server is still booting or the port is wrong)"],
+  [/сервер не отвечает \(проверьте IP-адрес\)/g, "the server is not responding (check the IP address)"],
+  [/сервер не отвечает (\d+) мин: /g, "the server has not responded for $1 min: "],
+  [/ключ сервера изменился \(([^,]*), ожидался ([^)]*)\) — подключение остановлено из соображений безопасности/g, "the server key changed ($1, expected $2) — connection stopped for security reasons"],
+  [/связь с сервером прервалась, попробуйте ещё раз/g, "the connection to the server dropped, please try again"],
+  [/соединение потеряно/g, "connection lost"], [/сервер не ответил вовремя/g, "the server did not answer in time"],
+  [/команда выполнялась слишком долго/g, "the command took too long"],
+  [/не удалось прочитать SSH-ключ: /g, "could not read the SSH key: "], [/не указан ни пароль, ни ключ/g, "neither a password nor a key is set"],
+  [/нужен вход под root/g, "root login is required"],
+  [/не указан IP-адрес сервера (\S+)/g, "the IP address of the $1 server is missing"],
+  [/неверный порт SSH у сервера (\S+)/g, "invalid SSH port for the $1 server"],
+  [/для сервера (\S+) укажите пароль или SSH-ключ/g, "enter a password or SSH key for the $1 server"],
+  [/у серверов RU и EU одинаковый адрес — нужны два разных сервера/g, "RU and EU have the same address — two different servers are needed"],
+  [/у сервера-выхода тот же адрес, что у RU или транзита — нужны три разных сервера/g, "the exit has the same address as RU or the transit — three different servers are needed"],
+  [/у сервера-выхода тот же адрес, что у другого сервера/g, "the exit has the same address as another server"],
+  [/установка уже идёт/g, "an installation is already running"],
+  [/остановлено пользователем\..*$/g, "stopped by the user. Whatever is already running on the server will finish on its own — start the installation again with the same details and it continues where it left off"],
+  [/на сервере нет systemd \(похоже на контейнер OpenVZ\/LXC\) — AmneziaWG на таком VPS не установить/g, "the server has no systemd (looks like an OpenVZ/LXC container) — AmneziaWG cannot be installed on such a VPS"],
+  [/система "?([^"]*)"? не поддерживается — нужна Ubuntu 24\.04 \/ 26\.04 или Debian 13/g, "system $1 is not supported — Ubuntu 24.04 / 26.04 or Debian 13 is required"],
+  [/apt занят больше 20 минут \(процессы: ([^)]*)\)\..*$/g, "apt has been busy for over 20 minutes (processes: $1). Wait for them to finish or stop them on the server, then start the installation again"],
+  [/обновление системы зависает.*$/g, "the system update hangs (probably a package mirror is not responding — see the last log lines). Change the mirror on the server and try again"],
+  [/обновление системы не удалось.*$/g, "the system update failed — see the log. Try again later"],
+  [/обновление идёт дольше 3 часов.*$/g, "the update has been running for over 3 hours — stopped it. Start the installation again"],
+  [/установщик остановился с ошибкой.*$/g, "the installer stopped with an error — see the last log lines (full log on the server: /root/awg/install_amneziawg.log)"],
+  [/установщик перезапускался слишком много раз.*$/g, "the installer restarted too many times — see the log"],
+  [/установка идёт дольше 2 часов.*$/g, "the installation has been running for over 2 hours — check the server manually"],
+  [/не удалось определить версию протокола AmneziaWG/g, "could not detect the AmneziaWG protocol version"],
+  [/на серверах разные версии протокола.*$/g, "the servers run different protocol versions, so the tunnel between them will not work. Remove VPN from the foreign server (Servers tab) and run the installation again"],
+  [/настройка каскада завершилась с ошибкой — причина в логе выше/g, "cascade setup failed — see the log"],
+  [/настройка транзита завершилась с ошибкой — причина в логе выше/g, "transit setup failed — see the log"],
+  [/не удалось создать клиента (\S+)/g, "could not create client $1"],
+  [/не удалось скачать установщик.*?: /g, "could not download the installer either on the server or on this computer: "],
+  [/не удалось записать (\S+): /g, "could not write $1: "],
+  [/не удалось запустить (задачу|обновление|установщик): /g, "could not start the task: "],
+  [/не удалось перезагрузить: /g, "could not reboot: "],
+  [/не удалось подключиться к (\S+) по SSH: (.*)\. Логин и пароль \(или ключ\) берутся из профиля/g, "could not connect to $1 over SSH: $2. The login and password (or key) come from the profile"],
+  [/на сервере (\S+) нет AmneziaWG — это не сервер RU этого каскада \(ключ SSH сервера: ([^)]*)\)/g, "$1 has no AmneziaWG — it is not the RU server of this cascade (server SSH key: $2)"],
+  [/в профиле нет данных для входа на сервер (\S+) — добавьте их во вкладке «Профиль»/g, "the profile has no login details for the $1 server — add them in “Profile and server access”"],
+  [/в профиле нет сервера-выхода/g, "the profile has no exit server"],
+  [/введите новый IPv4-адрес сервера, например ([\d.]+)/g, "enter the new IPv4 address of the server, e.g. $1"],
+  [/это не публичный адрес — нужен внешний IP сервера, который выдал хостер/g, "this is not a public address — enter the external IP given by the host"],
+  [/этот адрес уже указан для сервера-выхода/g, "this address is already set for the exit"], [/этот адрес уже указан для сервера (\S+)/g, "this address is already set for the $1 server"],
+  [/это адрес сервера-выхода/g, "this is the exit server address"], [/это адрес сервера (\S+)/g, "this is the $1 server address"], [/это адрес другого сервера каскада/g, "this is the address of another server of the cascade"],
+  [/на сервере RU нет настроенного каскада \(туннеля awg1\)/g, "the RU server has no cascade tunnel (awg1)"],
+  [/на транзите \(сервер EU\) нет туннеля к выходу/g, "the transit (EU server) has no tunnel to the exit"],
+  [/По адресу (\S+) сервер EU каскада не ответил.*$/g, "The cascade EU server did not answer at $1: the tunnel did not come up, so the old settings were restored. Check the address and that the server is on. If it is still booting, you can save the new address anyway."],
+  [/По адресу (\S+) сервер-выход каскада не ответил.*$/g, "The cascade exit did not answer at $1: the tunnel did not come up, so the old settings were restored. Check the address and that the server is on. If it is still booting, you can save the new address anyway."],
+  [/туннель перенастроен, но профиль не сохранился: (.*) — укажите новый адрес во вкладке «Профиль»/g, "the tunnel was reconfigured but the profile was not saved: $1 — enter the new address in “Profile and server access”"],
+  [/На самом сервере-выходе адрес не обновлён.*$/g, "The address was not updated on the exit server itself (no SSH connection) — this does not affect the cascade."],
+  [/На самом сервере EU адрес не обновлён.*$/g, "The address was not updated on the EU server itself (no SSH connection) — this does not affect the cascade."],
+  [/имя: только латинские буквы, цифры, _ и - \(до 32 символов\)/g, "name: Latin letters, digits, _ and - only (up to 32 characters)"],
+  [/новое имя совпадает со старым/g, "the new name is the same as the old one"], [/неверный срок действия/g, "invalid expiry"],
+  [/файл клиента (\S+) не найден на сервере/g, "client file $1 not found on the server"],
+  [/не удалось (добавить|удалить|переименовать) клиента?: /g, "could not $1 the client: "],
+  [/не удалось получить список клиентов: /g, "could not get the client list: "],
+  [/не удалось перегенерировать файлы подключения: /g, "could not re-create connection files: "],
+  [/старый ключ удалён, но новый выпустить не удалось — добавьте клиента (\S+) заново: /g, "the old key was removed but a new one could not be issued — add client $1 again: "],
+  [/перезапуск не удался: /g, "restart failed: "],
+  [/резервная копия RU не создана: /g, "RU backup was not created: "], [/архив не создан: /g, "archive not created: "],
+  [/Сервер EU не сохранён: в профиле нет данных для входа на него/g, "EU server not saved: the profile has no login details for it"],
+  [/Сервер-выход не сохранён: в профиле нет данных для входа на него/g, "Exit server not saved: the profile has no login details for it"],
+  [/Сервер EU не сохранён: /g, "EU server not saved: "], [/Сервер-выход не сохранён: /g, "Exit server not saved: "],
+  [/в копии нет архива сервера (\S+)/g, "the backup has no archive for the $1 server"], [/восстановление не удалось: /g, "restore failed: "],
+  [/нечего восстанавливать/g, "nothing to restore"], [/неверное имя резервной копии/g, "invalid backup name"],
+  [/профиль не найден/g, "profile not found"], [/укажите IP сервера RU/g, "enter the RU server IP"], [/укажите пароль или ключ для сервера RU/g, "enter a password or key for the RU server"],
+  [/к серверу RU подключились, но AmneziaWG на нём не найден/g, "connected to the RU server, but AmneziaWG was not found on it"],
+  [/неверные данные( формы)?/g, "invalid data"], [/неверный запрос/g, "invalid request"], [/неожиданный ответ сервера/g, "unexpected server response"],
+  [/не удалось найти адрес (\S+)/g, "could not resolve $1"], [/у (\S+) нет IPv4-адреса/g, "$1 has no IPv4 address"], [/нужен IPv4-адрес/g, "an IPv4 address is required"],
+  [/это не публичный адрес — нужен внешний IPv4 сервера/g, "this is not a public address — the server's external IPv4 is needed"],
+  [/база недоступна/g, "database unavailable"],
+  [/Реестр RIPE \(ipdeny\)/g, "RIPE registry (ipdeny)"],
+  [/В статистике RIPE \(список ipdeny\) адрес числится.*$/g, "In the RIPE statistics (ipdeny list) the address belongs to a registrar in another country — the block was issued abroad and the host got part of it. Services detect the country with geolocation databases (MaxMind, DB-IP), where the address is Russian, so this does not matter."],
+  [/Адрес не считается российским в базах: (.*?)\. Сервисы.*$/g, "The address is not Russian in: $1. Services using these databases will see a foreign location — bad for the RU entry. Better pick a server whose address is Russian everywhere."],
+  [/ipinfo\.io считает адрес расположенным в стране (\S+), а не в России\./g, "ipinfo.io places the address in $1, not in Russia."],
+  [/Адрес считается российским, но для транзита это не важно.*$/g, "The address is Russian, but that does not matter for a transit — websites see the exit address."],
+  [/Адрес считается российским в базах: (.*?)\. Для выхода.*$/g, "The address is Russian in: $1. The exit needs a foreign address — otherwise websites will see Russia."],
+  [/ipinfo\.io считает адрес российским — для выхода нужен зарубежный\./g, "ipinfo.io considers the address Russian — the exit needs a foreign one."],
+  [/Хостер Aeza: .*$/g, "Host Aeza: its networks are widely used for VPNs, and some Russian services (e.g. Wildberries) block such addresses."],
+  [/Не удалось проверить: базы недоступны с этого компьютера\./g, "Could not check: the databases are unreachable from this computer."],
+  [/Вход \(RU\) и выход в одной сети \((\S+)\):.*$/g, "Entry (RU) and exit are in the same network ($1): if services distrust this host, neither address helps. Better use different hosts."],
+  [/Транзит и выход у одного хостера \((\S+)\):.*$/g, "Transit and exit are at the same host ($1): if the host blocks or suspends both, the cascade stops. Different hosts are more reliable."],
+  [/журнал ещё пуст/g, "the log is empty"],
+];
+// ================= общее =================
+const $ = id => document.getElementById(id);
+const store = { get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch(e){ return d; } },
+                set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} } };
+let lang = store.get("awgcl-lang", (navigator.language || "ru").toLowerCase().startsWith("ru") ? "ru" : "en");
+function T(k, ...a){ let s = (I18N[lang] && I18N[lang][k]); if (s === undefined) s = I18N.ru[k]; if (s === undefined) return k;
+  return typeof s === "string" ? s.replace(/\{(\d)\}/g, (_, i) => a[+i] ?? "") : s; }
+function tr(s){ s = String(s ?? ""); if (lang !== "en") return s; for (const [re, to] of TR_EN) s = s.replace(re, to); return s; }
+function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function fmtBytes(n){ n = +n || 0; const u = T("units"); let i = 0; while (n >= 1024 && i < u.length-1){ n /= 1024; i++; } return (i ? n.toFixed(n < 10 ? 2 : n < 100 ? 1 : 0) : n) + " " + u[i]; }
+function fmtAgo(sec){ if (sec < 60) return T("agoNow"); if (sec < 3600) return T("agoMin", Math.floor(sec/60)); if (sec < 86400) return T("agoH", Math.floor(sec/3600)); return T("agoD", Math.floor(sec/86400)); }
+function fmtDur(sec){ const m = Math.floor(sec/60); return m < 60 ? T("durMin", m) : T("durH", Math.floor(m/60), m%60); }
+function fmtUp(s){ const d = Math.floor(s/86400), h = Math.floor(s%86400/3600), m = Math.floor(s%3600/60); return d ? T("upD", d, h) : T("upH", h, m); }
+async function post(url, body){
+  const r = await fetch(url, {method:"POST", headers:{"X-Token":TOKEN, "Content-Type":"application/json"}, body: JSON.stringify(body || {})});
+  return r.json();
+}
+async function call(url, body){
+  let r; try { r = await post(url, body); } catch(e){ throw new Error(T("noApp")); }
+  if (r && r.error) throw new Error(tr(r.error)); return r;
+}
+function toast(msg, isErr){ const t = $("toast"); t.textContent = msg; t.className = "toast" + (isErr ? " err" : ""); t.style.display = "block";
+  clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", isErr ? 7000 : 3500); }
+const spin = txt => '<span class="spin"></span> ' + esc(txt);
+const nameOk = n => /^[A-Za-z0-9_-]{1,32}$/.test(n);
+
+// ---- окна ----
+function modal(html, wide){ $("mdl").classList.toggle("wide", !!wide); $("mdlBody").innerHTML = html; $("ov").classList.remove("hidden");
+  const f = $("mdlBody").querySelector("input[type=text],input[type=password]"); if (f) setTimeout(() => f.focus(), 30); }
+function closeModal(){ $("ov").classList.add("hidden"); $("mdlBody").textContent = ""; }
+$("mdlX").onclick = closeModal;
+$("ov").onclick = e => { if (e.target.id === "ov") closeModal(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("ov").classList.contains("hidden") && !document.querySelector(".qrfull")) closeModal(); });
+const KEEP = {};
+function confirmBox(title, text, okText, fn, danger){
+  modal('<h2>'+esc(title)+'</h2><p style="margin:0">'+esc(text)+'</p><div class="err" id="cfErr"></div><div class="row"><button class="btn '+(danger?"dsolid":"")+'" id="cfOk">'+esc(okText)+'</button><button class="btn ghost" id="cfNo">'+esc(T("cancel"))+'</button></div>');
+  $("cfNo").onclick = closeModal;
+  $("cfOk").onclick = async () => { const b = $("cfOk"); b.disabled = true; b.innerHTML = spin(T("working"));
+    try { if ((await fn()) !== KEEP) closeModal(); } catch(e){ $("cfErr").textContent = e.message; $("cfErr").classList.add("on"); b.disabled = false; b.textContent = okText; } };
+}
+function b64ToBlob(b64, type){ const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], {type}); }
+function saveBlob(name, blob){ const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+function qrFull(png, name){
+  const d = document.createElement("div"); d.className = "qrfull";
+  d.innerHTML = '<img alt="QR" src="data:image/png;base64,'+png+'"><span>'+esc(name||"")+' — '+esc(T("qrClose"))+'</span>';
+  const close = () => { d.remove(); document.removeEventListener("keydown", onKey, true); };
+  const onKey = e => { if (e.key === "Escape"){ e.stopPropagation(); close(); } };
+  d.onclick = close; document.addEventListener("keydown", onKey, true); document.body.appendChild(d);
+}
+async function copyText(text, btn){
+  try { await navigator.clipboard.writeText(text); } catch(_){ const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+  if (btn){ const o = btn.textContent; btn.textContent = T("copied"); setTimeout(() => btn.textContent = o, 2000); }
+}
+function keyModal(c, note){
+  modal('<h2>'+esc(c.name)+'</h2>'+(note?'<p class="muted" style="margin:0">'+esc(note)+'</p>':'')+
+    (c.png?'<img class="qr" alt="QR" src="data:image/png;base64,'+c.png+'">':'<p class="muted">'+esc(T("noQr"))+'</p>')+
+    '<p class="muted small" style="margin:0;text-align:center">'+esc(T("dHow"))+'</p>'+
+    '<div class="row" style="justify-content:center">'+(c.png?'<button class="btn sm" id="kFull">'+esc(T("qrFull"))+'</button>':'')+
+    '<button class="btn sm" id="kConf">'+esc(T("dlConf"))+'</button>'+(c.png?'<button class="btn ghost sm" id="kPng">'+esc(T("dlQr"))+'</button>':'')+
+    (c.vpnuri?'<button class="btn ghost sm" id="kUri">'+esc(T("copyUri"))+'</button>':'')+'</div>');
+  $("kConf").onclick = () => saveBlob(c.name+".conf", new Blob([c.conf], {type:"text/plain"}));
+  if (c.png){ $("kPng").onclick = () => saveBlob(c.name+"-qr.png", b64ToBlob(c.png, "image/png"));
+    $("kFull").onclick = () => qrFull(c.png, c.name); $("mdlBody").querySelector("img.qr").onclick = () => qrFull(c.png, c.name); }
+  if (c.vpnuri) $("kUri").onclick = e => copyText(c.vpnuri, e.target);
+}
+
+// ================= язык =================
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach(el => el.textContent = T(el.dataset.t));
+  document.querySelectorAll("[data-tp]").forEach(el => el.placeholder = T(el.dataset.tp));
+  document.querySelectorAll("[data-ta]").forEach(el => el.setAttribute("aria-label", T(el.dataset.ta)));
+  $("lRu").classList.toggle("on", lang === "ru"); $("lEn").classList.toggle("on", lang === "en");
+  renderSteps(); updateServersForm(); renderScheme();
+  if (curView === "check" && lastCheck) renderCheck(lastCheck);
+  if (curView === "progress") renderProgress();
+  if (curView === "done" && lastResult) renderDone(lastResult);
+  if (curView === "manage" && cur){ openHeader(); renderClients(); renderStatus(lastStatus); renderBackups(); }
+  if (curView === "profile") renderProfileTexts();
+}
+$("lRu").onclick = () => { lang = "ru"; store.set("awgcl-lang", lang); applyLang(); };
+$("lEn").onclick = () => { lang = "en"; store.set("awgcl-lang", lang); applyLang(); };
+
+// ================= экраны =================
+const VIEWS = ["welcome","scheme","servers","check","progress","done","manage","profile"];
+let curView = "";
+function view(v){
+  curView = v;
+  for (const x of VIEWS) $("v" + x[0].toUpperCase() + x.slice(1)).classList.toggle("hidden", x !== v);
+  if (v !== "manage") stopTimers();
+  $("menu").classList.add("hidden"); $("menuBtn").setAttribute("aria-expanded", "false");
+  window.scrollTo(0, 0);
+}
+function renderSteps(){
+  document.querySelectorAll(".wsteps").forEach(nav => {
+    const cur = +nav.dataset.step;
+    nav.innerHTML = [1,2,3,4,5].map(i => '<span class="ws'+(i < cur ? " done" : i === cur ? " cur" : "")+'"'+(i === cur ? ' aria-current="step"' : '')+'><i>'+(i < cur ? "✓" : i)+'</i>'+esc(T("s"+i))+'</span>').join("");
+  });
+}
+document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { const g = b.dataset.go; if (g === "servers") saveForm(); view(g); });
+
+// ---- меню ----
+$("menuBtn").onclick = e => { e.stopPropagation(); const m = $("menu"); m.classList.toggle("hidden"); $("menuBtn").setAttribute("aria-expanded", String(!m.classList.contains("hidden"))); };
+document.addEventListener("click", e => { if (!e.target.closest("#menu")) { $("menu").classList.add("hidden"); $("menuBtn").setAttribute("aria-expanded","false"); } });
+$("menu").onclick = e => { const b = e.target.closest("button[data-m]"); if (!b) return; $("menu").classList.add("hidden");
+  const m = b.dataset.m;
+  if (m === "profile") { if (cur) openProfileForm(cur); else openProfileForm(null); }
+  if (m === "log") openLog();
+  if (m === "new") startWizard();
+  if (m === "attach") openProfileForm(null);
+};
+async function openLog(){ try { await call("/api/open-log"); } catch(e){ toast(e.message, true); } }
+$("openLog").onclick = openLog;
+$("wNew").onclick = () => startWizard();
+$("wAttach").onclick = () => openProfileForm(null);
+function startWizard(){ if (installing) { view("progress"); return; } view("scheme"); }
+
+// ================= мастер: схема и серверы =================
+const ROLES = ["ru","eu","ex"];
+const keys = {ru:"", eu:"", ex:""};
+let wiz = Object.assign({n: 2, name: "", compat: false, f: {}}, store.get("awgcl-form", {}));
+function renderScheme(){
+  for (const n of [2,3]){ const c = $("c"+n); c.classList.toggle("sel", wiz.n === n); c.setAttribute("aria-pressed", String(wiz.n === n)); }
+}
+$("c2").onclick = () => { wiz.n = 2; renderScheme(); updateServersForm(); };
+$("c3").onclick = () => { wiz.n = 3; renderScheme(); updateServersForm(); };
+
+// Карточка сервера: одна разметка для мастера (prefix "") и профиля (prefix "pf-").
+function srvCard(px, r, withKeyToggle){
+  const tag = r.toUpperCase();
+  const ph = {ru:"185.10.20.30", eu:"91.200.10.20", ex:"45.90.10.20"}[r];
+  return '<section class="card srv" id="'+px+'card-'+r+'">'+
+    '<h2 class="row" style="gap:8px;flex-wrap:nowrap;align-items:flex-start"><span class="tag '+r+'" style="margin-top:2px">'+tag+'</span><span id="'+px+r+'-title"></span></h2>'+
+    '<p class="muted small" style="margin:0" id="'+px+r+'-hint"></p>'+
+    '<div class="g2"><div><label class="l" for="'+px+r+'-host" data-t="ip"></label><input type="text" id="'+px+r+'-host" placeholder="'+ph+'" autocomplete="off" spellcheck="false"></div>'+
+    '<div><label class="l" for="'+px+r+'-port" data-t="port"></label><input type="number" id="'+px+r+'-port" value="22" min="1" max="65535"></div></div>'+
+    '<div><label class="l" for="'+px+r+'-user" data-t="login"></label><input type="text" id="'+px+r+'-user" value="root" autocomplete="off"></div>'+
+    '<div id="'+px+r+'-passbox"><label class="l" for="'+px+r+'-pass" data-t="pass"></label><input type="password" id="'+px+r+'-pass" autocomplete="new-password"></div>'+
+    (withKeyToggle ? '<label class="check"><input type="checkbox" id="'+px+r+'-usekey"> <span data-t="useKey"></span></label>' : '')+
+    '<div class="keyfile'+(withKeyToggle?' hidden':'')+'" id="'+px+r+'-keybox"><label class="l" for="'+px+r+'-keyfile" data-t="keyFile"></label><input type="file" id="'+px+r+'-keyfile"><span class="muted small" id="'+px+r+'-keyname"></span>'+
+    '<label class="l" for="'+px+r+'-keypass" data-t="keyPass"></label><input type="password" id="'+px+r+'-keypass" autocomplete="new-password"></div>'+
+    '</section>';
+}
+function bindKeyFile(px, r, store2){
+  $(px+r+"-keyfile").onchange = async e => { const f = e.target.files[0]; if (!f) return; store2[r] = await f.text();
+    $(px+r+"-keyname").textContent = store2[r].includes("PRIVATE KEY") ? T("keyOk") + f.name : T("keyBad"); };
+}
+$("srvGrid").innerHTML = ROLES.map(r => srvCard("", r, true)).join("");
+for (const r of ROLES){
+  bindKeyFile("", r, keys);
+  $(r+"-usekey").onchange = e => { $(r+"-keybox").classList.toggle("hidden", !e.target.checked); $(r+"-passbox").classList.toggle("hidden", e.target.checked); };
+  const f = wiz.f[r] || {}; if (f.host) $(r+"-host").value = f.host; if (f.port) $(r+"-port").value = f.port; if (f.user) $(r+"-user").value = f.user;
+}
+$("pname").value = wiz.name || ""; $("compat").checked = !!wiz.compat;
+$("advBtn").onclick = () => { const open = $("advBox").classList.toggle("hidden") === false; $("advBtn").setAttribute("aria-expanded", String(open)); $("advChev").setAttribute("d", open ? "M6 9l6 6 6-6" : "M9 6l6 6-6 6"); };
+if (wiz.compat) $("advBtn").click();
+function updateServersForm(){
+  const three = wiz.n === 3;
+  $("card-ex").classList.toggle("hidden", !three);
+  $("ru-title").textContent = T("ruT"); $("ru-hint").textContent = T("ruH");
+  $("eu-title").textContent = T(three ? "euT3" : "euT2"); $("eu-hint").textContent = T(three ? "euH3" : "euH2");
+  $("ex-title").textContent = T("exT"); $("ex-hint").textContent = T("exH");
+  $("fScheme").textContent = T(three ? "three" : "two");
+}
+function saveForm(){
+  wiz.name = $("pname").value.trim(); wiz.compat = $("compat").checked;
+  for (const r of ROLES) wiz.f[r] = {host: $(r+"-host").value.trim(), port: $(r+"-port").value, user: $(r+"-user").value.trim()};
+  store.set("awgcl-form", {n: wiz.n, name: wiz.name, compat: wiz.compat, f: wiz.f});
+}
+function srvOf(r){
+  const useKey = $(r+"-usekey").checked;
+  return {host: $(r+"-host").value.trim(), port: parseInt($(r+"-port").value) || 22, user: $(r+"-user").value.trim() || "root",
+    password: useKey ? "" : $(r+"-pass").value, key: useKey ? keys[r] : "", keyPass: useKey ? $(r+"-keypass").value : ""};
+}
+const roleLabel = r => r === "ru" ? "RU" : r === "ex" ? T("srvEX") : (wiz.n === 3 ? T("srvTR") : "EU");
+$("fNext").onclick = () => {
+  saveForm();
+  const er = $("fErr"); er.classList.remove("on");
+  const list = wiz.n === 3 ? ROLES : ["ru","eu"];
+  const fail = m => { er.textContent = m; er.classList.add("on"); };
+  for (const r of list){ const s = srvOf(r);
+    if (!s.host) return fail(T("eHost") + roleLabel(r));
+    if (!s.password && !s.key) return fail(T("eCred") + roleLabel(r)); }
+  const hosts = list.map(r => srvOf(r).host);
+  if (new Set(hosts).size !== hosts.length) return fail(T("eSame"));
+  view("check"); runCheck();
+};
+
+// ================= мастер: проверка адресов =================
+let lastCheck = null, chkOpen = {};
+async function runCheck(){
+  lastCheck = null; chkOpen = {};
+  $("cErr").classList.remove("on");
+  $("chkList").innerHTML = '<div class="card muted">'+spin(T("cChecking"))+'</div>';
+  try {
+    const r = await call("/api/ipcheck", {ru: srvOf("ru").host, eu: srvOf("eu").host, ex: wiz.n === 3 ? srvOf("ex").host : ""});
+    lastCheck = r.reports || []; renderCheck(lastCheck);
+  } catch(e){ $("chkList").textContent = ""; $("cErr").textContent = T("cFail") + "\n" + e.message; $("cErr").classList.add("on"); }
+}
+function reportHTML(r, i, toggles){
+  const role = {RU:"rRU", TR:"rTR", EU:"rEU", EX:"rEX"}[r.role] || "rEU";
+  const tagc = r.role === "RU" ? "ru" : r.role === "EX" ? "ex" : "eu";
+  const tag = r.role === "RU" ? "RU" : r.role === "EX" ? "EX" : "EU";
+  const notes = r.notes || [], warns = r.warnings || [];
+  const vd = r.error ? ["bad", T("bad")] : r.ok ? ["ok", T(notes.length ? "okNote" : "ok")] : ["warn", T("warn")];
+  const def = {RU:"vRU", TR:"vTR", EU:"vEU", EX:"vEU"}[r.role] || "vEU";
+  let body = r.error ? '<p style="margin:0">'+esc(tr(r.error))+'</p>'
+    : (warns.length ? warns.map(w => '<p style="margin:0">'+esc(tr(w))+'</p>').join("") : '<p style="margin:0">'+esc(T(def))+'</p>') +
+      notes.map(w => '<p class="muted small" style="margin:0">'+esc(tr(w))+'</p>').join("");
+  let det = "";
+  if (!r.error && toggles){
+    const open = !!chkOpen[i];
+    det = '<div><button class="link" data-chk="'+i+'" aria-expanded="'+open+'">'+esc(T(open ? "less" : "more"))+'</button></div>';
+    if (open) det += '<div class="tscroll"><table><tbody>'+(r.lists||[]).map(l => '<tr><td>'+esc(tr(l.title))+'</td><td>'+esc(l.ru === null || l.ru === undefined ? tr(l.error || T("noData")) : l.ru ? T("russia") : T("notRussia"))+'</td></tr>').join("")+
+      (r.org ? '<tr><td>'+esc(T("owner"))+'</td><td>'+esc(r.org)+'</td></tr>' : '')+
+      (r.country ? '<tr><td>'+esc(T("place"))+'</td><td>'+esc(r.country + (r.city ? ", " + r.city : ""))+'</td></tr>' : '')+'</tbody></table></div>';
+  }
+  return '<section class="card" style="display:flex;flex-direction:column;gap:8px"><div class="row"><span class="tag '+tagc+'">'+tag+'</span><b style="font-size:15px">'+esc(T(role))+'</b>'+
+    '<span class="muted" style="font-family:Consolas,monospace">'+esc(r.ip || r.host)+'</span><span class="grow"></span><span class="verdict '+vd[0]+'">'+esc(vd[1])+'</span></div>'+body+det+'</section>';
+}
+function renderCheck(reps){
+  $("chkList").innerHTML = reps.map((r, i) => reportHTML(r, i, true)).join("");
+  $("chkList").querySelectorAll("[data-chk]").forEach(b => b.onclick = () => { chkOpen[b.dataset.chk] = !chkOpen[b.dataset.chk]; renderCheck(reps); });
+}
+$("cGo").onclick = () => startInstall();
+
+// ================= установка =================
+let installing = false, follow = false, three = false, stages = {}, logLines = [], startedAt = 0, finished = null, lastResult = null;
+function stageDefs(){
+  const d = [["connect",""],["ru-update","ru"],["ru-install","ru"],["eu-update","eu"],["eu-install","eu"]];
+  if (three) d.push(["ex-update","ex"],["ex-install","ex"],["transit","eu"]);
+  d.push(["cascade",""],["clients",""]);
+  return d;
+}
+function stageName(id){ return T(id === "connect" ? "stConnect" : id.endsWith("-update") ? "stUpdate" : id.endsWith("-install") ? "stInstall" : id === "transit" ? "stTransit" : id === "cascade" ? "stCascade" : "stClients"); }
+function srvName(r){ return r === "ru" ? "RU" : r === "ex" ? T("srvEX") : (three ? T("srvTR") : "EU"); }
+function nowText(id, r){
+  if (id === "connect") return T("nowConnect");
+  if (id.endsWith("-update")) return T("nowUpdate", srvName(r));
+  if (id.endsWith("-install")) return T("nowInstall", srvName(r));
+  return T(id === "transit" ? "nowTransit" : id === "cascade" ? "nowCascade" : "nowClients");
+}
+function resetProgress(isThree){
+  three = !!isThree; stages = {}; logLines = []; startedAt = Date.now(); finished = null; lastResult = null;
+  $("pLog").textContent = ""; renderProgress();
+}
+function renderProgress(){
+  const defs = stageDefs();
+  let done = 0, runId = "", runR = "";
+  $("pStages").innerHTML = defs.map(([id, r]) => {
+    const st = stages[id] || "wait";
+    if (st === "ok" || st === "skip") done++;
+    if (st === "run" || st === "err") { runId = id; runR = r; }
+    const lbl = {ok:"stOk", run:"stRun", wait:"stWait", err:"stErr", skip:"stSkip"}[st] || "stWait";
+    return '<div class="st '+st+'"><i class="dot"></i>'+(r ? '<span class="tag '+r+'">'+r.toUpperCase()+'</span>' : '')+'<b style="font-weight:600">'+esc(stageName(id))+'</b><em>'+esc(T(lbl))+'</em></div>';
+  }).join("");
+  const pct = finished && finished.ok ? 100 : Math.round(done / defs.length * 100);
+  $("pBar").firstElementChild.style.width = pct + "%"; $("pBar").setAttribute("aria-valuenow", pct);
+  $("pTitle").textContent = T(finished ? (finished.ok ? "pTitleOk" : "pTitleErr") : "pTitle");
+  $("pNow").textContent = finished ? "" : runId ? T("pNow", nowText(runId, runR)) : T("pNowWait");
+  const failed = finished && !finished.ok;
+  $("pErr").classList.toggle("on", !!failed);
+  if (failed) $("pErr").textContent = tr(finished.error || "?") + "\n\n" + T("pErrHint");
+  $("pStop").classList.toggle("hidden", !!finished); $("pClose").classList.toggle("hidden", !!finished); $("pBack").classList.toggle("hidden", !failed);
+  tickElapsed();
+}
+function tickElapsed(){ if (!startedAt) { $("pElapsed").textContent = ""; return; } const end = finished ? finished.at : Date.now(); $("pElapsed").textContent = T("pElapsed", fmtDur(Math.floor((end - startedAt)/1000))); }
+setInterval(() => { if (curView === "progress" && !finished) tickElapsed(); }, 1000);
+function addLog(e){
+  logLines.push(e); if (logLines.length > 4000) logLines.shift();
+  const box = $("pLog"), stick = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
+  const d = document.createElement("div");
+  d.innerHTML = '<span class="tm">'+esc(e.time||"")+' </span>'+(e.src ? '<span class="s-'+esc(e.src)+'">['+esc(e.src)+'] </span>' : '');
+  const m = document.createElement("span"); m.textContent = e.msg; if (/ОШИБКА|ERROR|FAIL/.test(e.msg)) m.className = "e"; d.appendChild(m);
+  box.appendChild(d); if (stick) box.scrollTop = box.scrollHeight;
+}
+$("logBtn").onclick = () => { const open = $("pLog").classList.toggle("hidden") === false; $("logBtn").setAttribute("aria-expanded", String(open)); $("logChev").setAttribute("d", open ? "M6 9l6 6 6-6" : "M9 6l6 6-6 6"); if (open) $("pLog").scrollTop = $("pLog").scrollHeight; };
+$("pStop").onclick = () => confirmBox(T("pStop"), T("pStopQ"), T("pStop"), async () => { await call("/api/cancel"); }, true);
+$("pBack").onclick = () => view("servers");
+
+async function startInstall(){
+  saveForm();
+  const b = $("cGo"); b.disabled = true; b.innerHTML = spin(T("working"));
+  // follow — до запроса: событие reset может прийти раньше ответа.
+  const wasFollow = follow; follow = true;
+  try {
+    await call("/api/start", { ru: srvOf("ru"), eu: srvOf("eu"), ex: wiz.n === 3 ? srvOf("ex") : {host:""},
+      profileName: wiz.name, protocol: wiz.compat ? "2.0" : "3.1" });
+    installing = true; if (!startedAt || finished) resetProgress(wiz.n === 3); view("progress"); renderProgress();
+  } catch(e){ follow = wasFollow; $("cErr").textContent = e.message; $("cErr").classList.add("on"); }
+  finally { b.disabled = false; b.textContent = T("cGo"); }
+}
+
+function connectEvents(){
+  const es = new EventSource("/api/events?token=" + TOKEN);
+  es.onmessage = m => {
+    const e = JSON.parse(m.data);
+    if (e.t === "reset"){ resetProgress(follow ? wiz.n === 3 : false); installing = true; if (follow) view("progress"); return; }
+    if (e.t === "log"){ if (e.src === "EX" && !three){ three = true; } addLog(e); if (curView === "progress") renderProgress(); return; }
+    if (e.t === "stage"){ if (/^(ex-|transit)/.test(e.id)) three = true; stages[e.id] = e.state; if (curView === "progress") renderProgress(); return; }
+    if (e.t === "finish"){
+      installing = false; finished = {ok: !!e.ok, error: e.result && e.result.error, at: Date.now()};
+      if (!follow) return;
+      if (e.ok){ lastResult = e.result || {}; loadProfiles().catch(() => {}); renderDone(lastResult); view("done"); }
+      else renderProgress();
+    }
+  };
+}
+
+// ================= готово =================
+function renderDone(r){
+  $("dVerify").textContent = T("dVerify", r.euIp || "", r.ruIp || "");
+  $("dProto").textContent = r.proto ? T(r.proto === "3.1" ? "dProto31" : "dProto20") : "";
+  $("dClients").innerHTML = (r.clients || []).map((c, i) => '<section class="card client"><h2>'+esc(c.name)+'</h2>'+
+    (c.png ? '<img class="qrimg" alt="QR '+esc(c.name)+'" data-q="'+i+'" src="data:image/png;base64,'+c.png+'"><span class="muted small">'+esc(T("qrHint"))+'</span>' : '')+
+    '<div class="row" style="justify-content:center"><button class="btn sm" data-dl="'+i+'">'+esc(T("dlConf"))+'</button>'+(c.vpnuri ? '<button class="btn ghost sm" data-cp="'+i+'">'+esc(T("copyUri"))+'</button>' : '')+'</div></section>').join("");
+  const cs = r.clients || [];
+  $("dClients").querySelectorAll("[data-q]").forEach(el => el.onclick = () => qrFull(cs[+el.dataset.q].png, cs[+el.dataset.q].name));
+  $("dClients").querySelectorAll("[data-dl]").forEach(el => el.onclick = () => { const c = cs[+el.dataset.dl]; saveBlob(c.name+".conf", new Blob([c.conf], {type:"text/plain"})); });
+  $("dClients").querySelectorAll("[data-cp]").forEach(el => el.onclick = () => copyText(cs[+el.dataset.cp].vpnuri, el));
+  $("dFolder").innerHTML = r.folder ? esc(T("dFolder", r.folder)) + ' <button class="link" id="dOpen">'+esc(T("openFolder"))+'</button>' : "";
+  if (r.folder) $("dOpen").onclick = () => post("/api/open-folder");
+  $("dManage").classList.toggle("hidden", !r.profile);
+}
+$("dManage").onclick = async () => { await loadProfiles(); if (lastResult && lastResult.profile) openProfile(lastResult.profile); };
+
+// ================= профили и управление =================
+let clientsLoaded = false, profiles = [], cur = null, curTab = store.get("awgcl-tab", "users"), clients = [], clientsNow = 0, lastStatus = null, statusTimer = null, statusBusy = false, backups = null;
+async function loadProfiles(){
+  const r = await call("/api/profiles");
+  profiles = r.profiles || [];
+  const sel = $("profSel"); sel.textContent = "";
+  for (const p of profiles){ const o = document.createElement("option"); o.value = p.id; o.textContent = p.name; sel.appendChild(o); }
+  if (cur){ cur = profiles.find(p => p.id === cur.id) || null; }
+  if (cur) sel.value = cur.id;
+  $("profWrap").classList.toggle("hidden", !profiles.length);
+  return r.last;
+}
+$("profSel").onchange = e => openProfile(e.target.value);
+const isThreeP = () => !!(cur && cur.exHost);
+function SRV(t){ return t === "ru" ? "RU" : t === "ex" ? T("srvEX") : (isThreeP() ? T("srvTR") : "EU"); }
+const hostOf = t => t === "ru" ? cur.ruHost : t === "ex" ? cur.exHost : cur.euHost;
+function openHeader(){
+  $("mTitle").textContent = cur.name;
+  $("mSub").textContent = "RU " + cur.ruHost + (cur.euHost ? (cur.exHost ? "  →  " + T("transit") + " " + cur.euHost + "  →  " + T("exit") + " " + cur.exHost : "  →  EU " + cur.euHost) : "");
+  $("delAllText").textContent = T(isThreeP() ? "delAllText3" : "delAllText2");
+}
+function openProfile(id){
+  const p = profiles.find(x => x.id === id); if (!p) return;
+  if (!cur || cur.id !== id){ clients = []; clientsLoaded = false; lastStatus = null; backups = null; }
+  cur = p; $("profSel").value = id; post("/api/profile-use", {id});
+  openHeader(); view("manage"); showTab(curTab); refreshStatus(true);
+}
+$("mTabs").onclick = e => { const b = e.target.closest("button[data-tab]"); if (b) showTab(b.dataset.tab); };
+function showTab(t){
+  curTab = t; store.set("awgcl-tab", t);
+  document.querySelectorAll("#mTabs button").forEach(b => { b.classList.toggle("on", b.dataset.tab === t); if (b.dataset.tab === t) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+  for (const x of ["users","servers","backups"]) $("tab-"+x).classList.toggle("hidden", x !== t);
+  if (t === "users") loadClients();
+  if (t === "servers") renderStatus(lastStatus);
+  if (t === "backups") loadBackups();
+}
+function stopTimers(){ clearInterval(statusTimer); statusTimer = null; }
+
+// ---- пользователи ----
+async function loadClients(){
+  if (!cur) return; const id = cur.id, tb = $("uTable").tBodies[0];
+  if (!clients.length) tb.innerHTML = '<tr><td colspan="6" class="muted">'+spin(T("uLoading"))+'</td></tr>';
+  $("uRefresh").disabled = true;
+  try { const r = await call("/api/m/clients", {id}); if (!cur || cur.id !== id) return;
+    clients = r.clients || []; clientsLoaded = true; clientsNow = r.now || Math.floor(Date.now()/1000); renderClients(); if (lastStatus && curTab === "servers") renderStatus(lastStatus); }
+  catch(e){ tb.innerHTML = '<tr><td colspan="6">'+esc(e.message)+'</td></tr>'; }
+  finally { $("uRefresh").disabled = false; }
+}
+function uStatus(c){
+  if (c.statusCode === "active") return '<span class="ust on"><i></i>'+esc(T("uOnline"))+'</span>';
+  if (c.handshake > 0) return '<span class="ust"><i></i>'+esc(T("uSeen", fmtAgo(clientsNow - c.handshake)))+'</span>';
+  return '<span class="ust"><i></i>'+esc(T("uNever"))+'</span>';
+}
+function uExp(c){
+  if (!c.expiresAt) return '<span class="muted">'+esc(T("uForever"))+'</span>';
+  const left = c.expiresAt - clientsNow; if (left <= 0) return '<span style="color:var(--err-ink)">'+esc(T("uExpired"))+'</span>';
+  return esc(left < 86400 ? T("uHours", Math.ceil(left/3600)) : T("uDays", Math.ceil(left/86400)));
+}
+function renderClients(){
+  if (!cur) return;
+  const tb = $("uTable").tBodies[0], q = $("uSearch").value.trim().toLowerCase();
+  $("uInfo").textContent = clients.length ? T("uInfo", clients.length, clients.filter(c => c.statusCode === "active").length) : "";
+  const list = clients.filter(c => !q || c.name.toLowerCase().includes(q));
+  if (!list.length){ if (clientsLoaded) tb.innerHTML = '<tr><td colspan="6" class="muted">'+esc(T(clients.length ? "uNone" : "uEmpty"))+'</td></tr>'; return; }
+  tb.innerHTML = list.map(c => '<tr><td><b>'+esc(c.name)+'</b></td><td>'+uStatus(c)+'</td><td>'+fmtBytes((c.todayRx||0)+(c.todayTx||0))+'</td><td>'+fmtBytes((c.rx||0)+(c.tx||0))+'</td><td>'+uExp(c)+'</td>'+
+    '<td><div class="acts"><button data-a="key" data-n="'+esc(c.name)+'">'+esc(T("aQr"))+'</button><button data-a="edit" data-n="'+esc(c.name)+'">'+esc(T("aEdit"))+'</button><button class="del" data-a="del" data-n="'+esc(c.name)+'">'+esc(T("aDel"))+'</button></div></td></tr>').join("");
+}
+$("uSearch").oninput = renderClients;
+$("uRefresh").onclick = loadClients;
+$("uTable").onclick = e => {
+  const b = e.target.closest("button[data-a]"); if (!b) return; const n = b.dataset.n;
+  if (b.dataset.a === "key") showKey(n);
+  if (b.dataset.a === "edit") editUser(n);
+  if (b.dataset.a === "del") confirmBox(T("delQ", n), T("delText"), T("aDel"), async () => { await call("/api/m/remove", {id:cur.id, name:n}); toast(T("deleted", n)); loadClients(); }, true);
+};
+async function showKey(n){
+  modal('<h2>'+esc(n)+'</h2><p class="muted">'+spin(T("loading"))+'</p>');
+  try { keyModal(await call("/api/m/client", {id:cur.id, name:n})); } catch(e){ modal('<h2>'+esc(n)+'</h2><div class="err on">'+esc(e.message)+'</div>'); }
+}
+$("uAdd").onclick = () => {
+  modal('<h2>'+esc(T("addT"))+'</h2><div><label class="l" for="aName">'+esc(T("addName"))+'</label><input type="text" id="aName" placeholder="phone_2" maxlength="32" spellcheck="false"></div>'+
+    '<div><label class="l" for="aExp">'+esc(T("addExp"))+'</label><select id="aExp"><option value="">'+esc(T("e0"))+'</option><option value="1d">'+esc(T("e1"))+'</option><option value="7d">'+esc(T("e7"))+'</option><option value="30d">'+esc(T("e30"))+'</option><option value="90d">'+esc(T("e90"))+'</option><option value="365d">'+esc(T("e365"))+'</option></select></div>'+
+    '<p class="muted small" style="margin:0">'+esc(T("addNote"))+'</p><div class="err" id="aErr"></div><div class="row"><button class="btn" id="aOk">'+esc(T("create"))+'</button><button class="btn ghost" id="aNo">'+esc(T("cancel"))+'</button></div>');
+  $("aNo").onclick = closeModal;
+  const go2 = async () => { const n = $("aName").value.trim(), er = $("aErr");
+    if (!nameOk(n)){ er.textContent = T("nameBad"); er.classList.add("on"); return; }
+    if (clients.some(c => c.name === n)){ er.textContent = T("nameDup"); er.classList.add("on"); return; }
+    const b = $("aOk"); b.disabled = true; b.innerHTML = spin(T("working"));
+    try { const c = await call("/api/m/add", {id:cur.id, name:n, expires:$("aExp").value}); keyModal(c, T("created")); loadClients(); }
+    catch(e){ er.textContent = e.message; er.classList.add("on"); b.disabled = false; b.textContent = T("create"); } };
+  $("aOk").onclick = go2; $("aName").onkeydown = e => { if (e.key === "Enter") go2(); };
+};
+function editUser(n){
+  modal('<h2>'+esc(T("editT", n))+'</h2><div><label class="l" for="eName">'+esc(T("newName"))+'</label><input type="text" id="eName" value="'+esc(n)+'" maxlength="32" spellcheck="false"></div>'+
+    '<p class="muted small" style="margin:0">'+esc(T("renNote"))+'</p><div class="err" id="eErr"></div>'+
+    '<div class="row"><button class="btn" id="eSave">'+esc(T("saveName"))+'</button><button class="btn ghost" id="eNo">'+esc(T("close"))+'</button></div>'+
+    '<hr style="border:0;border-top:1px solid var(--line);width:100%"><h2 style="font-size:15px">'+esc(T("reT"))+'</h2><p class="muted small" style="margin:0">'+esc(T("reNote"))+'</p>'+
+    '<div class="row"><button class="btn danger" id="eRe">'+esc(T("reB"))+'</button></div>');
+  $("eNo").onclick = closeModal;
+  $("eSave").onclick = async () => { const nn = $("eName").value.trim(), er = $("eErr"); if (nn === n){ closeModal(); return; }
+    if (!nameOk(nn)){ er.textContent = T("nameBad"); er.classList.add("on"); return; }
+    const b = $("eSave"); b.disabled = true; b.innerHTML = spin(T("working"));
+    try { await call("/api/m/rename", {id:cur.id, name:n, newName:nn}); closeModal(); toast(T("renamed", n, nn)); loadClients(); }
+    catch(e){ er.textContent = e.message; er.classList.add("on"); b.disabled = false; b.textContent = T("saveName"); } };
+  $("eRe").onclick = () => confirmBox(T("reQ", n), T("reQText"), T("reB"), async () => {
+    const c = await call("/api/m/reissue", {id:cur.id, name:n}); keyModal(c, T("reDone")); loadClients(); return KEEP; }, true);
+}
+
+// ---- состояние каскада ----
+async function refreshStatus(first){
+  if (!cur || statusBusy) return; statusBusy = true;
+  const id = cur.id;
+  if (first) setPill("", T("pillCheck"));
+  try { const st = await call("/api/m/status", {id}); if (!cur || cur.id !== id) return; lastStatus = st; renderStatus(st); }
+  catch(e){ setPill("err", T("pillFail")); if (curTab === "servers") $("sBanner").innerHTML = '<div class="banner err">'+esc(e.message)+'</div>'; }
+  finally { statusBusy = false; }
+  stopTimers(); statusTimer = setInterval(() => refreshStatus(false), 30000);
+}
+function setPill(cls, text){ const p = $("mPill"); p.className = "pill" + (cls ? " " + cls : ""); p.querySelector("span").textContent = text; }
+// Проблемы собираем здесь из состояния, а не из текстов сервера, — чтобы показать их на выбранном языке.
+function problemsOf(st){
+  const pr = [], three = isThreeP() || st.threeHop;
+  if (!st.ruReachable) return [T("pr_ru", tr(st.ruError || ""))];
+  if (st.awg0 !== "active") pr.push(T("pr_awg0"));
+  if (st.awg1 !== "active") pr.push(T("pr_awg1"));
+  else if (st.tunnelAge < 0 || st.tunnelAge > 300) pr.push(T("pr_tun", SRV("eu")));
+  if (st.routing !== "active") pr.push(T("pr_routing"));
+  else if (st.ruNets < 1000) pr.push(T("pr_nets"));
+  if (st.ruProto && st.euProto && st.ruProto !== st.euProto) pr.push(T("pr_proto", st.ruProto, st.euProto));
+  const t = st.transit;
+  if (three && t){
+    if (t.error) pr.push(T("pr_trErr", tr(t.error)));
+    else if (!t.conf) pr.push(T("pr_trConf"));
+    else if (t.active !== "active") pr.push(T("pr_trSvc"));
+    else if (t.age < 0 || t.age > 300) pr.push(T("pr_trTun"));
+    else if (!t.rule) pr.push(T("pr_trRule"));
+    if (t.proto && st.ruProto && t.proto !== st.ruProto) pr.push(T("pr_proto", st.ruProto, t.proto));
+  }
+  if (cur.euHost && !st.euReachable) pr.push(T("pr_ssh", SRV("eu")));
+  if (cur.exHost && !st.exReachable) pr.push(T("pr_ssh", SRV("ex")));
+  return pr;
+}
+function renderStatus(st){
+  if (!cur) return;
+  const ban = $("sBanner");
+  if (!st){ ban.innerHTML = '<div class="banner ok" style="color:var(--muted);background:var(--card);border-color:var(--line)">'+spin(T("loading"))+'</div>'; $("sChain").innerHTML = ""; $("sCards").innerHTML = ""; $("sFull").innerHTML = ""; return; }
+  const pr = problemsOf(st), three = isThreeP();
+  if (!st.ruReachable) setPill("err", T("pillErr")); else if (pr.length) setPill("warn", T("pillWarn")); else setPill("ok", T("pillOk"));
+  const icon = ok => '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="flex:none" aria-hidden="true"><path d="'+(ok ? "M5 12.5l4.5 4.5L19 7.5" : "M12 3l10 18H2L12 3zM12 10v5M12 18v.5")+'"/></svg>';
+  let html = !st.ruReachable ? '<div class="banner err">'+icon(false)+'<div><b>'+esc(T("bErr"))+'</b><div>'+esc(pr[0])+'</div></div></div>'
+    : pr.length ? '<div class="banner warn">'+icon(false)+'<div><b>'+esc(T("bWarn"))+'</b><ul>'+pr.map(p => '<li>'+esc(p)+'</li>').join("")+'</ul></div></div>'
+    : '<div class="banner ok">'+icon(true)+'<div><b>'+esc(T("bOk"))+'</b><div>'+esc(T("bOkText"))+'</div></div></div>';
+  if (st.ruReachable && st.routing === "active" && !st.extraList)
+    html += '<div class="hint" style="margin-top:12px;flex-wrap:wrap"><div style="flex:1 1 24rem"><b>'+esc(T("routingT"))+'</b><div class="small">'+esc(T("routingText"))+'</div></div><button class="btn sm" id="sRouting">'+esc(T("routingB"))+'</button></div>';
+  ban.innerHTML = html;
+  if ($("sRouting")) $("sRouting").onclick = async e => { const b = e.target; b.disabled = true; b.innerHTML = spin(T("working"));
+    try { const r = await call("/api/m/routing-update", {id:cur.id}); toast(T("routingDone", r.nets)); refreshStatus(false); } catch(err){ toast(err.message, true); b.disabled = false; b.textContent = T("routingB"); } };
+  // цепочка
+  const online = clients.filter(c => c.statusCode === "active").length;
+  const tunBad = st.awg1 !== "active" || st.tunnelAge < 0 || st.tunnelAge > 300;
+  const t = st.transit || {};
+  const exBad = three && (t.error || !t.conf || t.active !== "active" || t.age < 0 || t.age > 300);
+  const lnk = (bad, age) => '<div class="hlink"><span class="ln'+(bad ? " bad" : "")+'"></span><span>'+esc(age < 0 ? T("hsNone") : bad ? T("hsDown", fmtAgo(age).replace(/ назад| ago/, "")) : T("hsAgo", fmtAgo(age)))+'</span></div>';
+  const node = (tag, title, host, bad) => '<div class="hnode'+(bad ? " bad" : "")+'"><span>'+(tag ? '<span class="tag '+tag+'">'+tag.toUpperCase()+'</span> ' : '')+'<b>'+esc(title)+'</b></span><span class="muted small">'+esc(host)+'</span></div>';
+  if (st.ruReachable){
+    $("sChain").innerHTML = node("", T("chUsers"), clients.length ? T("chOnline", online) : String(st.peers || 0), false) + '<div class="hlink"><span class="ln"></span><span>&nbsp;</span></div>' +
+      node("ru", T("chEntry"), cur.ruHost, false) + lnk(tunBad, st.tunnelAge) + node("eu", three ? T("chTransit") : T("chExit"), cur.euHost || st.endpoint || "—", tunBad) +
+      (three ? lnk(exBad, t.age ?? -1) + node("ex", T("chExit"), cur.exHost, exBad) : "");
+    $("sChain").classList.remove("hidden");
+  } else $("sChain").classList.add("hidden");
+  // карточки серверов
+  const acts = r => '<div class="acts"><button data-mt="update" data-s="'+r+'">'+esc(T("aUpdate"))+'</button><button data-mt="reboot" data-s="'+r+'">'+esc(T("aReboot"))+'</button><button data-mt="ip" data-s="'+r+'">'+esc(T("aIp"))+'</button><button class="del" data-mt="uninstall" data-s="'+r+'">'+esc(T("aUninst"))+'</button></div>';
+  const kv = rows => '<dl class="kv">'+rows.filter(Boolean).map(([k, v]) => '<dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd>').join("")+'</dl>';
+  const card = (r, title, rows) => '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h2 class="row" style="gap:8px;font-size:15px"><span class="tag '+r+'">'+r.toUpperCase()+'</span>'+esc(title)+'</h2>'+kv(rows)+acts(r)+'</section>';
+  let cards = card("ru", T("srvRUcard"), [[T("kAddr"), cur.ruHost], st.ruReachable && [T("kUp"), fmtUp(st.uptime)], st.ruReachable && [T("kLoad"), st.load], st.ruProto && [T("kProto"), "AmneziaWG " + st.ruProto], st.ruReachable && [T("kUpd"), T(st.rebootRequired ? "updReboot" : "updNone")]]);
+  if (cur.euHost) cards += card("eu", T(three ? "srvEUcard3" : "srvEUcard2"), [[T("kAddr"), cur.euHost], [T("kSSH"), st.euReachable ? T("sshOk", st.euPingMs) : T("sshBad")], st.euProto && [T("kProto"), "AmneziaWG " + st.euProto]]);
+  if (cur.exHost) cards += card("ex", T("srvEXcard"), [[T("kAddr"), cur.exHost], [T("kSSH"), st.exReachable ? T("sshOk", st.exPingMs) : T("sshBad")], t.proto && [T("kProto"), "AmneziaWG " + t.proto], [T("kTunnel"), t.age >= 0 ? T("hsAgo", fmtAgo(t.age)) : T("hsNone")]]);
+  $("sCards").innerHTML = cards;
+  const ff = (st.fullFeatures || []).map(f => T("ff" + f)).filter(x => !x.startsWith("ff"));
+  $("sFull").innerHTML = ff.length ? '<div class="hint"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:none;margin-top:2px" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>'+esc(T("fullNote", ff.join(", ")))+'</span></div>' : "";
+  $("sInfo").textContent = T("sInfo", new Date().toLocaleTimeString(lang === "ru" ? "ru-RU" : "en-GB", {hour:"2-digit", minute:"2-digit"}));
+  $("delAllText").textContent = T(three ? "delAllText3" : "delAllText2");
+}
+$("sRefresh").onclick = async () => { renderStatus(null); lastStatus = null; await refreshStatus(false); };
+$("sRestart").onclick = () => confirmBox(T("restartQ"), T("restartText"), T("restartB"), async () => { await call("/api/m/restart-vpn", {id:cur.id}); toast(T("restarted")); refreshStatus(false); });
+$("sIPChk").onclick = async () => {
+  modal('<h2>'+esc(T("chkT"))+'</h2><p class="muted">'+spin(T("chkBusy"))+'</p>', true);
+  try { const r = await call("/api/ipcheck", {ru: cur.ruHost || "", eu: cur.euHost || "", ex: cur.exHost || ""});
+    modal('<h2>'+esc(T("chkT"))+'</h2>'+(r.reports || []).map((x, i) => reportHTML(x, i, false)).join("")+'<div class="row"><button class="btn" id="ipcOk">'+esc(T("gotIt"))+'</button></div>', true);
+    $("ipcOk").onclick = closeModal;
+  } catch(e){ modal('<h2>'+esc(T("chkT"))+'</h2><div class="err on">'+esc(e.message)+'</div>'); }
+};
+$("sCards").onclick = e => {
+  const b = e.target.closest("button[data-mt]"); if (!b || !cur) return;
+  const t = b.dataset.s, a = b.dataset.mt;
+  if (a === "update") askUpdate(t);
+  if (a === "reboot") askReboot(t);
+  if (a === "ip") askIPChange(t);
+  if (a === "uninstall") askUninstall([t]);
+};
+$("sDelAll").onclick = () => askUninstall(["ru","eu","ex"].filter(t => t === "ru" || hostOf(t)));
+
+// ---- смена IP ----
+function askIPChange(t){
+  const ru = t === "ru";
+  modal('<h2>'+esc(T("ipT", SRV(t)))+'</h2><p class="muted" style="margin:0">'+esc(T("ipNow", hostOf(t) || "—"))+'</p><p style="margin:0">'+esc(T(ru ? "ipRU" : t === "ex" ? "ipEX" : "ipEU"))+'</p>'+
+    '<div><label class="l" for="ipNew">'+esc(T("ipNew"))+'</label><input type="text" id="ipNew" placeholder="203.0.113.25" spellcheck="false"></div>'+
+    '<label class="check hidden" id="ipForceRow"><input type="checkbox" id="ipForce"> <span id="ipForceText"></span></label>'+
+    '<div class="err" id="ipErr"></div><div class="row"><button class="btn" id="ipOk">'+esc(T("ipGo"))+'</button><button class="btn ghost" id="ipNo">'+esc(T("cancel"))+'</button></div>');
+  $("ipNo").onclick = closeModal;
+  const run = async () => { const b = $("ipOk"), er = $("ipErr"); er.classList.remove("on"); b.disabled = true; b.innerHTML = spin(T(ru ? "ipBusyRU" : "ipBusy"));
+    try {
+      const r = await call("/api/m/ip-change", {id:cur.id, target:t, newHost:$("ipNew").value.trim(), force:$("ipForce").checked});
+      if (r.needForce){ er.textContent = tr(r.reason) + (r.fingerprint ? T("ipKey", r.fingerprint) : ""); er.classList.add("on");
+        $("ipForceRow").classList.remove("hidden"); $("ipForceText").textContent = T(ru ? "ipForceRU" : "ipForce"); return; }
+      const id = cur.id; await loadProfiles(); openProfile(id);
+      if (ru){
+        modal('<h2>'+esc(T("ipDoneRU"))+'</h2><p style="margin:0">'+esc(T("ipDoneRUText", r.old, r.new, (r.clients || []).length))+'</p>'+
+          (r.bad && r.bad.length ? '<div class="err on">'+esc(T("ipBadRU", r.bad.join(", ")))+'</div>' : '')+
+          '<div class="hint">'+esc(T("ipDevices"))+'</div>'+(r.folder ? '<p class="muted small" style="margin:0">'+esc(T("ipSaved", r.folder))+'</p>' : '')+
+          '<div class="row"><button class="btn" id="ipDone">'+esc(T("done"))+'</button>'+(r.folder ? '<button class="btn ghost" id="ipOpen">'+esc(T("openFolder"))+'</button>' : '')+'</div>');
+        $("ipDone").onclick = () => { closeModal(); showTab("users"); };
+        if (r.folder) $("ipOpen").onclick = () => call("/api/m/open-folder", {id:cur.id, dir:r.folder}).catch(e => toast(e.message, true));
+      } else {
+        closeModal(); toast(T(r.connected ? "ipDone" : "ipDoneWait", SRV(t), r.new), !r.connected);
+        if (r.note) setTimeout(() => toast(tr(r.note), true), 3500);
+      }
+    } catch(e){ er.textContent = e.message; er.classList.add("on"); }
+    finally { if ($("ipOk")){ b.disabled = false; b.textContent = T("ipGo"); } } };
+  $("ipOk").onclick = run; $("ipNew").onkeydown = e => { if (e.key === "Enter") run(); };
+}
+
+// ---- перезагрузка, обновление, удаление ----
+async function waitBack(t){
+  const id = cur.id;
+  await new Promise(r => setTimeout(r, 25000));
+  for (let i = 0; i < 36 && cur && cur.id === id; i++){
+    try { const st = await call("/api/m/status", {id});
+      const back = t === "ru" ? st.ruReachable : t === "eu" ? (st.euReachable && st.tunnelAge >= 0 && st.tunnelAge < 200) : (st.exReachable && st.transit && st.transit.age >= 0 && st.transit.age < 200);
+      if (back){ lastStatus = st; renderStatus(st); toast(T("rbBack", SRV(t))); return; }
+    } catch(e){}
+    await new Promise(r => setTimeout(r, 10000));
+  }
+  toast(T("rbLate", SRV(t)), true);
+}
+function askReboot(t){
+  confirmBox(T("rbQ", SRV(t)), T(t === "ru" ? "rbRU" : "rbOther"), T("rbB"), async () => {
+    await call("/api/m/server-reboot", {id:cur.id, target:t}); toast(T("rbGo", SRV(t))); if (t === "ru") setPill("warn", T("rbGo", "RU")); waitBack(t); }, true);
+}
+function askUpdate(t){
+  modal('<h2>'+esc(T("updT", SRV(t)))+'</h2><p class="muted" style="margin:0">'+esc(hostOf(t))+'</p><p style="margin:0">'+esc(T("updText"))+'</p>'+
+    '<label class="check"><input type="checkbox" id="uReboot"> '+esc(T("updRb"))+'</label><p class="muted small" style="margin:0">'+esc(T("updRbNote"))+'</p>'+
+    '<div class="row"><button class="btn" id="uGo">'+esc(T("updGo"))+'</button><button class="btn ghost" id="uNo">'+esc(T("cancel"))+'</button></div>');
+  $("uNo").onclick = closeModal;
+  $("uGo").onclick = () => runTasks([{target:t, task:"update", reboot:$("uReboot").checked}], T("tkUpd"));
+}
+function askUninstall(targets){
+  const all = targets.length > 1, word = all ? T("unAllWord") : hostOf(targets[0]);
+  modal('<h2>'+esc(all ? T("unAllT") : T("unT", SRV(targets[0])))+'</h2><p style="margin:0">'+esc(T(all ? "unAllText" : "unText"))+'</p>'+
+    (!all ? '<p class="muted small" style="margin:0">'+esc(T(targets[0] === "ru" ? "unNoteRU" : "unNoteOther"))+'</p>' : '')+
+    '<label class="check"><input type="checkbox" id="xBak" checked> '+esc(T("unBak"))+'</label>'+
+    '<div><label class="l" for="xWord">'+esc(T("unWord", word))+'</label><input type="text" id="xWord" autocomplete="off" spellcheck="false"></div>'+
+    '<div class="err" id="xErr"></div><div class="row"><button class="btn dsolid" id="xGo" disabled>'+esc(T("unGo"))+'</button><button class="btn ghost" id="xNo">'+esc(T("cancel"))+'</button></div>');
+  $("xNo").onclick = closeModal;
+  $("xWord").oninput = e => $("xGo").disabled = e.target.value.trim() !== word;
+  $("xGo").onclick = async () => { const b = $("xGo"); b.disabled = true;
+    if ($("xBak").checked){ b.innerHTML = spin(T("unBakBusy"));
+      try { const r = await call("/api/m/backup", {id:cur.id}); if (r.note && targets.some(x => x !== "ru")) throw new Error(T("unBakFail", tr(r.note))); backups = null; }
+      catch(e){ $("xErr").textContent = e.message; $("xErr").classList.add("on"); b.disabled = false; b.textContent = T("unGo"); return; } }
+    runTasks(targets.map(x => ({target:x, task:"uninstall"})), all ? T("tkUnAll") : T("tkUn"));
+  };
+}
+// Окно с живым журналом задачи на сервере; несколько задач — по очереди.
+let taskRun = 0;
+async function runTasks(list, title){
+  const my = ++taskRun, id = cur.id;
+  modal('<h2>'+esc(title)+'</h2><div class="row" id="tStat"></div><pre class="log" id="tLog" style="min-height:12rem"></pre><div class="row" id="tAct"><button class="btn ghost" id="tHide">'+esc(T("tkHide"))+'</button></div><p class="muted small" style="margin:0" id="tNote">'+esc(T("tkNote"))+'</p>', true);
+  $("tHide").onclick = closeModal;
+  const alive = () => taskRun === my && $("tLog");
+  const stat = (cls, txt, sp) => { if (!alive()) return; $("tStat").innerHTML = '<span class="verdict '+(cls || "warn")+'" style="font-weight:600">'+(sp ? '<span class="spin"></span>&nbsp; ' : '')+esc(txt)+'</span>'; };
+  const log = txt => { if (!alive()) return; const l = $("tLog"); const stick = l.scrollTop + l.clientHeight >= l.scrollHeight - 30; l.textContent += txt; if (stick) l.scrollTop = l.scrollHeight; };
+  const results = [];
+  for (const t of list){
+    const S = SRV(t.target), running = T(t.task === "update" ? "tkUpdRun" : "tkUnRun", S);
+    log((results.length ? "\n" : "") + "──── " + T("tkServer", S, hostOf(t.target)) + " ────\n");
+    stat("", running, true);
+    try { await call("/api/m/task-start", {id, target:t.target, task:t.task, reboot:!!t.reboot}); }
+    catch(e){ stat("bad", S + ": " + e.message); log("ERROR: " + e.message + "\n"); results.push({t, ok:false}); break; }
+    let off = 0, st = null, offSince = 0;
+    while (taskRun === my){
+      await new Promise(r => setTimeout(r, 3000));
+      try { st = await call("/api/m/task-poll", {id, target:t.target, task:t.task, offset:off}); } catch(e){ st = {offline:true}; }
+      if (st.offline){ if (!offSince) offSince = Date.now(); stat("", T("tkOffline", S), true);
+        if (Date.now() - offSince > 20*60000){ stat("bad", T("tkOffLong", S)); break; } continue; }
+      offSince = 0; if (st.chunk) log(st.chunk); off = st.size;
+      if (st.finished) break;
+      stat("", running, true);
+    }
+    if (taskRun !== my) return;
+    const ok = st && st.finished && st.rc === 0;
+    results.push({t, ok, st});
+    if (!ok){ stat("bad", T("tkFail", S, st && st.rc > 0 ? T("tkCode", st.rc) : "")); break; }
+  }
+  if (!alive()) return;
+  const act = $("tAct"); act.innerHTML = ""; $("tNote").textContent = "";
+  if (results.length === list.length && results.every(r => r.ok)){
+    if (list[0].task === "update"){
+      const need = results.filter(r => r.st.rebootPending && !r.t.reboot);
+      if (need.length){ stat("warn", T("tkUpdNeed", need.map(r => SRV(r.t.target)).join(", ")));
+        for (const r of need){ const b = document.createElement("button"); b.className = "btn"; b.textContent = T("tkRbNow", SRV(r.t.target));
+          b.onclick = async () => { b.disabled = true; try { await call("/api/m/server-reboot", {id, target:r.t.target}); toast(T("rbGo", SRV(r.t.target))); closeModal(); waitBack(r.t.target); } catch(e){ toast(e.message, true); b.disabled = false; } }; act.appendChild(b); }
+      } else stat("ok", T(results[0].t.reboot && results[0].st.rebootPending ? "tkUpdRb" : "tkUpdOk"));
+    } else {
+      const all = list.length > 1 || (list[0].target === "ru" && !cur.euHost);
+      stat("ok", all ? T("tkUnAllDone") : T("tkUnOne", SRV(list[0].target)));
+      if (all){ const b = document.createElement("button"); b.className = "btn"; b.textContent = T("tkDelProf");
+        b.onclick = async () => { await call("/api/profile-delete", {id}); cur = null; closeModal(); await loadProfiles(); toast(T("profDeleted")); if (profiles.length) openProfile(profiles[0].id); else view("welcome"); }; act.appendChild(b); }
+    }
+  }
+  const c = document.createElement("button"); c.className = "btn ghost"; c.textContent = T("close"); c.onclick = closeModal; act.appendChild(c);
+  refreshStatus(false);
+}
+
+// ---- резервные копии ----
+async function loadBackups(){
+  if (!cur) return; const id = cur.id, tb = $("bTable").tBodies[0];
+  if (!backups) tb.innerHTML = '<tr><td colspan="4" class="muted">'+spin(T("loading"))+'</td></tr>';
+  try { const r = await call("/api/m/backups", {id}); if (!cur || cur.id !== id) return; backups = r.backups || []; renderBackups(); }
+  catch(e){ tb.innerHTML = '<tr><td colspan="4">'+esc(e.message)+'</td></tr>'; }
+}
+function fmtBackupDate(b){ return (b.created || b.name || "").replace("_", " "); }
+function renderBackups(){
+  if (!backups) return; const tb = $("bTable").tBodies[0];
+  tb.innerHTML = backups.length ? backups.map((b, i) => '<tr><td>'+esc(fmtBackupDate(b))+(b.note ? '<div class="muted small">'+esc(tr(b.note))+'</div>' : '')+'</td><td><span class="row" style="gap:4px">'+
+      (b.files || []).map(f => { const r = f.slice(0, 2); return '<span class="tag '+r+'">'+r.toUpperCase()+'</span>'; }).join("")+'</span></td><td>'+fmtBytes(b.size)+'</td>'+
+      '<td style="text-align:right"><button class="btn ghost sm" data-b="'+i+'">'+esc(T("bRestore"))+'</button></td></tr>').join("")
+    : '<tr><td colspan="4" class="muted">'+esc(T("bEmpty"))+'</td></tr>';
+}
+$("bTable").onclick = e => { const b = e.target.closest("button[data-b]"); if (b) askRestore(backups[+b.dataset.b]); };
+$("bCreate").onclick = async () => { const b = $("bCreate"); b.disabled = true; b.innerHTML = spin(T("bBusy"));
+  try { const r = await call("/api/m/backup", {id:cur.id}); toast(T("bDone") + (r.note ? ". " + tr(r.note) : ""), !!r.note); loadBackups(); }
+  catch(e){ toast(e.message, true); } finally { b.disabled = false; b.textContent = T("bCreate"); } };
+$("bOpen").onclick = () => call("/api/m/open-backups", {id:cur.id}).catch(e => toast(e.message, true));
+function askRestore(bk){
+  const files = bk.files || [], has = f => files.includes(f + ".tar.gz"), three = isThreeP() || has("ex");
+  const opts = [];
+  if (files.length > 1) opts.push(["both", T("rsAll")]);
+  if (has("ru")) opts.push(["ru", T("rsRU")]);
+  if (has("eu")) opts.push(["eu", T(three ? "rsEU3" : "rsEU2")]);
+  if (has("ex")) opts.push(["ex", T("rsEX")]);
+  modal('<h2>'+esc(T("rsT", fmtBackupDate(bk)))+'</h2><p style="margin:0">'+esc(T("rsText"))+'</p>'+
+    '<fieldset style="border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:6px"><legend class="l" style="margin-bottom:4px">'+esc(T("rsWhat"))+'</legend>'+
+    opts.map((o, i) => '<label class="opt"><input type="radio" name="rsT" value="'+o[0]+'"'+(i ? '' : ' checked')+'> '+esc(o[1])+'</label>').join("")+'</fieldset>'+
+    '<label class="check"><input type="checkbox" id="rsC"> '+esc(T("rsConfirm"))+'</label><div class="err" id="rsErr"></div>'+
+    '<div class="row"><button class="btn dsolid" id="rsOk" disabled>'+esc(T("rsGo"))+'</button><button class="btn ghost" id="rsNo">'+esc(T("cancel"))+'</button></div>');
+  $("rsNo").onclick = closeModal; $("rsC").onchange = e => $("rsOk").disabled = !e.target.checked;
+  $("rsOk").onclick = async () => { const bt = $("rsOk"); bt.disabled = true; bt.innerHTML = spin(T("rsBusy"));
+    try { const target = $("mdlBody").querySelector('input[name="rsT"]:checked').value;
+      const r = await call("/api/m/restore", {id:cur.id, backup:bk.name, target}); closeModal();
+      toast(T("rsDone", (r.restored || []).join(", "))); refreshStatus(false); }
+    catch(e){ $("rsErr").textContent = e.message; $("rsErr").classList.add("on"); bt.disabled = false; bt.textContent = T("rsGo"); } };
+}
+
+// ================= профиль =================
+const pfKeys = {ru:"", eu:"", ex:""};
+let pfEditing = null;
+$("pfGrid").innerHTML = ROLES.map(r => srvCard("pf-", r, false)).join("");
+for (const r of ROLES) bindKeyFile("pf-", r, pfKeys);
+function renderProfileTexts(){
+  $("pfTitle").textContent = T(pfEditing ? "pfEdit" : "pfNew"); $("pfSub").textContent = T(pfEditing ? "pfEditSub" : "pfNewSub");
+  $("pf-ru-title").textContent = T("ruT"); $("pf-ru-hint").textContent = "";
+  $("pf-eu-title").textContent = T("euT2").split(" — ")[0] + " / " + T("euT3").split(" — ")[0] + " (EU)"; $("pf-eu-hint").textContent = T("pfEUnote");
+  $("pf-ex-title").textContent = T("exT"); $("pf-ex-hint").textContent = T("pfEXnote");
+  if (pfEditing) for (const r of ROLES){ if (pfEditing[r+"Host"]) $("pf-"+r+"-pass").placeholder = T("passKeep"); if (pfEditing[r+"HasKey"] && !pfKeys[r]) $("pf-"+r+"-keyname").textContent = T("keySaved"); }
+}
+function openProfileForm(p){
+  pfEditing = p; for (const r of ROLES) pfKeys[r] = "";
+  $("pfName").value = p ? p.name : "";
+  for (const r of ROLES){
+    $("pf-"+r+"-host").value = p ? (p[r+"Host"] || "") : ""; $("pf-"+r+"-port").value = p ? (p[r+"Port"] || 22) : 22; $("pf-"+r+"-user").value = p ? (p[r+"User"] || "root") : "root";
+    $("pf-"+r+"-pass").value = ""; $("pf-"+r+"-pass").placeholder = ""; $("pf-"+r+"-keypass").value = ""; $("pf-"+r+"-keyfile").value = ""; $("pf-"+r+"-keyname").textContent = "";
+  }
+  $("pfErr").classList.remove("on"); $("pfDel").classList.toggle("hidden", !p);
+  renderProfileTexts(); view("profile");
+}
+$("pfCancel").onclick = () => cur ? openProfile(cur.id) : view(profiles.length ? "manage" : "welcome");
+$("pfSave").onclick = async () => {
+  const er = $("pfErr"), b = $("pfSave"); er.classList.remove("on"); b.disabled = true; b.innerHTML = spin(T("pfBusy"));
+  const srv = r => ({host:$("pf-"+r+"-host").value.trim(), port:parseInt($("pf-"+r+"-port").value) || 22, user:$("pf-"+r+"-user").value.trim() || "root",
+    password:$("pf-"+r+"-pass").value, key:pfKeys[r], keyPass:$("pf-"+r+"-keypass").value});
+  try { const res = await call("/api/profile-save", {id: pfEditing ? pfEditing.id : "", name:$("pfName").value.trim(), ru:srv("ru"), eu:srv("eu"), ex:srv("ex"), test:true});
+    await loadProfiles(); toast(T("pfSaved")); openProfile(res.profile.id); }
+  catch(e){ er.textContent = e.message; er.classList.add("on"); } finally { b.disabled = false; b.textContent = T("pfSave"); }
+};
+$("pfDel").onclick = () => { const p = pfEditing; confirmBox(T("pfDelQ", p.name), T("pfDelText"), T("pfDel"), async () => {
+  await call("/api/profile-delete", {id:p.id}); cur = null; await loadProfiles(); toast(T("profDeleted"));
+  if (profiles.length) openProfile(profiles[0].id); else view("welcome"); }, true); };
+
+// ================= запуск =================
+(async () => {
+  applyLang();
+  connectEvents();
+  let last = null; try { last = await loadProfiles(); } catch(e){ toast(e.message, true); }
+  let st = {running:false}; try { st = await call("/api/state"); } catch(e){}
+  if (st.running){ installing = true; follow = true; if (!startedAt) startedAt = Date.now(); view("progress"); renderProgress(); return; }
+  if (!profiles.length){ view("welcome"); return; }
+  openProfile((profiles.find(p => p.id === last) || profiles[0]).id);
+})();
+</script>
+</body>
+</html>

@@ -71,7 +71,9 @@ func stopOldInstance(port int) bool {
 
 func isOurExe(path string) bool {
 	exe := strings.ToLower(filepath.Base(path))
-	return strings.HasPrefix(exe, "amneziawg-cascade") && strings.HasSuffix(exe, ".exe")
+	// Lite и полная версия работают рядом: трогаем только копии своей версии.
+	return strings.HasPrefix(exe, "amneziawg-cascade") && strings.HasSuffix(exe, ".exe") &&
+		strings.Contains(exe, "lite") == (exeMarker != "")
 }
 
 func killIfOurs(pid uint32) bool {

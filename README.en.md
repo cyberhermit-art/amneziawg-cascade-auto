@@ -13,6 +13,13 @@ One connection on the device, and both local and international services behave a
 
 > The user interface is in Russian.
 
+## Two editions
+
+- **Lite** (`AmneziaWG-Cascade-Lite.exe`) — for people who just want a working cascade: a step-by-step wizard for 2 or 3 servers, users and QR codes, server status and maintenance (update, reboot, IP change, removal), backups, server address check. **English and Russian interface.**
+- **Full** (`AmneziaWG-Cascade.exe`) — everything below, including Russian-domain routing, “Bypass VPN”, “Via EU”, per-day statistics and advanced install options. Russian interface.
+
+Both are built from the same code (Lite with the `lite` build tag), share profiles and can run side by side. Lite leaves full-edition features on a cascade untouched and tells you they are enabled.
+
 ## Features
 
 **Installation**
@@ -49,7 +56,7 @@ One connection on the device, and both local and international services behave a
 ## Usage
 
 1. Download the archive from [Releases](../../releases) and unzip it.
-2. Run `AmneziaWG-Cascade.exe`; no installation needed.
+2. Run `AmneziaWG-Cascade-Lite.exe` or `AmneziaWG-Cascade.exe` (see “Two editions”); no installation needed.
 3. The file is not code-signed, so Windows SmartScreen may warn: "More info" → "Run anyway". Checksums are in the release's `SHA256SUMS.txt`; binaries are built from source by GitHub Actions.
 
 Data locations: profiles (passwords/keys encrypted with Windows DPAPI) — `%APPDATA%\AmneziaWG-Cascade\profiles.json`; log, client files and backups — `Documents\AmneziaWG-Cascade\`.
@@ -87,7 +94,8 @@ Go 1.24+:
 
 ```bash
 go mod tidy
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.11.0" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.12.0" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.12.0" -o AmneziaWG-Cascade-Lite.exe .
 ```
 
 `rsrc_windows_amd64.syso` (icon and version info) is built from [`winres/`](winres) with `x86_64-w64-mingw32-windres -O coff -o ../rsrc_windows_amd64.syso app.rc`.

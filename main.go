@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -19,13 +18,8 @@ import (
 	"time"
 )
 
-//go:embed assets/index.html
-var indexHTML string
-
-const appPort = 47821
-
 // version задаётся при сборке: -ldflags "-X main.version=1.4.0"
-var version = "1.11.0"
+var version = "1.12.0"
 
 var (
 	token   string
@@ -66,13 +60,13 @@ func main() {
 	token = hex.EncodeToString(b)
 
 	setupLogFile()
-	logLine(fmt.Sprintf("======== Запуск программы AmneziaWG Cascade v%s ========", version))
+	logLine(fmt.Sprintf("======== Запуск программы %s v%s ========", appTitle, version))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleIndex)
 	// Версия без токена: новая копия программы узнаёт, какая версия уже запущена.
 	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]string{"app": "AmneziaWG-Cascade", "version": version})
+		writeJSON(w, map[string]string{"app": appID, "version": version, "edition": edition})
 	})
 	mux.HandleFunc("/api/start", api(handleStart))
 	mux.HandleFunc("/api/cancel", api(handleCancel))
@@ -115,7 +109,7 @@ func runningVersion(addr string) string {
 	}
 	defer resp.Body.Close()
 	var v struct{ App, Version string }
-	if resp.StatusCode != 200 || json.NewDecoder(resp.Body).Decode(&v) != nil || v.App != "AmneziaWG-Cascade" {
+	if resp.StatusCode != 200 || json.NewDecoder(resp.Body).Decode(&v) != nil || v.App != appID {
 		return ""
 	}
 	return v.Version
@@ -216,7 +210,7 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 	jobMu.Unlock()
 	if logFile != nil {
 		logMu.Lock()
-		fmt.Fprintf(logFile, "\n======== %s · AmneziaWG Cascade v%s ========\n", time.Now().Format("2006-01-02 15:04:05"), version)
+		fmt.Fprintf(logFile, "\n======== %s · %s v%s ========\n", time.Now().Format("2006-01-02 15:04:05"), appTitle, version)
 		logMu.Unlock()
 	}
 	opts := "версия протокола " + in.Protocol

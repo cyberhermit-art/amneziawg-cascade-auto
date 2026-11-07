@@ -352,34 +352,35 @@ echo "@@EP $(sed -n -E 's/^Endpoint[[:space:]]*=[[:space:]]*//p' $F 2>/dev/null 
 }
 
 type statusResp struct {
-	ThreeHop    bool         `json:"threeHop"`
-	Transit     *transitInfo `json:"transit,omitempty"`
-	EXReachable bool         `json:"exReachable"`
-	EXPingMs    int          `json:"exPingMs"`
-	RUReachable bool         `json:"ruReachable"`
-	RUError     string       `json:"ruError,omitempty"`
-	PingMs      int          `json:"pingMs"`
-	EUReachable bool         `json:"euReachable"`
-	EUPingMs    int          `json:"euPingMs"`
-	Uptime      int64        `json:"uptime"`
-	Load        string       `json:"load"`
-	MemTotal    int          `json:"memTotal"`
-	MemUsed     int          `json:"memUsed"`
-	Disk        string       `json:"disk"`
-	OS          string       `json:"os"`
-	AWG0        string       `json:"awg0"`
-	AWG1        string       `json:"awg1"`
-	Routing     string       `json:"routing"`
-	TunnelAge   int64        `json:"tunnelAge"` // секунд с последнего рукопожатия с EU, -1 = не было
-	RUNets      int          `json:"ruNets"`
-	Peers       int          `json:"peers"`
-	Endpoint    string       `json:"endpoint"`
-	Reboot      bool         `json:"rebootRequired"`
-	ExtraList   bool         `json:"extraList"` // скрипт маршрутизации с актуальным набором списков RU-сетей
-	Sources     string       `json:"sources"`
-	RUProto     string       `json:"ruProto"` // поколение AmneziaWG на RU: 3.1 / 2.0
-	EUProto     string       `json:"euProto"` // поколение EU по конфигу туннеля awg1 ("" — туннеля нет)
-	Problems    []string     `json:"problems"`
+	FullFeatures []string     `json:"fullFeatures"` // включённые функции полной версии (для Lite)
+	ThreeHop     bool         `json:"threeHop"`
+	Transit      *transitInfo `json:"transit,omitempty"`
+	EXReachable  bool         `json:"exReachable"`
+	EXPingMs     int          `json:"exPingMs"`
+	RUReachable  bool         `json:"ruReachable"`
+	RUError      string       `json:"ruError,omitempty"`
+	PingMs       int          `json:"pingMs"`
+	EUReachable  bool         `json:"euReachable"`
+	EUPingMs     int          `json:"euPingMs"`
+	Uptime       int64        `json:"uptime"`
+	Load         string       `json:"load"`
+	MemTotal     int          `json:"memTotal"`
+	MemUsed      int          `json:"memUsed"`
+	Disk         string       `json:"disk"`
+	OS           string       `json:"os"`
+	AWG0         string       `json:"awg0"`
+	AWG1         string       `json:"awg1"`
+	Routing      string       `json:"routing"`
+	TunnelAge    int64        `json:"tunnelAge"` // секунд с последнего рукопожатия с EU, -1 = не было
+	RUNets       int          `json:"ruNets"`
+	Peers        int          `json:"peers"`
+	Endpoint     string       `json:"endpoint"`
+	Reboot       bool         `json:"rebootRequired"`
+	ExtraList    bool         `json:"extraList"` // скрипт маршрутизации с актуальным набором списков RU-сетей
+	Sources      string       `json:"sources"`
+	RUProto      string       `json:"ruProto"` // поколение AmneziaWG на RU: 3.1 / 2.0
+	EUProto      string       `json:"euProto"` // поколение EU по конфигу туннеля awg1 ("" — туннеля нет)
+	Problems     []string     `json:"problems"`
 }
 
 func tcpPing(host string, port int) (bool, int) {
@@ -427,6 +428,7 @@ R=/root/awg/awg-routing.sh; S=ipdeny
 grep -q '^RU_ZONE_EXTRA_URL="h' $R 2>/dev/null && S="$S + MaxMind"
 grep -q '^RU_ZONE_EXTRA2_URL="h' $R 2>/dev/null && { S="$S + DB-IP"; echo "@@XL 1"; }
 echo "@@SRC $S"
+echo "@@FF $(systemctl is-active --quiet awgc-dns 2>/dev/null && echo -n 'dns ')$([ -s /root/awg/awgc-eu.txt ] && echo -n 'eu ')$([ -s /root/awg/awgc-exclude.txt ] && echo -n 'excl')"
 F=/etc/amnezia/amneziawg/awg1.conf; [ -f $F ] && { grep -qi '^[[:space:]]*HeaderProtectionKey[[:space:]]*=' $F && echo "@@EUP 3.1" || echo "@@EUP 2.0"; }
 `+protoMarker, nil, 60*time.Second)
 	st.PingMs = int(time.Since(t0).Milliseconds())
@@ -468,6 +470,7 @@ F=/etc/amnezia/amneziawg/awg1.conf; [ -f $F ] && { grep -qi '^[[:space:]]*Header
 	st.Reboot = kv["RB"] == "1"
 	st.ExtraList = kv["XL"] == "1"
 	st.Sources = kv["SRC"]
+	st.FullFeatures = strings.Fields(kv["FF"])
 	st.RUProto, st.EUProto = kv["PROTO"], kv["EUP"]
 	if st.RUProto != "" && st.EUProto != "" && st.RUProto != st.EUProto {
 		st.Problems = append(st.Problems, "Разные версии протокола: на RU — AmneziaWG "+st.RUProto+", на EU — "+st.EUProto+". Туннель RU → EU с такими настройками не работает: оба сервера должны быть на одной версии")
@@ -1040,9 +1043,11 @@ func registerManage(mux *http.ServeMux) {
 	mux.HandleFunc("/api/m/restore", mapi(mRestore))
 	mux.HandleFunc("/api/m/open-backups", mapi(mOpenBackups))
 	registerTasks(mux)
-	registerExclude(mux)
 	registerIPChange(mux)
-	registerDNS(mux)
-	registerViaEU(mux)
+	if edition == "full" {
+		registerExclude(mux)
+		registerDNS(mux)
+		registerViaEU(mux)
+	}
 	mux.HandleFunc("/api/m/routing-update", mapi(mRoutingUpdate))
 }

@@ -27,6 +27,8 @@ jobs:
         run: |
           go vet ./...
           GOOS=windows GOARCH=amd64 go vet ./...
+          go vet -tags lite ./...
+          GOOS=windows GOARCH=amd64 go vet -tags lite ./...
 
       - name: Version
         id: ver
@@ -41,10 +43,15 @@ jobs:
           CGO_ENABLED: "0"
         run: |
           mkdir -p dist
-          go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=${{ steps.ver.outputs.version }}" -o dist/AmneziaWG-Cascade.exe .
+          V=${{ steps.ver.outputs.version }}
+          LD="-H=windowsgui -s -w -X main.version=$V"
+          go build -trimpath -ldflags "$LD" -o dist/AmneziaWG-Cascade.exe .
+          go build -tags lite -trimpath -ldflags "$LD" -o dist/AmneziaWG-Cascade-Lite.exe .
           cp LICENSE NOTICE THIRD_PARTY_NOTICES.md dist/
-          cd dist && zip -q AmneziaWG-Cascade-${{ steps.ver.outputs.version }}-windows-x64.zip AmneziaWG-Cascade.exe LICENSE NOTICE THIRD_PARTY_NOTICES.md
-          sha256sum AmneziaWG-Cascade.exe *.zip > SHA256SUMS.txt
+          cd dist
+          zip -q AmneziaWG-Cascade-$V-windows-x64.zip AmneziaWG-Cascade.exe LICENSE NOTICE THIRD_PARTY_NOTICES.md
+          zip -q AmneziaWG-Cascade-Lite-$V-windows-x64.zip AmneziaWG-Cascade-Lite.exe LICENSE NOTICE THIRD_PARTY_NOTICES.md
+          sha256sum AmneziaWG-Cascade.exe AmneziaWG-Cascade-Lite.exe *.zip > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
       - uses: actions/upload-artifact@v4
