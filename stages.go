@@ -69,6 +69,7 @@ func (j *Job) run(res *FinalResult) error {
 	var ex *Remote
 	if j.in.threeHop() {
 		ex = NewRemote(j.in.EX, func(s string) { j.hub.Log("EX", s) })
+		ex.SetJump(j.in.EU)
 		defer ex.Close()
 	}
 

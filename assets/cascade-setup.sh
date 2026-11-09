@@ -67,6 +67,10 @@ if [ "${1:-}" = "--remove" ]; then
     iptables -t nat -D POSTROUTING -s "$SUBNET" -o awg1 -j MASQUERADE 2>/dev/null || true
     ip rule del fwmark 0x1 table 100 2>/dev/null || true
     ip route del default dev awg1 table 100 2>/dev/null || true
+    while ip rule del fwmark 0x1 table 101 2>/dev/null; do :; done
+    while ip rule del fwmark 0x1 ipproto udp dport 53 table main 2>/dev/null; do :; done
+    while ip rule del fwmark 0x1 ipproto tcp dport 53 table main 2>/dev/null; do :; done
+    ip route flush table 101 2>/dev/null || true
     [ -n "$EP" ] && ip route del "$EP" 2>/dev/null || true
     ipset destroy ru_tmp 2>/dev/null || true
     ipset destroy ru 2>/dev/null || true
@@ -284,9 +288,24 @@ ipset swap ru_tmp ru
 ipset destroy ru_tmp
 
 # 3) Таблица + правило: помеченный трафик уходит на выход через awg1 (по номеру таблицы, rt_tables не нужен).
-ip route replace default dev "$AWG1_IF" table "$TABLE_ID"
+#    Если awg1 сейчас не поднят — маршрута нет, и помеченный трафик заблокирует правило 3a (а не выпустит напрямую).
+ip route replace default dev "$AWG1_IF" table "$TABLE_ID" 2>/dev/null \
+    || echo "WARN: туннель $AWG1_IF не поднят — зарубежный трафик заблокирован, пока он не заработает" >&2
 ip rule del fwmark "$FWMARK" table "$TABLE_ID" 2>/dev/null || true
 ip rule add fwmark "$FWMARK" table "$TABLE_ID" priority "$RULE_PRIO"
+
+# 3a) [AmneziaWG Cascade] Защита от утечки (kill-switch): если туннель упал и маршрута через awg1 нет,
+#     помеченный трафик НЕ уходит в интернет с адреса этого сервера, а блокируется (таблица KS_TABLE).
+#     Исключение — DNS (порт 53): запросы выйдут напрямую, чтобы российские сайты продолжали открываться.
+KS_TABLE=$((TABLE_ID + 1))
+ip route replace unreachable default table "$KS_TABLE"
+for proto in udp tcp; do
+    ip rule del fwmark "$FWMARK" ipproto "$proto" dport 53 table main priority $((RULE_PRIO + 1)) 2>/dev/null || true
+    ip rule add fwmark "$FWMARK" ipproto "$proto" dport 53 table main priority $((RULE_PRIO + 1)) 2>/dev/null \
+        || echo "WARN: ядро/iproute2 не поддерживают правила по порту — при падении туннеля DNS тоже будет заблокирован" >&2
+done
+ip rule del fwmark "$FWMARK" table "$KS_TABLE" 2>/dev/null || true
+ip rule add fwmark "$FWMARK" table "$KS_TABLE" priority $((RULE_PRIO + 2))
 
 # 4) Маршрут к самому AWG1 держим вне туннеля (иначе пакеты к нему закольцуются в awg1). replace = идемпотентно.
 if [ -n "$WAN_GW" ]; then
@@ -331,8 +350,8 @@ cat > "$UNIT" <<'UNIT_EOF'
 [Unit]
 Description=Cascade split-routing for AWG0
 After=awg-quick@awg0.service awg-quick@awg1.service network-online.target
-Requires=awg-quick@awg0.service awg-quick@awg1.service
-Wants=network-online.target
+Requires=awg-quick@awg0.service
+Wants=awg-quick@awg1.service network-online.target
 
 [Service]
 Type=oneshot

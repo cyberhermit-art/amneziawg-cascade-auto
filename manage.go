@@ -70,6 +70,9 @@ func getConn(p *Profile, role string) *conn {
 			c.r.Close()
 		}
 		c = &conn{r: NewRemote(cfg, func(string) {}), sig: sigOf(cfg)}
+		if role == "EX" {
+			c.r.SetJump(p.EU) // выход может быть заблокирован в РФ — тогда через транзит
+		}
 		pool[key] = c
 	}
 	return c
@@ -305,7 +308,16 @@ type transitInfo struct {
 	Rule     bool   `json:"rule"`
 	Endpoint string `json:"endpoint"`
 	Proto    string `json:"proto"`
+	Guard    bool   `json:"guard"` // защита от утечки через адрес транзита
+	EXSSH    bool   `json:"exSsh"` // порт SSH выхода доступен с транзита
 	Error    string `json:"error,omitempty"`
+}
+
+func orPort(p int) int {
+	if p == 0 {
+		return 22
+	}
+	return p
 }
 
 func transitStatus(p *Profile) *transitInfo {
@@ -315,12 +327,14 @@ func transitStatus(p *Profile) *transitInfo {
 		t.Error = err.Error()
 		return t
 	}
-	out, _, _, err := c.lockedRun(`F=/etc/amnezia/amneziawg/awg1.conf
+	out, _, _, err := c.lockedRun(`XH=`+shq(p.EX.Host)+`; XP=`+strconv.Itoa(orPort(p.EX.Port))+`; F=/etc/amnezia/amneziawg/awg1.conf
 echo "@@CONF $([ -f $F ] && echo 1 || echo 0)"
 echo "@@ACTIVE $(systemctl is-active awg-quick@awg1 2>/dev/null)"
 H=$(awg show awg1 latest-handshakes 2>/dev/null | awk 'NR==1{print $2}'); N=$(date +%s)
 if [ -n "$H" ] && [ "$H" != 0 ]; then echo "@@AGE $((N-H))"; else echo "@@AGE -1"; fi
 echo "@@RULE $(ip rule 2>/dev/null | grep -q 'iif awg0 lookup 100' && echo 1 || echo 0)"
+echo "@@GUARD $(ip rule 2>/dev/null | grep -qE 'iif awg0.* lookup 101' && echo 1 || echo 0)"
+echo "@@EXSSH $(timeout 6 bash -c "</dev/tcp/$XH/$XP" 2>/dev/null && echo 1 || echo 0)"
 echo "@@EP $(sed -n -E 's/^Endpoint[[:space:]]*=[[:space:]]*//p' $F 2>/dev/null | head -1)"
 [ -f $F ] && { grep -qi '^[[:space:]]*HeaderProtectionKey[[:space:]]*=' $F && echo "@@P 3.1" || echo "@@P 2.0"; }`, nil, 45*time.Second)
 	if err != nil {
@@ -346,6 +360,10 @@ echo "@@EP $(sed -n -E 's/^Endpoint[[:space:]]*=[[:space:]]*//p' $F 2>/dev/null 
 			t.Endpoint = v
 		case "@@P":
 			t.Proto = v
+		case "@@GUARD":
+			t.Guard = v == "1"
+		case "@@EXSSH":
+			t.EXSSH = v == "1"
 		}
 	}
 	return t
@@ -357,6 +375,7 @@ type statusResp struct {
 	Transit      *transitInfo `json:"transit,omitempty"`
 	EXReachable  bool         `json:"exReachable"`
 	EXPingMs     int          `json:"exPingMs"`
+	EXViaTransit bool         `json:"exViaTransit"` // напрямую выход недоступен (заблокирован в РФ?), доступен через транзит
 	RUReachable  bool         `json:"ruReachable"`
 	RUError      string       `json:"ruError,omitempty"`
 	PingMs       int          `json:"pingMs"`
@@ -426,7 +445,7 @@ echo "@@EP $(grep -oP '^AWG1_ENDPOINT="\K[^"]+' /root/awg/awg-routing.sh 2>/dev/
 echo "@@RB $([ -f /run/reboot-required ] && echo 1)"
 R=/root/awg/awg-routing.sh; S=ipdeny
 grep -q '^RU_ZONE_EXTRA_URL="h' $R 2>/dev/null && S="$S + MaxMind"
-grep -q '^RU_ZONE_EXTRA2_URL="h' $R 2>/dev/null && { S="$S + DB-IP"; echo "@@XL 1"; }
+grep -q '^RU_ZONE_EXTRA2_URL="h' $R 2>/dev/null && { S="$S + DB-IP"; grep -q 'KS_TABLE' $R && echo "@@XL 1"; }
 echo "@@SRC $S"
 echo "@@FF $(systemctl is-active --quiet awgc-dns 2>/dev/null && echo -n 'dns ')$([ -s /root/awg/awgc-eu.txt ] && echo -n 'eu ')$([ -s /root/awg/awgc-exclude.txt ] && echo -n 'excl ')$(systemctl is-active --quiet awgc-agent.timer 2>/dev/null && echo -n 'agent')"
 F=/etc/amnezia/amneziawg/awg1.conf; [ -f $F ] && { grep -qi '^[[:space:]]*HeaderProtectionKey[[:space:]]*=' $F && echo "@@EUP 3.1" || echo "@@EUP 2.0"; }
@@ -510,8 +529,14 @@ F=/etc/amnezia/amneziawg/awg1.conf; [ -f $F ] && { grep -qi '^[[:space:]]*Header
 			st.Problems = append(st.Problems, "Разные версии протокола: RU — AmneziaWG "+st.RUProto+", туннель транзит → выход — "+t.Proto+". Все три сервера должны быть на одной версии")
 		}
 	}
+	// Выход может быть заблокирован в РФ (так блокируют адреса, которые видят
+	// российские приложения) — каскад при этом работает, а обслуживать выход
+	// программа будет через транзит.
+	if m.p.EX.Host != "" && !st.EXReachable && st.Transit != nil && st.Transit.EXSSH {
+		st.EXReachable, st.EXViaTransit = true, true
+	}
 	if m.p.EX.Host != "" && !st.EXReachable {
-		st.Problems = append(st.Problems, "Сервер-выход не отвечает по SSH с этого компьютера")
+		st.Problems = append(st.Problems, "Сервер-выход не отвечает по SSH ни с этого компьютера, ни с транзита")
 	}
 	go m.prepareRU()
 	logStateChange(m.p, st.Problems)

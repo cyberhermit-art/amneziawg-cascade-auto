@@ -367,9 +367,9 @@ ru: {
   s1:"Схема", s2:"Серверы", s3:"Проверка", s4:"Установка", s5:"Готово",
   sTitle:"Сколько серверов в каскаде?", sSub:"Поменять это потом можно только переустановкой. Управлять одинаково просто в обоих случаях.",
   dev:"Устройства", entry:"вход", transit:"транзит", exit:"выход",
-  two:"Два сервера", two1:"Проще и дешевле: один сервер в России, один за границей.", two2:"Если адрес выхода заблокируют, программа перенастроит сервер RU на новый адрес — ключи пользователей останутся прежними.",
-  three:"Три сервера", three1:"Сайты видят только адрес выхода, адрес транзита нигде не светится.", three2:"Если адрес выхода попал в чёрные списки — меняется только выход, сервер RU и ключи пользователей не трогаются.", three3:"Нужен третий VPS, задержка чуть больше.",
-  sHint:"Не уверены — берите два сервера: их проще и дешевле обслуживать.", back:"Назад", sNext:"Далее: данные серверов",
+  two:"Два сервера", two1:"Проще и дешевле: один сервер в России, один за границей.", two2:"Сервер RU подключается прямо к выходу: если адрес выхода заблокируют в России, зарубежный трафик встанет до смены сервера (ключи пользователей при смене останутся прежними).",
+  three:"Три сервера — рекомендуется", three1:"Сайты видят только адрес выхода, адрес транзита нигде не светится.", three2:"Если адрес выхода попал в чёрные списки — меняется только выход, сервер RU и ключи пользователей не трогаются.", three3:"Если адрес выхода заблокируют в России, каскад продолжит работать: транзит подключается к выходу из-за границы. Нужен третий VPS, задержка чуть больше.",
+  sHint:"Сейчас блокируют адреса, которые российские приложения видят как адрес пользователя, — то есть адрес выхода. Схема из трёх серверов это переживает, из двух — нет. Два сервера подойдут, если важнее простота и цена.", back:"Назад", sNext:"Далее: данные серверов",
   fTitle:"Данные для входа на серверы", fSub:"Нужны адрес и пароль root (или SSH-ключ). Больше ничего вводить не придётся.", change:"изменить",
   nameL:"Название каскада", namePh:"например: Дом",
   ip:"IP-адрес", port:"Порт SSH", login:"Логин", pass:"Пароль root", passKeep:"сохранён — оставьте пустым", useKey:"Вход по SSH-ключу", keyFile:"Файл приватного ключа", keyPass:"Пароль ключа (если есть)",
@@ -422,12 +422,12 @@ ru: {
   chUsers:"Пользователи", chOnline:"в сети: {0}", chEntry:"Вход", chTransit:"Транзит", chExit:"Выход",
   hsAgo:"связь {0}", hsNone:"нет связи", hsDown:"нет связи {0}",
   kAddr:"Адрес", kUp:"Работает", kLoad:"Нагрузка", kProto:"Протокол", kUpd:"Обновления", kSSH:"SSH с этого ПК", kTunnel:"Туннель",
-  updNone:"не требуются", updReboot:"ждут перезагрузки", sshOk:"доступен, {0} мс", sshBad:"не отвечает",
+  updNone:"не требуются", updReboot:"ждут перезагрузки", sshOk:"доступен, {0} мс", sshBad:"не отвечает", sshVia:"через транзит (напрямую закрыт — возможно, адрес заблокирован в РФ; VPN это не мешает)",
   srvRUcard:"Вход (Россия)", srvEUcard2:"Выход", srvEUcard3:"Транзит", srvEXcard:"Выход",
   aUpdate:"Обновить пакеты", aReboot:"Перезагрузить", aIp:"Сменить IP…", aUninst:"Удалить VPN…",
   sCheck:"Проверить адреса серверов", sRestart:"Перезапустить VPN", sInfo:"Проверено в {0} · обновляется каждые 30 с",
   restartQ:"Перезапустить VPN?", restartText:"Службы VPN и туннеля перезапустятся. У пользователей связь пропадёт на несколько секунд и восстановится сама.", restartB:"Перезапустить", restarted:"VPN перезапущен",
-  routingT:"Доступно обновление маршрутизации", routingText:"Свежий список российских сетей (три базы вместо двух) — больше российских сайтов пойдут напрямую. Пользователей это не затронет.", routingB:"Обновить маршрутизацию", routingDone:"Маршрутизация обновлена: российских сетей — {0}",
+  routingT:"Доступно обновление маршрутизации", routingText:"Защита от утечки: если туннель к зарубежному серверу упадёт, зарубежный трафик будет заблокирован, а не уйдёт с адреса вашего сервера. Плюс полный список российских сетей. Пользователей это не затронет.", routingB:"Обновить маршрутизацию", routingDone:"Маршрутизация обновлена: российских сетей — {0}",
   fullNote:"На этом каскаде включены функции полной версии программы: {0}. Lite их не показывает и не меняет — они продолжают работать. Настроить их можно в полной версии.",
   ffdns:"«Домены РФ»", ffeu:"«Через EU»", ffexcl:"«Мимо VPN»", ffagent:"агент с уведомлениями в Telegram", vpnFlag:"Помечен как VPN/прокси (ip-api.com)", yes:"да", no:"нет",
   delAll:"Удалить весь каскад", delAllText2:"VPN будет удалён с обоих серверов (сначала RU, затем EU). Сами VPS останутся.", delAllText3:"VPN будет удалён со всех трёх серверов (RU, транзит, выход). Сами VPS останутся.", delAllB:"Удалить каскад…",
@@ -494,9 +494,9 @@ en: {
   s1:"Layout", s2:"Servers", s3:"Check", s4:"Install", s5:"Done",
   sTitle:"How many servers in the cascade?", sSub:"Changing this later means reinstalling. Both options are equally easy to manage.",
   dev:"Devices", entry:"entry", transit:"transit", exit:"exit",
-  two:"Two servers", two1:"Simpler and cheaper: one server in Russia, one abroad.", two2:"If the exit address gets blocked, the app points the RU server at the new address — user keys stay the same.",
-  three:"Three servers", three1:"Websites only see the exit address; the transit address is never exposed.", three2:"If the exit address gets blacklisted, only the exit is replaced — the RU server and user keys are untouched.", three3:"Needs a third VPS, slightly higher latency.",
-  sHint:"Not sure? Pick two servers: they are simpler and cheaper to run.", back:"Back", sNext:"Next: server details",
+  two:"Two servers", two1:"Simpler and cheaper: one server in Russia, one abroad.", two2:"The RU server connects straight to the exit: if the exit address gets blocked in Russia, foreign traffic stops until the server is replaced (user keys stay the same).",
+  three:"Three servers — recommended", three1:"Websites only see the exit address; the transit address is never exposed.", three2:"If the exit address gets blacklisted, only the exit is replaced — the RU server and user keys are untouched.", three3:"If the exit address gets blocked in Russia, the cascade keeps working: the transit reaches the exit from abroad. Needs a third VPS, slightly higher latency.",
+  sHint:"Addresses that Russian apps see as the user's address — the exit address — are being blocked now. A three-server cascade survives that, a two-server one does not. Two servers are fine if simplicity and price matter more.", back:"Back", sNext:"Next: server details",
   fTitle:"Server login details", fSub:"Just the address and root password (or an SSH key). Nothing else to fill in.", change:"change",
   nameL:"Cascade name", namePh:"e.g. Home",
   ip:"IP address", port:"SSH port", login:"Login", pass:"Root password", passKeep:"saved — leave empty", useKey:"Log in with an SSH key", keyFile:"Private key file", keyPass:"Key passphrase (if any)",
@@ -549,12 +549,12 @@ en: {
   chUsers:"Users", chOnline:"online: {0}", chEntry:"Entry", chTransit:"Transit", chExit:"Exit",
   hsAgo:"seen {0}", hsNone:"no link", hsDown:"down for {0}",
   kAddr:"Address", kUp:"Uptime", kLoad:"Load", kProto:"Protocol", kUpd:"Updates", kSSH:"SSH from this PC", kTunnel:"Tunnel",
-  updNone:"none needed", updReboot:"waiting for reboot", sshOk:"reachable, {0} ms", sshBad:"not responding",
+  updNone:"none needed", updReboot:"waiting for reboot", sshOk:"reachable, {0} ms", sshBad:"not responding", sshVia:"via the transit (blocked directly — the address may be blocked in Russia; the VPN is not affected)",
   srvRUcard:"Entry (Russia)", srvEUcard2:"Exit", srvEUcard3:"Transit", srvEXcard:"Exit",
   aUpdate:"Update packages", aReboot:"Reboot", aIp:"Change IP…", aUninst:"Remove VPN…",
   sCheck:"Check server addresses", sRestart:"Restart VPN", sInfo:"Checked at {0} · refreshes every 30 s",
   restartQ:"Restart VPN?", restartText:"The VPN and tunnel services restart. Users lose connection for a few seconds, then it comes back on its own.", restartB:"Restart", restarted:"VPN restarted",
-  routingT:"Routing update available", routingText:"A fresh list of Russian networks (three databases instead of two) — more Russian sites go direct. Users are not affected.", routingB:"Update routing", routingDone:"Routing updated: {0} Russian networks",
+  routingT:"Routing update available", routingText:"Leak protection: if the tunnel to the foreign server goes down, foreign traffic is blocked instead of leaving from your server's address. Plus the full list of Russian networks. Users are not affected.", routingB:"Update routing", routingDone:"Routing updated: {0} Russian networks",
   fullNote:"Full-edition features are enabled on this cascade: {0}. Lite does not show or change them — they keep working. Configure them in the full edition.",
   ffdns:"Russian domains", ffeu:"Via EU", ffexcl:"Bypass VPN", ffagent:"agent with Telegram notifications", vpnFlag:"Flagged as VPN/proxy (ip-api.com)", yes:"yes", no:"no",
   delAll:"Remove the whole cascade", delAllText2:"VPN is removed from both servers (RU first, then EU). The VPS themselves stay.", delAllText3:"VPN is removed from all three servers (RU, transit, exit). The VPS themselves stay.", delAllB:"Remove cascade…",
@@ -823,7 +823,7 @@ function startWizard(){ if (installing) { view("progress"); return; } view("sche
 // ================= мастер: схема и серверы =================
 const ROLES = ["ru","eu","ex"];
 const keys = {ru:"", eu:"", ex:""};
-let wiz = Object.assign({n: 2, name: "", compat: false, f: {}}, store.get("awgcl-form", {}));
+let wiz = Object.assign({n: 3, name: "", compat: false, f: {}}, store.get("awgcl-form", {}));
 function renderScheme(){
   for (const n of [2,3]){ const c = $("c"+n); c.classList.toggle("sel", wiz.n === n); c.setAttribute("aria-pressed", String(wiz.n === n)); }
 }
@@ -1182,7 +1182,7 @@ function renderStatus(st){
   let html = !st.ruReachable ? '<div class="banner err">'+icon(false)+'<div><b>'+esc(T("bErr"))+'</b><div>'+esc(pr[0])+'</div></div></div>'
     : pr.length ? '<div class="banner warn">'+icon(false)+'<div><b>'+esc(T("bWarn"))+'</b><ul>'+pr.map(p => '<li>'+esc(p)+'</li>').join("")+'</ul></div></div>'
     : '<div class="banner ok">'+icon(true)+'<div><b>'+esc(T("bOk"))+'</b><div>'+esc(T("bOkText"))+'</div></div></div>';
-  if (st.ruReachable && st.routing === "active" && !st.extraList)
+  if (st.ruReachable && st.routing === "active" && (!st.extraList || (st.transit && !st.transit.error && st.transit.conf && !st.transit.guard)))
     html += '<div class="hint" style="margin-top:12px;flex-wrap:wrap"><div style="flex:1 1 24rem"><b>'+esc(T("routingT"))+'</b><div class="small">'+esc(T("routingText"))+'</div></div><button class="btn sm" id="sRouting">'+esc(T("routingB"))+'</button></div>';
   ban.innerHTML = html;
   if ($("sRouting")) $("sRouting").onclick = async e => { const b = e.target; b.disabled = true; b.innerHTML = spin(T("working"));
@@ -1206,7 +1206,7 @@ function renderStatus(st){
   const card = (r, title, rows) => '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h2 class="row" style="gap:8px;font-size:15px"><span class="tag '+r+'">'+r.toUpperCase()+'</span>'+esc(title)+'</h2>'+kv(rows)+acts(r)+'</section>';
   let cards = card("ru", T("srvRUcard"), [[T("kAddr"), cur.ruHost], st.ruReachable && [T("kUp"), fmtUp(st.uptime)], st.ruReachable && [T("kLoad"), st.load], st.ruProto && [T("kProto"), "AmneziaWG " + st.ruProto], st.ruReachable && [T("kUpd"), T(st.rebootRequired ? "updReboot" : "updNone")]]);
   if (cur.euHost) cards += card("eu", T(three ? "srvEUcard3" : "srvEUcard2"), [[T("kAddr"), cur.euHost], [T("kSSH"), st.euReachable ? T("sshOk", st.euPingMs) : T("sshBad")], st.euProto && [T("kProto"), "AmneziaWG " + st.euProto]]);
-  if (cur.exHost) cards += card("ex", T("srvEXcard"), [[T("kAddr"), cur.exHost], [T("kSSH"), st.exReachable ? T("sshOk", st.exPingMs) : T("sshBad")], t.proto && [T("kProto"), "AmneziaWG " + t.proto], [T("kTunnel"), t.age >= 0 ? T("hsAgo", fmtAgo(t.age)) : T("hsNone")]]);
+  if (cur.exHost) cards += card("ex", T("srvEXcard"), [[T("kAddr"), cur.exHost], [T("kSSH"), st.exViaTransit ? T("sshVia") : st.exReachable ? T("sshOk", st.exPingMs) : T("sshBad")], t.proto && [T("kProto"), "AmneziaWG " + t.proto], [T("kTunnel"), t.age >= 0 ? T("hsAgo", fmtAgo(t.age)) : T("hsNone")]]);
   $("sCards").innerHTML = cards;
   const ff = (st.fullFeatures || []).map(f => T("ff" + f)).filter(x => !x.startsWith("ff"));
   $("sFull").innerHTML = ff.length ? '<div class="hint"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:none;margin-top:2px" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>'+esc(T("fullNote", ff.join(", ")))+'</span></div>' : "";

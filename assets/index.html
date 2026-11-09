@@ -235,7 +235,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)} u.ex{background:var(--ex)}
     <div class="card" style="margin-bottom:16px"><label style="margin-top:0">Название каскада (для списка профилей)</label><input type="text" id="prof-name" placeholder="например: Дом, Москва → Амстердам" autocomplete="off"></div>
     <div class="card" style="margin-bottom:16px">
       <label class="check" style="margin-top:0"><input type="checkbox" id="three"> <b>Три сервера: вход RU → транзит → выход</b></label>
-      <p class="note" style="margin:4px 0 0">Между входом и выходом встаёт ещё один зарубежный сервер — транзит. Сайты видят только адрес выхода, а адрес транзита нигде не светится. Если адрес выхода попадёт в чёрные списки, меняется только выход: сервер RU и файлы подключения пользователей остаются прежними. Стоит третьего VPS и немного задержки.</p>
+      <p class="note" style="margin:4px 0 0">Между входом и выходом встаёт ещё один зарубежный сервер — транзит. Сайты видят только адрес выхода, а адрес транзита нигде не светится. Если адрес выхода попадёт в чёрные списки, меняется только выход: сервер RU и файлы подключения пользователей остаются прежними. А если адрес выхода заблокируют в России (так сейчас блокируют адреса, которые российские приложения видят как адрес пользователя), каскад продолжит работать: транзит подключается к выходу из-за границы. <b>Рекомендуется.</b> Стоит третьего VPS и немного задержки.</p>
     </div>
     <div class="grid">
       <div class="card" id="card-ru">
@@ -876,7 +876,7 @@ async function refreshStatus(first){
 function renderStatus(st){
   const box=$("vCards"), pr=$("vProblems");
   if (!st){ pr.innerHTML='<p class="note"><span class="spin"></span> Проверяю серверы…</p>'; box.textContent=""; return; }
-  const upd = (st.ruReachable && st.routing==="active" && !st.extraList) ? '<div class="hintbox">Доступно обновление маршрутизации: к списку российских сетей добавлена база DB-IP (ipdeny + MaxMind + DB-IP) — больше российских сайтов на небольших хостингах пойдут напрямую. Кнопка «Обновить маршрутизацию» — ниже, в карточке сервера RU.</div>' : '';
+  const upd = (st.ruReachable && st.routing==="active" && (!st.extraList || (st.transit && !st.transit.error && st.transit.conf && !st.transit.guard))) ? '<div class="hintbox"><b>Доступно обновление маршрутизации.</b> Главное в нём — защита от утечки: если туннель к зарубежному серверу упадёт, зарубежный трафик будет заблокирован, а не уйдёт в интернет с адреса сервера RU'+(st.transit?' или транзита':'')+' (адрес входа не должен светиться как адрес пользователя). Плюс полный список российских сетей (ipdeny + MaxMind + DB-IP). Кнопка «Обновить маршрутизацию» — ниже, в карточке сервера RU; связь у пользователей не прервётся.</div>' : '';
   pr.innerHTML = upd + (st.problems.length ? st.problems.map(p=>'<div class="problem">'+esc(p)+'</div>').join("") : '<div class="allgood">Всё в порядке: VPN работает, '+(st.threeHop?'туннели RU → транзит → выход активны':'туннель до EU активен')+', раздельная маршрутизация включена.</div>');
   $("vInfo").textContent = "Проверено в "+new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})+" · обновляется каждые 30 с";
   if (!st.ruReachable){ box.textContent=""; return; }
@@ -892,7 +892,7 @@ function renderStatus(st){
     (st.transit ? (()=>{ const t=st.transit, bad=t.error||!t.conf||t.active!=="active"; const ta=t.age<0?"не было":fmtAgo(t.age);
       return card(bad?"err":(t.age<0||t.age>300||!t.rule?"warn":"ok"),"Туннель транзит → выход", t.error?[["Ошибка",t.error]]:
         [["Служба awg1 на транзите",t.active==="active"?"работает":(t.conf?t.active:"не настроена")],["Связь с выходом",ta],["Правило «от RU — к выходу»",t.rule?"есть":"нет"],["Выход",t.endpoint||cur.exHost||"—"]].concat(t.proto?[["Протокол","AmneziaWG "+t.proto]]:[])); })() : "") +
-    (cur.exHost ? card(st.exReachable?"ok":"err","Сервер-выход (EX)",[["Адрес",cur.exHost],["SSH с этого ПК",st.exReachable?"доступен, "+st.exPingMs+" мс":"не отвечает"]]) : "");
+    (cur.exHost ? card(st.exReachable?"ok":"err","Сервер-выход (EX)",[["Адрес",cur.exHost],["SSH с этого ПК",st.exViaTransit?"через транзит (напрямую недоступен — возможно, адрес заблокирован в РФ; каскад от этого не страдает)":st.exReachable?"доступен, "+st.exPingMs+" мс":"не отвечает"]]) : "");
 }
 $("vRefresh").onclick = async () => { $("vProblems").innerHTML='<p class="note"><span class="spin"></span> Проверяю…</p>'; await refreshStatus(false); renderStatus(lastStatus); };
 $("vRestart").onclick = () => confirmBox("Перезапустить VPN?", "Службы VPN и туннеля перезапустятся. У пользователей связь пропадёт на несколько секунд и восстановится сама.", "Перезапустить", async () => {
@@ -913,8 +913,8 @@ document.querySelector(".maint").onclick = e => {
   const t=b.dataset.s, act=b.dataset.mt;
   if (act==="update") askUpdate(t);
   if (act==="reboot") askReboot(t);
-  if (act==="routing") confirmBox("Обновить маршрутизацию?", "На сервер RU будет записан свежий скрипт маршрутизации (прежний сохранится рядом как .bak) и загружен объединённый список российских сетей. Подсеть, адрес EU и ваши EXTRA_RU_NETS сохраняются. Связь у пользователей не прервётся.", "Обновить", async()=>{
-    const r=await call("/api/m/routing-update",{id:cur.id}); toast("Маршрутизация обновлена: российских сетей — "+r.nets); refreshStatus(false); });
+  if (act==="routing") confirmBox("Обновить маршрутизацию?", "На сервер RU будет записан свежий скрипт маршрутизации (прежний сохранится рядом как .bak) и загружен объединённый список российских сетей. Подсеть, адрес EU и ваши EXTRA_RU_NETS сохраняются. Включится защита от утечки: при падении туннеля зарубежный трафик блокируется, а не уходит с адреса сервера"+(cur.exHost?" (на транзите — тоже)":"")+". Связь у пользователей не прервётся.", "Обновить", async()=>{
+    const r=await call("/api/m/routing-update",{id:cur.id}); const tn=(r.log||[]).find(x=>x.startsWith("Транзит")); toast("Маршрутизация обновлена: российских сетей — "+r.nets+(tn?". "+tn:""), !!(tn&&!tn.startsWith("Транзит обновлён"))); refreshStatus(false); });
   if (act==="uninstall") askUninstall([t]);
   if (act==="ip") askIPChange(t);
 };

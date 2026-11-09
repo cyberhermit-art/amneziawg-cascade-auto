@@ -85,6 +85,12 @@ for v in CLIENT_SUBNET AWG1_IF AWG1_ENDPOINT EXTRA_RU_NETS RU_ZONE_URL; do print
 F=/root/awg/awg-routing.sh
 cp -p $F $F.bak-$(date +%Y%m%d-%H%M%S)
 cat > $F.new && chmod 700 $F.new && mv -f $F.new $F
+# 1.14.1: маршрутизация запускается и без туннеля (тогда зарубежный трафик блокируется, а не уходит напрямую)
+U=/etc/systemd/system/awg-routing.service
+if [ -f $U ] && grep -q '^Requires=awg-quick@awg0.service awg-quick@awg1.service$' $U; then
+  sed -i -e 's/^Requires=awg-quick@awg0.service awg-quick@awg1.service$/Requires=awg-quick@awg0.service/' -e 's/^Wants=network-online.target$/Wants=awg-quick@awg1.service network-online.target/' $U
+  systemctl daemon-reload
+fi
 systemctl restart awg-routing
 echo "@@NETS $(ipset list ru 2>/dev/null | awk -F': ' '/Number of entries/{print $2}')"
 journalctl -u awg-routing -n 8 --no-pager -o cat 2>/dev/null | grep -E '^(OK|WARN|ERROR)' || true`, []byte(tpl), 4*time.Minute)
@@ -101,6 +107,23 @@ journalctl -u awg-routing -n 8 --no-pager -o cat 2>/dev/null | grep -E '^(OK|WAR
 			nets, _ = strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(l, "@@NETS ")))
 		} else if l = strings.TrimSpace(l); l != "" {
 			notes = append(notes, l)
+		}
+	}
+	// Три сервера: транзиту — та же защита от утечки (его адрес должен оставаться скрытым).
+	if m.p.EX.Host != "" && (m.p.EU.Password != "" || m.p.EU.Key != "") {
+		c := getConn(m.p, "EU")
+		if err := c.upload("/root/awg/awgc-transit.sh", transitScript, "700"); err != nil {
+			notes = append(notes, "Транзит не обновлён: "+err.Error())
+		} else {
+			out, se, code, err := c.lockedRun(`bash /root/awg/awgc-transit.sh upgrade 2>&1 | tail -4`, nil, 3*time.Minute)
+			switch {
+			case err != nil:
+				notes = append(notes, "Транзит не обновлён: "+err.Error())
+			case code != 0 || !strings.Contains(out, "Транзит работает"):
+				notes = append(notes, "Транзит: "+tail(se+out, 3))
+			default:
+				notes = append(notes, "Транзит обновлён: защита от утечки включена.")
+			}
 		}
 	}
 	return map[string]any{"ok": true, "nets": nets, "log": notes}, nil

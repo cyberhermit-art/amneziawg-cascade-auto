@@ -50,6 +50,59 @@ type Remote struct {
 	client  *ssh.Client
 	hostKey string // отпечаток ключа сервера, запомненный при первом подключении
 	stopKA  chan struct{}
+
+	// Подключение через промежуточный сервер (выход — через транзит): если
+	// адрес выхода заблокирован в РФ, напрямую с компьютера до него не достучаться.
+	jump       *Remote
+	jumpClient *ssh.Client
+	viaJump    bool
+}
+
+// SetJump — запасной путь: при недоступности сервера напрямую подключаться через cfg.
+func (r *Remote) SetJump(cfg ServerCfg) {
+	if strings.TrimSpace(cfg.Host) == "" || (cfg.Password == "" && strings.TrimSpace(cfg.Key) == "") {
+		return
+	}
+	r.jump = NewRemote(cfg, func(string) {})
+}
+
+// dialVia подключается к серверу через SSH-туннель промежуточного сервера.
+func (r *Remote) dialVia(cfg *ssh.ClientConfig) (*ssh.Client, *ssh.Client, error) {
+	jcfg, err := r.jump.sshConfig()
+	if err != nil {
+		return nil, nil, err
+	}
+	jc, err := ssh.Dial("tcp", r.jump.cfg.addr(), jcfg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("промежуточный сервер %s: %v", r.jump.cfg.Host, humanSSHError(err))
+	}
+	type res struct {
+		c   net.Conn
+		err error
+	}
+	ch := make(chan res, 1)
+	go func() { c, err := jc.Dial("tcp", r.cfg.addr()); ch <- res{c, err} }()
+	var conn net.Conn
+	select {
+	case x := <-ch:
+		if x.err != nil {
+			jc.Close()
+			return nil, nil, humanSSHError(x.err)
+		}
+		conn = x.c
+	case <-time.After(20 * time.Second):
+		jc.Close()
+		return nil, nil, errors.New("сервер не отвечает (проверьте IP-адрес)")
+	}
+	_ = conn.SetDeadline(time.Now().Add(30 * time.Second))
+	cc, chans, reqs, err := ssh.NewClientConn(conn, r.cfg.addr(), cfg)
+	if err != nil {
+		conn.Close()
+		jc.Close()
+		return nil, nil, humanSSHError(err)
+	}
+	_ = conn.SetDeadline(time.Time{})
+	return ssh.NewClient(cc, chans, reqs), jc, nil
 }
 
 // Fingerprint — отпечаток ключа SSH-сервера, запомненный при подключении.
@@ -126,14 +179,48 @@ func (r *Remote) Connect() error {
 	if err != nil {
 		return err
 	}
-	c, err := ssh.Dial("tcp", r.cfg.addr(), cfg)
+	var c, jc *ssh.Client
+	via := r.jump != nil && r.viaJump
+	if via {
+		c, jc, err = r.dialVia(cfg)
+	} else {
+		c, err = ssh.Dial("tcp", r.cfg.addr(), cfg)
+		if err != nil {
+			err = humanSSHError(err)
+		}
+	}
+	// Не вышло одним путём (и дело не в пароле/ключе) — пробуем другой.
+	if err != nil && r.jump != nil && !isFatalSSH(err) {
+		first := err
+		if via {
+			c, err = ssh.Dial("tcp", r.cfg.addr(), cfg)
+			if err != nil {
+				err = humanSSHError(err)
+			}
+		} else {
+			c, jc, err = r.dialVia(cfg)
+		}
+		if err == nil {
+			via = !via
+			if via {
+				r.log("Напрямую сервер недоступен (" + first.Error() + ") — подключился через " + r.jump.cfg.Host)
+			}
+		} else if !isFatalSSH(err) {
+			err = first
+		}
+	}
 	if err != nil {
-		return humanSSHError(err)
+		return err
 	}
 	r.mu.Lock()
+	r.viaJump = via
 	if r.client != nil {
 		r.client.Close()
 	}
+	if r.jumpClient != nil {
+		r.jumpClient.Close()
+	}
+	r.jumpClient = jc
 	if r.stopKA != nil {
 		close(r.stopKA)
 	}
@@ -204,6 +291,10 @@ func (r *Remote) Close() {
 	if r.client != nil {
 		r.client.Close()
 		r.client = nil
+	}
+	if r.jumpClient != nil {
+		r.jumpClient.Close()
+		r.jumpClient = nil
 	}
 }
 

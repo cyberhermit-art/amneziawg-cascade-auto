@@ -110,9 +110,13 @@ const uninstallEU = `set +e
 ` + agentUninst + `
 if [ -f /etc/amnezia/amneziawg/awg1.conf ]; then
   echo "== Убираю туннель к серверу-выходу (транзит)"
-  systemctl disable --now awg-quick@awg1 >/dev/null 2>&1
+  systemctl disable --now awg-quick@awg1 awgc-transit-guard.service >/dev/null 2>&1
+  rm -f /etc/systemd/system/awgc-transit-guard.service; systemctl daemon-reload
   while ip rule del iif awg0 lookup 100 priority 10000 2>/dev/null; do :; done
-  ip route flush table 100 2>/dev/null
+  while ip rule del iif awg0 lookup 101 2>/dev/null; do :; done
+  while ip rule del iif awg0 ipproto udp dport 53 lookup main 2>/dev/null; do :; done
+  while ip rule del iif awg0 ipproto tcp dport 53 lookup main 2>/dev/null; do :; done
+  ip route flush table 100 2>/dev/null; ip route flush table 101 2>/dev/null
   while iptables -t nat -D POSTROUTING -o awg1 -j MASQUERADE 2>/dev/null; do :; done
   rm -f /etc/amnezia/amneziawg/awg1.conf /root/mid_host.conf
 fi
