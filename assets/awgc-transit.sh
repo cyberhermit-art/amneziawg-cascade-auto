@@ -91,6 +91,8 @@ setup)
     sed -i 's/\r$//' "$SRC"
     grep -q '^\[Peer\]' "$SRC" || die "полученный файл не похож на конфиг AmneziaWG"
     say "Создаю туннель awg1 к серверу-выходу"
+    # PostUp/PostDown туннеля вызывают этот скрипт по постоянному пути
+    [ "$(readlink -f "$0")" = /root/awg/awgc-transit.sh ] || { mkdir -p /root/awg; cp -f "$0" /root/awg/awgc-transit.sh; chmod 700 /root/awg/awgc-transit.sh; }
     # Сначала защита: пока туннель перезапускается, трафик от RU блокируется.
     install_guard
     systemctl stop awg-quick@awg1 2>/dev/null || true
@@ -99,7 +101,7 @@ setup)
     # Правила защиты держит служба guard; туннель только добавляет свой маршрут
     # (он исчезает вместе с интерфейсом) и NAT.
     grep -viE '^[[:space:]]*(DNS|Table|PostUp|PostDown)[[:space:]]*=' "$SRC" \
-        | sed "0,/^\[Interface\]/s//[Interface]\nTable = off\nPostUp = ip route replace default dev awg1 table $TABLE; iptables -t nat -C POSTROUTING -o awg1 -j MASQUERADE 2>\/dev\/null || iptables -t nat -A POSTROUTING -o awg1 -j MASQUERADE\nPostDown = iptables -t nat -D POSTROUTING -o awg1 -j MASQUERADE/" \
+        | sed "0,/^\[Interface\]/s//[Interface]\nTable = off\nPostUp = bash \/root\/awg\/awgc-transit.sh postup\nPostDown = bash \/root\/awg\/awgc-transit.sh postdown/" \
         > "$CONF.new"
     chmod 600 "$CONF.new"
     mv -f "$CONF.new" "$CONF"
@@ -135,6 +137,17 @@ upgrade)
     ;;
 guard)
     [ -f "$CONF" ] && apply_guard
+    exit 0
+    ;;
+postup)
+    # маршрут через awg1 — если переключение выходов (awgc-exits) не выбрало другой выход
+    c=$(cat /root/awg/awgc-exits/current 2>/dev/null || true)
+    if [ -z "$c" ] || [ "$c" = awg1 ] || ! ip link show "$c" >/dev/null 2>&1; then ip route replace default dev awg1 table $TABLE; fi
+    iptables -t nat -C POSTROUTING -o awg1 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o awg1 -j MASQUERADE
+    exit 0
+    ;;
+postdown)
+    iptables -t nat -D POSTROUTING -o awg1 -j MASQUERADE 2>/dev/null
     exit 0
     ;;
 remove)

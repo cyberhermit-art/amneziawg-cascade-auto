@@ -38,6 +38,7 @@ type FinalResult struct {
 	RUIP     string       `json:"ruIp,omitempty"`
 	Profile  string       `json:"profile,omitempty"`
 	ThreeHop bool         `json:"threeHop,omitempty"`
+	Mode     string       `json:"mode,omitempty"`  // "add-exit" — добавлен резервный выход
 	Proto    string       `json:"proto,omitempty"` // поколение AmneziaWG каскада: 3.1 или 2.0
 }
 

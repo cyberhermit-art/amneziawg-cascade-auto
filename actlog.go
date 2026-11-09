@@ -50,6 +50,9 @@ var actionNames = map[string]string{
 	"/api/m/agent-test":     "Агент и Telegram: тестовое сообщение",
 	"/api/m/agent-backup":   "Агент и Telegram: резервная копия сейчас",
 	"/api/m/limits-set":     "Лимиты трафика: сохранение",
+	"/api/m/exits-remove":   "Выходы: удаление резервного выхода",
+	"/api/m/exits-warp":     "Выходы: WARP",
+	"/api/m/eu-auto":        "«Через EU»: автосписок заблокированного",
 }
 
 var taskNames = map[string]string{"update": "обновление пакетов", "uninstall": "удаление VPN"}

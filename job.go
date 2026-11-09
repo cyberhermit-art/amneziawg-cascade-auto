@@ -41,6 +41,10 @@ type JobInput struct {
 	SkipUpdate   bool      `json:"skipUpdate"`
 	ProfileName  string    `json:"profileName"`
 	Protocol     string    `json:"protocol"` // "3.1" (по умолчанию, с автооткатом на 2.0) или "2.0"
+	// Mode "add-exit" — не новый каскад, а резервный выход к профилю ProfileID.
+	Mode      string    `json:"mode"`
+	ProfileID string    `json:"profileId"`
+	RX        ServerCfg `json:"rx"`
 }
 
 var nameRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,32}$`)

@@ -14,10 +14,18 @@
 # ставится раньше правил «напрямую» (ru, ru_dns), а те лишь завершают проход
 # цепочки, не снимая её, — поэтому эти сети уходят через туннель awg1.
 #
-# Команды: apply | ensure | disable | status
+# Автосписок (1.15): заблокированные в РФ адреса, которые находятся в российских
+# сетях, — иначе они ушли бы «напрямую» и не открылись. Источник — antifilter.download
+# (allyouneed.lst), из него берутся только сети из списка российских (ipset ru).
+# Обновляется раз в неделю.
+#
+# Команды: apply | ensure | disable | status | auto-on | auto-off | auto-update
 set -u
 A=/root/awg
 LIST=$A/awgc-eu.txt
+AUTO_FLAG=$A/awgc-eu-auto
+AUTO=$A/awgc-eu-auto.txt
+AUTO_URL="https://antifilter.download/list/allyouneed.lst"
 SET=eu_force
 R=$A/awg-routing.sh
 SUBNET=$(grep -oP '^CLIENT_SUBNET="\K[^"]+' $R 2>/dev/null | head -1)
@@ -33,6 +41,9 @@ load_set() {
     if [ -s "$LIST" ]; then
         grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}(/[0-9]{1,2})?$' "$LIST" | sed "s/^/add ${SET}_tmp /" | ipset restore -exist
     fi
+    if [ -f "$AUTO_FLAG" ] && [ -s "$AUTO" ]; then
+        sed "s/^/add ${SET}_tmp /" "$AUTO" | ipset restore -exist
+    fi
     ipset swap ${SET}_tmp $SET
     ipset destroy ${SET}_tmp
 }
@@ -47,6 +58,27 @@ ensure_rule() {
     esac
     while iptables -t mangle -D PREROUTING "${RULE[@]}" 2>/dev/null; do :; done
     iptables -t mangle -I PREROUTING 1 "${RULE[@]}"
+}
+
+wanted() { [ -s "$LIST" ] || { [ -f "$AUTO_FLAG" ] && [ -s "$AUTO" ]; }; }
+
+# Скачать список заблокированного и оставить только адреса из российских сетей.
+auto_fetch() {
+    local t i raw
+    t=$(mktemp); raw=$(mktemp)
+    for i in "" awg1; do
+        if [ -n "$i" ]; then ip link show "$i" >/dev/null 2>&1 || continue; fi
+        curl -s -m 120 ${i:+--interface $i} -o "$raw" "$AUTO_URL" 2>/dev/null \
+            && [ "$(grep -cE '^[0-9]{1,3}(\.[0-9]{1,3}){3}(/[0-9]{1,2})?$' "$raw")" -gt 1000 ] && break
+        : > "$raw"
+    done
+    [ -s "$raw" ] || { rm -f "$t" "$raw"; echo "ОШИБКА: не удалось скачать список заблокированных адресов ($AUTO_URL)"; return 1; }
+    ipset list -n 2>/dev/null | grep -qx ru || { rm -f "$t" "$raw"; echo "ОШИБКА: нет списка российских сетей (ipset ru)"; return 1; }
+    grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}(/[0-9]{1,2})?$' "$raw" | while read -r n; do
+        ipset test ru "${n%/*}" 2>/dev/null && echo "$n"
+    done > "$t"
+    mv -f "$t" "$AUTO"; rm -f "$raw"
+    touch "$AUTO"
 }
 
 write_units() {
@@ -82,7 +114,7 @@ EOF
 case "${1:-}" in
 apply)
     [ -n "$SUBNET" ] || die "каскад не настроен (нет CLIENT_SUBNET в $R)"
-    if [ -s "$LIST" ]; then
+    if wanted; then
         write_units
         load_set
         ensure_rule
@@ -97,7 +129,11 @@ apply)
     ;;
 ensure)
     [ -n "$SUBNET" ] || exit 0
-    [ -s "$LIST" ] || exit 0
+    # автосписок — раз в неделю
+    if [ -f "$AUTO_FLAG" ] && { [ ! -s "$AUTO" ] || [ -n "$(find "$AUTO" -mtime +6 2>/dev/null)" ]; }; then
+        auto_fetch >/dev/null 2>&1 && load_set
+    fi
+    wanted || exit 0
     ipset list -n 2>/dev/null | grep -qx $SET || load_set
     ensure_rule
     ;;
@@ -107,13 +143,34 @@ disable)
     systemctl daemon-reload
     [ -n "$SUBNET" ] && while iptables -t mangle -D PREROUTING "${RULE[@]}" 2>/dev/null; do :; done
     ipset destroy $SET 2>/dev/null
-    rm -f "$LIST"
+    rm -f "$LIST" "$AUTO_FLAG" "$AUTO"
     echo "@@OK"
+    ;;
+auto-on)
+    [ -n "$SUBNET" ] || die "каскад не настроен (нет CLIENT_SUBNET в $R)"
+    touch "$AUTO_FLAG"
+    auto_fetch || { rm -f "$AUTO_FLAG"; exit 1; }
+    write_units; load_set; ensure_rule
+    systemctl enable awgc-eu.service >/dev/null 2>&1
+    systemctl enable --now awgc-eu.timer >/dev/null 2>&1
+    echo "@@AUTO $(wc -l < "$AUTO")"
+    echo "@@OK"
+    ;;
+auto-off)
+    rm -f "$AUTO_FLAG" "$AUTO"
+    if [ -s "$LIST" ]; then load_set; echo "@@OK"; else exec bash "$0" disable; fi
+    ;;
+auto-update)
+    [ -f "$AUTO_FLAG" ] || { echo "@@OFF"; exit 0; }
+    auto_fetch && load_set && echo "@@AUTO $(wc -l < "$AUTO")" && echo "@@OK"
     ;;
 status)
     echo "@@CASCADE $([ -n "$SUBNET" ] && echo 1 || echo 0)"
     echo "@@ACTIVE $(iptables -t mangle -S PREROUTING 2>/dev/null | grep -q -- "--match-set $SET dst" && echo 1 || echo 0)"
     echo "@@FIRST $(iptables -t mangle -S PREROUTING 2>/dev/null | sed -n '2p' | grep -q -- "--match-set $SET dst" && echo 1 || echo 0)"
+    echo "@@AUTOON $([ -f "$AUTO_FLAG" ] && echo 1 || echo 0)"
+    echo "@@AUTOCNT $([ -s "$AUTO" ] && wc -l < "$AUTO" || echo 0)"
+    echo "@@AUTODATE $([ -s "$AUTO" ] && date -r "$AUTO" +%F)"
     echo "@@NETS"; [ -f "$LIST" ] && cat "$LIST"; echo "@@END"
     ;;
 *)

@@ -309,6 +309,7 @@ type transitInfo struct {
 	Endpoint string `json:"endpoint"`
 	Proto    string `json:"proto"`
 	Guard    bool   `json:"guard"` // защита от утечки через адрес транзита
+	Exit     string `json:"exit"`  // туннель текущего выхода (awg1 — основной)
 	EXSSH    bool   `json:"exSsh"` // порт SSH выхода доступен с транзита
 	Error    string `json:"error,omitempty"`
 }
@@ -329,8 +330,10 @@ func transitStatus(p *Profile) *transitInfo {
 	}
 	out, _, _, err := c.lockedRun(`XH=`+shq(p.EX.Host)+`; XP=`+strconv.Itoa(orPort(p.EX.Port))+`; F=/etc/amnezia/amneziawg/awg1.conf
 echo "@@CONF $([ -f $F ] && echo 1 || echo 0)"
-echo "@@ACTIVE $(systemctl is-active awg-quick@awg1 2>/dev/null)"
-H=$(awg show awg1 latest-handshakes 2>/dev/null | awk 'NR==1{print $2}'); N=$(date +%s)
+echo "@@ACTIVE $(systemctl is-active awg-quick@$XI 2>/dev/null)"
+XI=$(cat /root/awg/awgc-exits/current 2>/dev/null); ip link show "${XI:-none}" >/dev/null 2>&1 || XI=awg1
+echo "@@XI $XI"
+H=$(awg show $XI latest-handshakes 2>/dev/null | awk 'NR==1{print $2}'); N=$(date +%s)
 if [ -n "$H" ] && [ "$H" != 0 ]; then echo "@@AGE $((N-H))"; else echo "@@AGE -1"; fi
 echo "@@RULE $(ip rule 2>/dev/null | grep -q 'iif awg0 lookup 100' && echo 1 || echo 0)"
 echo "@@GUARD $(ip rule 2>/dev/null | grep -qE 'iif awg0.* lookup 101' && echo 1 || echo 0)"
@@ -360,6 +363,8 @@ echo "@@EP $(sed -n -E 's/^Endpoint[[:space:]]*=[[:space:]]*//p' $F 2>/dev/null 
 			t.Endpoint = v
 		case "@@P":
 			t.Proto = v
+		case "@@XI":
+			t.Exit = v
 		case "@@GUARD":
 			t.Guard = v == "1"
 		case "@@EXSSH":
@@ -375,6 +380,7 @@ type statusResp struct {
 	Transit      *transitInfo `json:"transit,omitempty"`
 	EXReachable  bool         `json:"exReachable"`
 	EXPingMs     int          `json:"exPingMs"`
+	ExitIf       string       `json:"exitIf"`       // каскад из двух: туннель текущего выхода на RU (awg1 — основной)
 	EXViaTransit bool         `json:"exViaTransit"` // напрямую выход недоступен (заблокирован в РФ?), доступен через транзит
 	RUReachable  bool         `json:"ruReachable"`
 	RUError      string       `json:"ruError,omitempty"`
@@ -435,9 +441,12 @@ echo "@@MEM $(free -m | awk '/^Mem:/{print $2" "$3}')"
 echo "@@DISK $(df -h / | awk 'NR==2{print $3" из "$2" ("$5")"}')"
 . /etc/os-release 2>/dev/null; echo "@@OS $PRETTY_NAME"
 echo "@@AWG0 $(systemctl is-active awg-quick@awg0 2>/dev/null)"
-echo "@@AWG1 $(systemctl is-active awg-quick@awg1 2>/dev/null)"
+XI=$(cat /root/awg/awgc-exits/current 2>/dev/null); ip link show "${XI:-none}" >/dev/null 2>&1 || XI=awg1
+echo "@@AWG1 $(systemctl is-active awg-quick@$XI 2>/dev/null)"
 echo "@@ROUT $(systemctl is-active awg-routing 2>/dev/null)"
-echo "@@HS $(awg show awg1 latest-handshakes 2>/dev/null | awk 'NR==1{print $2}')"
+XI=$(cat /root/awg/awgc-exits/current 2>/dev/null); ip link show "${XI:-none}" >/dev/null 2>&1 || XI=awg1
+echo "@@HS $(awg show $XI latest-handshakes 2>/dev/null | awk 'NR==1{print $2}')"
+echo "@@XI $XI"
 echo "@@NOW $(date +%s)"
 echo "@@NETS $(ipset list ru 2>/dev/null | awk -F': ' '/Number of entries/{print $2}')"
 echo "@@PEERS $(grep -c '^\[Peer\]' /etc/amnezia/amneziawg/awg0.conf 2>/dev/null)"
@@ -491,6 +500,7 @@ F=/etc/amnezia/amneziawg/awg1.conf; [ -f $F ] && { grep -qi '^[[:space:]]*Header
 	st.Sources = kv["SRC"]
 	st.FullFeatures = strings.Fields(kv["FF"])
 	st.RUProto, st.EUProto = kv["PROTO"], kv["EUP"]
+	st.ExitIf = kv["XI"]
 	if st.RUProto != "" && st.EUProto != "" && st.RUProto != st.EUProto {
 		st.Problems = append(st.Problems, "Разные версии протокола: на RU — AmneziaWG "+st.RUProto+", на EU — "+st.EUProto+". Туннель RU → EU с такими настройками не работает: оба сервера должны быть на одной версии")
 	}
@@ -1074,6 +1084,7 @@ func registerManage(mux *http.ServeMux) {
 		registerDNS(mux)
 		registerViaEU(mux)
 		registerAgent(mux)
+		registerExits(mux)
 	}
 	mux.HandleFunc("/api/m/routing-update", mapi(mRoutingUpdate))
 }

@@ -95,6 +95,7 @@ ipset destroy ru_dns 2>/dev/null
 rm -rf /etc/awgc-dns
 [ -x /root/awg/awgc-eu.sh ] && bash /root/awg/awgc-eu.sh disable >/dev/null 2>&1
 ` + agentUninst + `
+[ -f /root/awg/awgc-exits.sh ] && { echo "== Убираю резервные выходы и переключатель"; bash /root/awg/awgc-exits.sh uninstall >/dev/null 2>&1; }
 echo "== Отключаю каскад (туннель до EU, маршрутизация, автозапуск)"
 bash /root/cascade-setup.sh --remove 2>&1 | grep -v "удалите клиента"
 echo "== Убираю сбор статистики"
@@ -108,6 +109,7 @@ exit $rc`
 
 const uninstallEU = `set +e
 ` + agentUninst + `
+[ -f /root/awg/awgc-exits.sh ] && { echo "== Убираю резервные выходы и переключатель"; bash /root/awg/awgc-exits.sh uninstall >/dev/null 2>&1; }
 if [ -f /etc/amnezia/amneziawg/awg1.conf ]; then
   echo "== Убираю туннель к серверу-выходу (транзит)"
   systemctl disable --now awg-quick@awg1 awgc-transit-guard.service >/dev/null 2>&1

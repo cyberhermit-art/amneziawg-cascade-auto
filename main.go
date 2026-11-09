@@ -19,7 +19,7 @@ import (
 )
 
 // version задаётся при сборке: -ldflags "-X main.version=1.4.0"
-var version = "1.14.1"
+var version = "1.15.0"
 
 var (
 	token   string
@@ -195,7 +195,19 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"error": "неверные данные формы"})
 		return
 	}
-	if err := in.validate(); err != nil {
+	var addExitP *Profile
+	if in.Mode == "add-exit" {
+		if edition != "full" {
+			writeJSON(w, map[string]string{"error": "недоступно в этой версии"})
+			return
+		}
+		p, err := in.validateAddExit()
+		if err != nil {
+			writeJSON(w, map[string]string{"error": err.Error()})
+			return
+		}
+		addExitP = p
+	} else if err := in.validate(); err != nil {
 		writeJSON(w, map[string]string{"error": err.Error()})
 		return
 	}
@@ -217,7 +229,9 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 	if in.SkipUpdate {
 		opts += ", без обновления системы"
 	}
-	if in.threeHop() {
+	if addExitP != nil {
+		hub.Log("", fmt.Sprintf("Старт (программа v%s): резервный выход %s для каскада «%s»", version, in.RX.Host, addExitP.Name))
+	} else if in.threeHop() {
 		hub.Log("", fmt.Sprintf("Старт (программа v%s): три сервера — RU = %s, транзит = %s, выход = %s, %s", version, in.RU.Host, in.EU.Host, in.EX.Host, opts))
 	} else {
 		hub.Log("", fmt.Sprintf("Старт (программа v%s): RU = %s, EU = %s, %s", version, in.RU.Host, in.EU.Host, opts))
@@ -227,7 +241,9 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		j := &Job{in: in, hub: hub, ctx: ctx}
 		j.Run()
-		lastDir = outputDir(in.RU.Host)
+		if addExitP == nil {
+			lastDir = outputDir(in.RU.Host)
+		}
 	}()
 	writeJSON(w, map[string]string{"ok": "1"})
 }

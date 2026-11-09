@@ -59,6 +59,8 @@ SOFTWARE.
 
 - The «Проверить адреса серверов» feature downloads the same three lists (ipdeny.com, antonme/GeoIP, v2fly/geoip) to the program folder and queries https://ipinfo.io for the network owner of the entered server addresses. No data is sent other than the server IP addresses. It also asks http://ip-api.com whether an address is flagged as VPN/proxy.
 - The «Эксперименты» agent (optional) runs on the user's servers and talks only to the Telegram Bot API (api.telegram.org) with the user's own bot token, to http://ip-api.com (once a day, the cascade's own server addresses) and to https://www.gstatic.com/generate_204 (connectivity check through the tunnel). The optional Telegram bot (`awgc-bot.py`, Python 3 standard library) runs on the RU server and talks only to the Telegram Bot API.
+- Exit failover (`awgc-exits.sh`, optional) probes https://www.gstatic.com/generate_204 and https://1.1.1.1 through each exit tunnel; the optional WARP exit registers a free device at api.cloudflareclient.com (Cloudflare WARP, Cloudflare's terms apply).
+- The optional «Через EU» auto-list downloads https://antifilter.download/list/allyouneed.lst once a week.
 
 ## 1c. Russian service domain list (downloaded at runtime, not distributed)
 

@@ -30,6 +30,15 @@ type Profile struct {
 	EXSubnet string    `json:"exSubnet,omitempty"`
 	Created  string    `json:"created,omitempty"`
 	Dir      string    `json:"dir,omitempty"` // папка профиля (фиксируется при смене IP сервера RU)
+	// Резервные выходы (1.15): к ним переключается «узел выбора выхода» —
+	// сервер RU в каскаде из двух серверов, транзит в каскаде из трёх.
+	Exits []ExitCfg `json:"exits,omitempty"`
+}
+
+// ExitCfg — резервный выход: сервер и имя туннеля к нему на узле выбора выхода (awg2, awg3).
+type ExitCfg struct {
+	ServerCfg
+	Iface string `json:"iface"`
 }
 
 // storedServer — как сервер лежит на диске: секреты зашифрованы.
@@ -52,6 +61,12 @@ type storedProfile struct {
 	EXSubnet string       `json:"exSubnet,omitempty"`
 	Created  string       `json:"created,omitempty"`
 	Dir      string       `json:"dir,omitempty"`
+	Exits    []storedExit `json:"exits,omitempty"`
+}
+
+type storedExit struct {
+	storedServer
+	Iface string `json:"iface"`
 }
 
 type storeFile struct {
@@ -179,7 +194,48 @@ func listProfiles() ([]Profile, string, error) {
 
 func fromStored(sp storedProfile) Profile {
 	return Profile{ID: sp.ID, Name: sp.Name, RU: decodeServer(sp.RU, "RU"), EU: decodeServer(sp.EU, "EU"), EX: decodeServer(sp.EX, "EX"),
-		RUSubnet: sp.RUSubnet, EUSubnet: sp.EUSubnet, EXSubnet: sp.EXSubnet, Created: sp.Created, Dir: sp.Dir}
+		RUSubnet: sp.RUSubnet, EUSubnet: sp.EUSubnet, EXSubnet: sp.EXSubnet, Created: sp.Created, Dir: sp.Dir, Exits: decodeExits(sp.Exits)}
+}
+
+func decodeExits(se []storedExit) []ExitCfg {
+	var out []ExitCfg
+	for _, e := range se {
+		out = append(out, ExitCfg{ServerCfg: decodeServer(e.storedServer, "RX"), Iface: e.Iface})
+	}
+	return out
+}
+
+func encodeExits(es []ExitCfg) ([]storedExit, error) {
+	var out []storedExit
+	for _, e := range es {
+		s, err := encodeServer(e.ServerCfg)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, storedExit{storedServer: s, Iface: e.Iface})
+	}
+	return out, nil
+}
+
+// setProfileExits меняет только список резервных выходов профиля.
+func setProfileExits(id string, exits []ExitCfg) error {
+	profMu.Lock()
+	defer profMu.Unlock()
+	sf, err := loadStore()
+	if err != nil {
+		return err
+	}
+	for i := range sf.Profiles {
+		if sf.Profiles[i].ID == id {
+			se, err := encodeExits(exits)
+			if err != nil {
+				return err
+			}
+			sf.Profiles[i].Exits = se
+			return saveStore(sf)
+		}
+	}
+	return errors.New("профиль не найден")
 }
 
 func getProfile(id string) (*Profile, error) {
@@ -271,6 +327,10 @@ func saveProfile(p Profile) (*Profile, error) {
 	}
 	sp := storedProfile{ID: p.ID, Name: p.Name, RU: ru, EU: eu, EX: ex, RUSubnet: p.RUSubnet, EUSubnet: p.EUSubnet, EXSubnet: p.EXSubnet, Created: p.Created, Dir: p.Dir}
 	if idx >= 0 {
+		sp.Exits = sf.Profiles[idx].Exits // резервные выходы меняет только setProfileExits
+		p.Exits = decodeExits(sp.Exits)
+	}
+	if idx >= 0 {
 		sf.Profiles[idx] = sp
 	} else {
 		sf.Profiles = append(sf.Profiles, sp)
@@ -319,25 +379,39 @@ func setLastProfile(id string) {
 
 // publicProfile — профиль для интерфейса, без секретов.
 type publicProfile struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	RUHost   string `json:"ruHost"`
-	RUPort   int    `json:"ruPort"`
-	RUUser   string `json:"ruUser"`
-	RUHasKey bool   `json:"ruHasKey"`
-	EUHost   string `json:"euHost"`
-	EUPort   int    `json:"euPort"`
-	EUUser   string `json:"euUser"`
-	EUHasKey bool   `json:"euHasKey"`
-	EXHost   string `json:"exHost"`
-	EXPort   int    `json:"exPort"`
-	EXUser   string `json:"exUser"`
-	EXHasKey bool   `json:"exHasKey"`
-	Created  string `json:"created"`
+	ID       string       `json:"id"`
+	Name     string       `json:"name"`
+	RUHost   string       `json:"ruHost"`
+	RUPort   int          `json:"ruPort"`
+	RUUser   string       `json:"ruUser"`
+	RUHasKey bool         `json:"ruHasKey"`
+	EUHost   string       `json:"euHost"`
+	EUPort   int          `json:"euPort"`
+	EUUser   string       `json:"euUser"`
+	EUHasKey bool         `json:"euHasKey"`
+	EXHost   string       `json:"exHost"`
+	EXPort   int          `json:"exPort"`
+	EXUser   string       `json:"exUser"`
+	EXHasKey bool         `json:"exHasKey"`
+	Created  string       `json:"created"`
+	Exits    []publicExit `json:"exits"`
+}
+
+type publicExit struct {
+	Host  string `json:"host"`
+	Iface string `json:"iface"`
 }
 
 func toPublic(p Profile) publicProfile {
 	return publicProfile{ID: p.ID, Name: p.Name, RUHost: p.RU.Host, RUPort: p.RU.Port, RUUser: p.RU.User, RUHasKey: p.RU.Key != "",
 		EUHost: p.EU.Host, EUPort: p.EU.Port, EUUser: p.EU.User, EUHasKey: p.EU.Key != "",
-		EXHost: p.EX.Host, EXPort: p.EX.Port, EXUser: p.EX.User, EXHasKey: p.EX.Key != "", Created: p.Created}
+		EXHost: p.EX.Host, EXPort: p.EX.Port, EXUser: p.EX.User, EXHasKey: p.EX.Key != "", Created: p.Created, Exits: publicExits(p.Exits)}
+}
+
+func publicExits(es []ExitCfg) []publicExit {
+	out := []publicExit{}
+	for _, e := range es {
+		out = append(out, publicExit{Host: e.Host, Iface: e.Iface})
+	}
+	return out
 }

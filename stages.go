@@ -27,6 +27,19 @@ type Job struct {
 func (j *Job) logf(src, f string, a ...any) { j.hub.Log(src, fmt.Sprintf(f, a...)) }
 
 func (j *Job) Run() {
+	if j.in.Mode == "add-exit" {
+		res := &FinalResult{}
+		err := j.runAddExit(res)
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				err = errors.New("остановлено пользователем — запустите добавление выхода ещё раз, уже сделанное повторяться не будет")
+			}
+			res.Error = err.Error()
+			j.hub.Log("", "ОШИБКА: "+err.Error())
+		}
+		j.hub.emit(Event{T: "finish", OK: err == nil, Result: res})
+		return
+	}
 	res := &FinalResult{RUIP: j.in.RU.Host, EUIP: j.in.EU.Host}
 	if j.in.threeHop() {
 		// сайты видят адрес выхода, а не транзита

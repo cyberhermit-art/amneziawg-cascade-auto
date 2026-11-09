@@ -159,6 +159,8 @@ type exclReq struct {
 	ID   string `json:"id"`
 	Nets string `json:"nets"`
 	Host string `json:"host"`
+	// «Через EU»: автосписок заблокированных в РФ адресов из российских сетей
+	Enable bool `json:"enable"`
 }
 
 func handleExclGet(m *mctx, r exclReq) (any, error) {

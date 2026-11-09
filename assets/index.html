@@ -68,7 +68,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)} u.ex{background:var(--ex)}
 .tabs button{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:4px 10px;border-radius:6px;font:12.5px "Segoe UI",system-ui;cursor:pointer;margin-right:4px}
 .tabs button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 #log{background:var(--log-bg);color:var(--log-ink);border-radius:9px;height:380px;overflow:auto;padding:10px 12px;font:12.5px/1.5 Consolas,"Cascadia Mono",monospace;white-space:pre-wrap;word-break:break-word}
-#log .t{color:#6b7785} #log .s-RU{color:var(--ru)} #log .s-EU{color:var(--eu)} #log .s-EX{color:var(--ex)} #log .e{color:#ff7b7b}
+#log .t{color:#6b7785} #log .s-RU{color:var(--ru)} #log .s-EU{color:var(--eu)} #log .s-EX{color:var(--ex)} #log .s-RX{color:var(--ex)} #log .e{color:#ff7b7b}
 .clients{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:14px}
 .client{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center}
 .client h3{margin:0 0 8px;font-size:15px}
@@ -331,7 +331,11 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)} u.ex{background:var(--ex)}
         <div class="step" id="st-ex-update"><i class="dot"></i><b>Обновление системы</b><span>ожидание</span></div>
         <div class="step" id="st-ex-install"><i class="dot"></i><b>Установка AmneziaWG</b><span>ожидание</span></div>
         <div class="step" id="st-transit"><i class="dot"></i><b>Туннель транзит → выход</b><span>ожидание</span></div></div>
-      <div class="grp"><h4>Шаг 3 · Каскад</h4>
+      <div class="grp hidden" id="grp-rx"><h4><u class="ex">RX</u> резервный выход</h4>
+        <div class="step" id="st-rx-update"><i class="dot"></i><b>Обновление системы</b><span>ожидание</span></div>
+        <div class="step" id="st-rx-install"><i class="dot"></i><b>Установка AmneziaWG</b><span>ожидание</span></div>
+        <div class="step" id="st-rx-link"><i class="dot"></i><b>Подключение к узлу и переключение</b><span>ожидание</span></div></div>
+      <div class="grp" id="grp-main3"><h4>Шаг 3 · Каскад</h4>
         <div class="step" id="st-cascade"><i class="dot"></i><b>Связка серверов</b><span>ожидание</span></div>
         <div class="step" id="st-clients"><i class="dot"></i><b>Файлы подключения</b><span>ожидание</span></div></div>
     </div>
@@ -399,6 +403,14 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)} u.ex{background:var(--ex)}
       <div id="vProblems"></div>
       <div class="scards" id="vCards"></div>
 
+      <h2 class="sect">Выходы и автоматическое переключение <span class="note" style="font-weight:400">эксперимент</span></h2>
+      <div class="card" id="xoCard">
+        <p class="hint" id="xoHint"></p>
+        <div class="tablewrap"><table class="tbl" id="xoTable"><thead><tr><th>Выход</th><th>Сервер</th><th>Состояние</th><th class="r"></th></tr></thead><tbody><tr><td colspan="4" class="empty">Загружаю…</td></tr></tbody></table></div>
+        <div class="toolbar" style="margin:10px 0 0"><button class="btn small" id="xoAdd">Добавить резервный выход…</button><button class="btn ghost small hidden" id="xoWarp"></button><button class="btn ghost small" id="xoRefresh">Обновить</button><span class="note" id="xoInfo"></span></div>
+        <div class="err" id="xoErr"></div>
+      </div>
+
       <h2 class="sect">Обслуживание серверов</h2>
       <div class="maint">
         <div class="mcard"><h3><span class="tag ru">RU</span> Входной сервер <span class="note" id="mtRuHost"></span></h3>
@@ -441,6 +453,7 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)} u.ex{background:var(--ex)}
         <div class="card">
           <h2>Через EU вместо RU</h2>
           <p class="hint">Для российских сервисов, которые не пускают адрес вашего сервера RU (считают адреса этого хостинга VPN), но работают с зарубежного адреса. Трафик к этим сетям пойдёт через сервер EU. Меняется только сервер — <b>на устройствах ничего делать не нужно</b>.</p>
+          <label class="bpreset" style="margin-bottom:8px"><input type="checkbox" id="eAuto"><div><b>Автоматически: заблокированное в России на российских адресах</b><span style="font-family:inherit">Такие сайты сейчас идут «напрямую» и не открываются. Список antifilter.download, из него берутся только адреса из российских сетей; обновляется на сервере раз в неделю. Включается и выключается сразу.</span></div></label>
           <div id="ePresets"></div>
           <label class="blabel" for="eNets">Свои адреса и сети</label>
           <textarea id="eNets" class="bta" placeholder="по одному на строку" spellcheck="false"></textarea>
@@ -618,7 +631,19 @@ function applyThree(){
   $("eu-hint").textContent = t ? "Посредник: принимает трафик от сервера RU и передаёт его выходу. Сайты его адрес не видят." : "Через него пойдёт весь остальной трафик. Сайты будут видеть его IP.";
 }
 $("three").onchange=applyThree; applyThree();
+let runMode = "";
+// Режим «резервный выход»: в журнале установки только его шаги.
+function rxLayout(on){
+  runMode = on ? "add-exit" : "";
+  document.querySelectorAll("#runView .steps > .grp").forEach(g=>g.classList.toggle("hidden", on ? g.id!=="grp-rx" : (g.id==="grp-rx" || (g.id==="grp-ex" && g.classList.contains("hidden")))));
+  document.querySelector("#runView .steps").classList.toggle("four", false);
+  document.querySelector("#installView h1").textContent = on ? "Резервный выход" : "Новый каскад";
+  const sub=document.querySelector("#installView .sub"); if(!sub.dataset.orig) sub.dataset.orig=sub.textContent;
+  sub.textContent = on ? "Программа ставит AmneziaWG на резервный сервер и подключает его к узлу выбора выхода. Пользователей это не затрагивает." : sub.dataset.orig;
+  $("backBtn").textContent = on ? "К управлению" : "К форме";
+}
 function runLayout(t){
+  if (runMode) return;
   $("grp-ex").classList.toggle("hidden",!t); $("tabEX").classList.toggle("hidden",!t);
   document.querySelector("#runView .steps").classList.toggle("four",t);
   $("grp-eu-t").textContent = t ? "транзит" : "выходной сервер";
@@ -699,7 +724,7 @@ $("startBtn").onclick = async () => {
 
 function showRun(){ $("formView").classList.add("hidden"); $("runView").classList.remove("hidden"); }
 function showForm(){ $("runView").classList.add("hidden"); $("formView").classList.remove("hidden"); }
-$("backBtn").onclick = showForm;
+$("backBtn").onclick = () => { if (runMode==="add-exit"){ rxLayout(false); if (cur){ openProfile(cur.id); showTab("server"); } return; } showForm(); };
 $("cancelBtn").onclick = async () => { if (confirm("Остановить? То, что уже запущено на сервере, доработает само. Потом можно запустить программу снова — она продолжит с того же места.")) await post("/api/cancel"); };
 
 // ---- лог ----
@@ -732,7 +757,7 @@ function addLine(e){
 const stageText = {run:"выполняется…", ok:"готово", err:"ошибка", skip:"пропущено"};
 function setStage(id,state){ const el=$("st-"+id); if(!el) return; if (/^(ex-|transit)/.test(id)) runLayout(true); el.className="step "+state+(id==="connect"?" solo":""); el.querySelector("span").textContent=stageText[state]||state; }
 function resetRun(){
-  lines=[]; renderLog(); for (const id of ["connect","ru-update","ru-install","eu-update","eu-install","ex-update","ex-install","transit","cascade","clients"]) { $("st-"+id).className="step"+(id==="connect"?" solo":""); $("st-"+id).querySelector("span").textContent="ожидание"; }
+  lines=[]; renderLog(); for (const id of ["connect","ru-update","ru-install","eu-update","eu-install","ex-update","ex-install","transit","cascade","clients","rx-update","rx-install","rx-link"]) { $("st-"+id).className="step"+(id==="connect"?" solo":""); $("st-"+id).querySelector("span").textContent="ожидание"; }
   $("resultBox").classList.add("hidden"); $("resultBox").textContent=""; $("cancelBtn").classList.remove("hidden"); $("backBtn").classList.add("hidden");
   startedAt = Date.now(); running = true;
 }
@@ -747,6 +772,14 @@ function finish(e){
   running=false; $("cancelBtn").classList.add("hidden"); $("backBtn").classList.remove("hidden");
   const box=$("resultBox"); box.classList.remove("hidden"); box.textContent="";
   const r=e.result||{};
+  if (r.mode==="add-exit" || runMode==="add-exit"){
+    const d=document.createElement("div"); d.className=e.ok?"okbox":"err on"; d.style.marginTop="0";
+    if (e.ok) d.innerHTML="<b>Резервный выход подключён.</b> Если основной выход перестанет отвечать (две проверки подряд, проверка каждые 30 секунд), зарубежный трафик автоматически переключится на резервный, а когда основной оживёт — вернётся. Состояние выходов — во вкладке «Сервер».";
+    else d.textContent="Не получилось: "+(r.error||"неизвестная ошибка")+"\n\nИсправьте причину и добавьте выход ещё раз: уже сделанные шаги повторяться не будут.";
+    box.appendChild(d);
+    if (r.profile){ const b=document.createElement("button"); b.className="btn small"; b.style.marginTop="10px"; b.textContent="Вернуться к управлению"; b.onclick=async()=>{ rxLayout(false); await loadProfiles(); openProfile(r.profile); showTab("server"); }; box.appendChild(b); }
+    return;
+  }
   if (!e.ok){
     const d=document.createElement("div"); d.className="err on"; d.style.marginTop="0";
     d.textContent="Не получилось: "+(r.error||"неизвестная ошибка")+"\n\nИсправьте причину и нажмите «К форме» → «Начать установку» ещё раз: уже сделанные шаги повторяться не будут.";
@@ -784,7 +817,7 @@ function connect(){
     const e = JSON.parse(m.data);
     if (e.t==="reset"){ resetRun(); installActive = true; showRun(); return; }
     if (e.t==="log"){ if(!startedAt){ resetRun(); showRun(); running=false; } if (e.src==="EX") runLayout(true); addLine(e); }
-    else if (e.t==="stage"){ setStage(e.id,e.state); }
+    else if (e.t==="stage"){ if (/^rx-/.test(e.id) && runMode!=="add-exit") rxLayout(true); setStage(e.id,e.state); }
     else if (e.t==="finish"){ running=true; finish(e); if (e.ok && e.result && e.result.profile) loadProfiles(); }
   };
 }
@@ -846,7 +879,7 @@ function showTab(t, force){
   document.querySelectorAll(".mtab").forEach(x=>x.classList.toggle("hidden", x.id!=="t-"+t));
   if (t==="users") loadClients();
   if (t==="stats") loadStats();
-  if (t==="server") { renderStatus(lastStatus); renderMaint(); }
+  if (t==="server") { renderStatus(lastStatus); renderMaint(); loadExits(); }
   if (t==="backup") loadBackups();
   if (t==="bypass") { loadBypass(); loadEU(); }
   if (t==="rudns") loadDNS();
@@ -1336,11 +1369,16 @@ async function loadEU(){
     euPresets=r.presets||[]; let nets=netsOf(r.nets||"");
     $("ePresets").innerHTML=euPresets.map(p=>{ const on=p.nets.every(n=>nets.includes(n)); if(on) nets=nets.filter(n=>!p.nets.includes(n));
       return '<label class="bpreset"><input type="checkbox" data-p="'+esc(p.id)+'"'+(on?' checked':'')+'><div><b>'+esc(p.title)+'</b><span>'+p.nets.map(esc).join(", ")+'</span></div></label>'; }).join("");
-    $("eNets").value=nets.join("\n");
+    $("eNets").value=nets.join("\n"); $("eAuto").checked=!!r.auto;
+    $("eAuto").title = r.auto ? "В автосписке адресов: "+(r.autoCount||0)+(r.autoDate?" (от "+r.autoDate+")":"") : "";
     const total=netsOf(r.nets||"").length;
     $("eInfo").textContent = !r.cascade ? "каскад не настроен" : total ? ("Сейчас через EU: "+plural(total,"сеть","сети","сетей")+(r.active&&!r.first?" — правило не первое, исправится в течение 10 минут":"")) : "Сейчас ничего";
   } catch(e){ $("eInfo").textContent=""; $("eErr").textContent=e.message; $("eErr").classList.add("on"); }
 }
+$("eAuto").onchange=async e=>{ const on=e.target.checked, cb=e.target; cb.disabled=true; $("eErr").classList.remove("on"); $("eInfo").innerHTML='<span class="spin"></span> '+(on?"Скачиваю и фильтрую список (до пары минут)…":"Выключаю…");
+  try { const r=await call("/api/m/eu-auto",{id:cur.id, enable:on}); toast(on?"Автосписок включён: адресов — "+r.count:"Автосписок выключен"); }
+  catch(err){ cb.checked=!on; $("eErr").textContent=err.message; $("eErr").classList.add("on"); }
+  finally { cb.disabled=false; loadEU(); } };
 $("eApply").onclick=async()=>{
   const nets=[]; document.querySelectorAll("#ePresets input:checked").forEach(c=>{ const p=euPresets.find(x=>x.id===c.dataset.p); if(p) nets.push(...p.nets); });
   for (const n of netsOf($("eNets").value)) if(!nets.includes(n)) nets.push(n);
@@ -1352,6 +1390,48 @@ $("eApply").onclick=async()=>{
 
 // ================= домены РФ =================
 let dnsState=null;
+// ================= выходы и переключение =================
+let xoState=null;
+async function loadExits(){
+  if (!cur) return; const id=cur.id, tb=$("xoTable").tBodies[0]; $("xoErr").classList.remove("on");
+  const three=!!cur.exHost;
+  $("xoHint").innerHTML = (three ? "Транзит" : "Сервер RU")+" держит туннели ко всем выходам и раз в 30 секунд проверяет, проходит ли через них трафик. Если текущий выход не отвечает две проверки подряд, зарубежный трафик переключается на следующий живой; когда более приоритетный оживёт (3 удачные проверки) — возвращается. Если не работает ни один — трафик блокируется, а не уходит с адреса "+(three?"транзита":"сервера RU")+"."+
+    (three ? " Запасным выходом может быть и <b>Cloudflare WARP</b> — бесплатный, но чужой и с ограничениями; хорош как временная замена." : " WARP как запасной выход доступен только для трёх серверов: из России протокол WARP блокируется.");
+  try {
+    const r=await call("/api/m/exits-get",{id}); if(!cur||cur.id!==id) return; xoState=r;
+    tb.innerHTML = r.rows.map((x,i)=>{ const live=x.ok>0, dead=x.fail>0;
+      const st = !x.up ? '<span style="color:var(--err)">туннель не поднят</span>' : live ? '<span style="color:var(--ok)">работает</span>'+(x.hsAge>=0?' · связь '+fmtAgo(x.hsAge):'') : dead ? '<span style="color:var(--err)">не отвечает</span>'+(x.hsAge>=0?' · связь '+fmtAgo(x.hsAge):'') : '<span class="note">ещё не проверялся</span>';
+      return '<tr><td><b>'+esc(x.label)+'</b> <span class="note">'+esc(x.iface)+'</span>'+(x.current?' <span class="pill ok" style="display:inline-flex;padding:1px 8px;font-size:11px"><i class="dot"></i>сейчас</span>':'')+'</td><td>'+esc(x.host||x.endpoint||"—")+'</td><td>'+st+'</td><td class="r">'+(x.iface!=="awg1"?'<button class="btn ghost small danger" data-xo="'+esc(x.iface)+'">Убрать</button>':'')+'</td></tr>'; }).join("");
+    const hasWarp=r.rows.some(x=>x.iface==="warp");
+    $("xoWarp").classList.toggle("hidden",!r.threeHop); $("xoWarp").textContent=hasWarp?"Убрать WARP":"Добавить WARP как запасной";
+    $("xoAdd").disabled=!r.canAdd;
+    $("xoInfo").textContent = r.rows.length<2 ? "Сейчас выход один — переключать некуда." : (r.timer?"Переключатель работает.":"Переключатель не запущен.")+(r.switches&&r.switches.length?" Последнее переключение: "+r.switches[r.switches.length-1]:"");
+  } catch(e){ tb.innerHTML='<tr><td colspan="4" class="empty">'+esc(e.message)+'</td></tr>'; }
+}
+$("xoRefresh").onclick=loadExits;
+$("xoTable").onclick=e=>{ const b=e.target.closest("button[data-xo]"); if(!b) return; const i=b.dataset.xo;
+  confirmBox(i==="warp"?"Убрать WARP?":"Убрать резервный выход?", i==="warp"?"Туннель к Cloudflare WARP будет удалён с транзита.":"Туннель к этому выходу будет удалён с узла, на самом резервном сервере — клиент узла. AmneziaWG на резервном сервере останется (VPS можно удалить у хостера).", "Убрать", async()=>{
+    const r=await call(i==="warp"?"/api/m/exits-warp":"/api/m/exits-remove",{id:cur.id, iface:i, enable:false}); toast(r.note||"Готово", !!r.note); await loadProfiles(); loadExits(); }, true); };
+$("xoWarp").onclick=async()=>{ const on=!(xoState&&xoState.rows.some(x=>x.iface==="warp"));
+  if (!on) { $("xoTable").querySelector('button[data-xo="warp"]')?.click(); return; }
+  const b=$("xoWarp"); b.disabled=true; b.innerHTML='<span class="spin"></span> Регистрирую WARP…'; $("xoErr").classList.remove("on");
+  try { const r=await call("/api/m/exits-warp",{id:cur.id, enable:true}); toast(r.note||"WARP добавлен как запасной выход", !!r.note); loadExits(); }
+  catch(e){ $("xoErr").textContent=e.message; $("xoErr").classList.add("on"); } finally { b.disabled=false; } };
+$("xoAdd").onclick=()=>{
+  modal('<h2>Резервный выход</h2><p class="note">Нужен ещё один зарубежный VPS (Ubuntu 24.04 или Debian 13), лучше у другого хостера. Программа обновит систему, поставит AmneziaWG той же версии и подключит выход к '+(cur.exHost?"транзиту":"серверу RU")+'. Занимает 15–40 минут, пользователей не затрагивает.</p>'+
+    '<div class="row"><div><label>IP-адрес</label><input type="text" id="rxHost" spellcheck="false"></div><div><label>Порт SSH</label><input type="number" id="rxPort" value="22"></div></div>'+
+    '<label>Логин</label><input type="text" id="rxUser" value="root"><label>Пароль root</label><input type="password" id="rxPass" autocomplete="new-password">'+
+    '<label>Или файл SSH-ключа</label><input type="file" id="rxKey"><div class="file" id="rxKeyName"></div>'+
+    '<div class="err" id="rxErr"></div><div class="actions"><button class="btn" id="rxGo">Установить и подключить</button><button class="btn ghost" id="rxNo">Отмена</button></div>');
+  let key=""; $("rxKey").onchange=async e=>{ const f=e.target.files[0]; if(!f) return; key=await f.text(); $("rxKeyName").textContent=key.includes("PRIVATE KEY")?"Ключ загружен: "+f.name:"Это не похоже на приватный ключ"; };
+  $("rxNo").onclick=closeModal;
+  $("rxGo").onclick=async()=>{ const er=$("rxErr"); er.classList.remove("on");
+    const rx={host:$("rxHost").value.trim(), port:parseInt($("rxPort").value)||22, user:$("rxUser").value.trim()||"root", password:$("rxPass").value, key};
+    const pid=cur.id; rxLayout(true);
+    try { await call("/api/start",{mode:"add-exit", profileId:pid, rx}); closeModal(); go("install"); showRun(); }
+    catch(e){ rxLayout(false); er.textContent=e.message; er.classList.add("on"); } };
+};
+
 // ================= эксперименты: агент и Telegram =================
 const tzOff = Math.round(-new Date().getTimezoneOffset()/60);
 (function(){ const s=$("agHour"); for(let h=0;h<24;h++){ const o=document.createElement("option"); o.value=h; o.textContent=String(h).padStart(2,"0")+":00"; s.appendChild(o);} s.value=4; })();

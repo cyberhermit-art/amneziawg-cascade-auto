@@ -289,7 +289,11 @@ ipset destroy ru_tmp
 
 # 3) Таблица + правило: помеченный трафик уходит на выход через awg1 (по номеру таблицы, rt_tables не нужен).
 #    Если awg1 сейчас не поднят — маршрута нет, и помеченный трафик заблокирует правило 3a (а не выпустит напрямую).
-ip route replace default dev "$AWG1_IF" table "$TABLE_ID" 2>/dev/null \
+# [AmneziaWG Cascade] Если работает переключение выходов (awgc-exits) — остаёмся на текущем выходе.
+EXIT_IF="$AWG1_IF"
+CUR_EXIT=$(cat /root/awg/awgc-exits/current 2>/dev/null || true)
+if [ -n "$CUR_EXIT" ] && ip link show "$CUR_EXIT" >/dev/null 2>&1; then EXIT_IF="$CUR_EXIT"; fi
+ip route replace default dev "$EXIT_IF" table "$TABLE_ID" 2>/dev/null \
     || echo "WARN: туннель $AWG1_IF не поднят — зарубежный трафик заблокирован, пока он не заработает" >&2
 ip rule del fwmark "$FWMARK" table "$TABLE_ID" 2>/dev/null || true
 ip rule add fwmark "$FWMARK" table "$TABLE_ID" priority "$RULE_PRIO"

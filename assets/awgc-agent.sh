@@ -31,13 +31,15 @@ ROLE=${ROLE:-ru}; NAME=${NAME:-AmneziaWG}; TG_TOKEN=${TG_TOKEN:-}; TG_CHAT=${TG_
 A_HEALTH=${A_HEALTH:-1}; A_EXPIRY=${A_EXPIRY:-3}; A_LIMITS=${A_LIMITS:-1}; A_REP=${A_REP:-1}
 BACKUP=${BACKUP:-off}; HOUR_UTC=${HOUR_UTC:-1}; EXIT_IP=${EXIT_IP:-}; RU_IP=${RU_IP:-}; WATCH_PEER=${WATCH_PEER:-}
 NOW=$(date +%s)
+# текущий выход (при переключении выходов — не обязательно awg1)
+XIF=$(cat $A/awgc-exits/current 2>/dev/null || echo awg1); ip link show "$XIF" >/dev/null 2>&1 || XIF=awg1
 
 # Запрос к api.telegram.org: сначала через туннель (из России Telegram может
 # быть недоступен напрямую), потом напрямую.
 tgcurl() {
     local m=$1; shift
     local i out
-    for i in awg1 ""; do
+    for i in "$XIF" ""; do
         if [ -n "$i" ]; then ip link show "$i" >/dev/null 2>&1 || continue; fi
         out=$(curl -s -m 40 ${i:+--interface $i} "https://api.telegram.org/bot$TG_TOKEN/$m" "$@" 2>/dev/null) || continue
         case "$out" in *'"ok":true'*) printf '%s' "$out"; return 0 ;; esac
@@ -79,13 +81,13 @@ check_health_ru() {
     if systemctl is-active --quiet awg-quick@awg0; then resolved awg0 "VPN-сервер на RU снова работает."
     else problem awg0 "VPN-сервер на RU не работает (awg-quick@awg0). Пользователи не могут подключиться."; fi
     [ -f "$C/awg1.conf" ] || return 0
-    local age; age=$(hs_age awg1)
+    local age; age=$(hs_age "$XIF")
     if [ "$age" -ge 0 ] && [ "$age" -le 300 ]; then
         resolved tunnel "Туннель от сервера RU к зарубежному серверу снова на связи."
         # Туннель жив — проверяем, что трафик реально выходит в интернет
         # (на трёх серверах это заодно проверка транзит → выход).
-        if curl -s -m 15 --interface awg1 -o /dev/null -w '%{http_code}' https://www.gstatic.com/generate_204 2>/dev/null | grep -q 204 \
-           || curl -s -m 15 --interface awg1 -o /dev/null https://1.1.1.1 2>/dev/null; then
+        if curl -s -m 15 --interface "$XIF" -o /dev/null -w '%{http_code}' https://www.gstatic.com/generate_204 2>/dev/null | grep -q 204 \
+           || curl -s -m 15 --interface "$XIF" -o /dev/null https://1.1.1.1 2>/dev/null; then
             resolved exit "Зарубежный трафик снова проходит."
         else
             problem exit "Туннель к зарубежному серверу на связи, но трафик в интернет через него не проходит. Если серверов три — не отвечает выход (или туннель транзит → выход). Зарубежные сайты сейчас не открываются."

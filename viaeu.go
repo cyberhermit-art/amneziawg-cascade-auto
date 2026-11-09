@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -55,6 +56,7 @@ func handleEUGet(m *mctx, _ exclReq) (any, error) {
 		"active":  kv["ACTIVE"] == "1",
 		"first":   kv["FIRST"] == "1",
 		"nets":    strings.TrimSpace(between(out, "@@NETS", "@@END")),
+		"auto":    kv["AUTOON"] == "1", "autoCount": kv["AUTOCNT"], "autoDate": kv["AUTODATE"],
 		"presets": pl,
 	}, nil
 }
@@ -74,10 +76,12 @@ func handleEUSet(m *mctx, r exclReq) (any, error) {
 	for _, p := range nets {
 		lines = append(lines, p.String())
 	}
-	cmd := fmt.Sprintf("printf '%%s' %s > /root/awg/awgc-eu.txt && bash %s apply 2>&1", shq(strings.Join(lines, "\n")+"\n"), euScriptPath)
-	if len(nets) == 0 {
-		cmd = "bash " + euScriptPath + " disable 2>&1"
+	body := ""
+	if len(lines) > 0 {
+		body = strings.Join(lines, "\n") + "\n"
 	}
+	// пустой список при включённом автосписке не выключает «Через EU» целиком
+	cmd := fmt.Sprintf("printf '%%s' %s > /root/awg/awgc-eu.txt && bash %s apply 2>&1", shq(body), euScriptPath)
 	out, se, code, err := m.ruCmd(cmd, nil, 2*time.Minute)
 	if err != nil {
 		return nil, err
@@ -88,7 +92,29 @@ func handleEUSet(m *mctx, r exclReq) (any, error) {
 	return map[string]any{"ok": true, "nets": len(nets)}, nil
 }
 
+// handleEUAuto включает или выключает автосписок заблокированных в РФ адресов
+// из российских сетей (antifilter.download, обновление раз в неделю).
+func handleEUAuto(m *mctx, r exclReq) (any, error) {
+	if err := m.uploadEUScript(); err != nil {
+		return nil, err
+	}
+	cmd := "auto-off"
+	if r.Enable {
+		cmd = "auto-on"
+	}
+	out, se, _, err := m.ruCmd("bash "+euScriptPath+" "+cmd+" 2>&1", nil, 6*time.Minute)
+	if err != nil {
+		return nil, err
+	}
+	if !strings.Contains(out, "@@OK") {
+		return nil, fmt.Errorf("не получилось: %s", tail(se+out, 3))
+	}
+	n, _ := strconv.Atoi(strings.TrimSpace(kvLines(out)["AUTO"]))
+	return map[string]any{"ok": true, "count": n}, nil
+}
+
 func registerViaEU(mux *http.ServeMux) {
+	mux.HandleFunc("/api/m/eu-auto", xapi(handleEUAuto))
 	mux.HandleFunc("/api/m/eu-get", xapi(handleEUGet))
 	mux.HandleFunc("/api/m/eu-set", xapi(handleEUSet))
 }
