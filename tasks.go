@@ -96,6 +96,7 @@ rm -rf /etc/awgc-dns
 [ -x /root/awg/awgc-eu.sh ] && bash /root/awg/awgc-eu.sh disable >/dev/null 2>&1
 ` + agentUninst + `
 [ -f /root/awg/awgc-exits.sh ] && { echo "== Убираю резервные выходы и переключатель"; bash /root/awg/awgc-exits.sh uninstall >/dev/null 2>&1; }
+[ -f /root/awg/awgc-mtproto.sh ] && { echo "== Убираю MTProto-прокси"; bash /root/awg/awgc-mtproto.sh off >/dev/null 2>&1; rm -f /usr/local/bin/awgc-mtg; userdel awgc-mtg >/dev/null 2>&1; }
 echo "== Отключаю каскад (туннель до EU, маршрутизация, автозапуск)"
 bash /root/cascade-setup.sh --remove 2>&1 | grep -v "удалите клиента"
 echo "== Убираю сбор статистики"

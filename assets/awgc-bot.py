@@ -37,7 +37,8 @@ HELP = (
     "/add — добавить пользователя (можно сразу: /add имя 30d)\n"
     "/get имя — QR-код и файл подключения\n"
     "/del имя — удалить пользователя\n"
-    "/status — состояние каскада\n\n"
+    "/status — состояние каскада\n"
+    "/proxy — ссылка на MTProto-прокси для Telegram (если включён)\n\n"
     "Срок: 12h, 30d, 2w или просто число дней. Без срока — бессрочно."
 )
 
@@ -269,6 +270,21 @@ class Bot:
         log("del %s" % name)
         self.tg.send(chat, "🗑 Пользователь %s удалён." % esc(name))
 
+    def cmd_proxy(self, chat):
+        kv = {}
+        try:
+            for line in open(A + "/awgc-mtproto.conf", encoding="utf-8"):
+                if "=" in line:
+                    k, v = line.strip().split("=", 1)
+                    kv[k] = v
+        except OSError:
+            pass
+        if not kv.get("SECRET_SAVED"):
+            return self.tg.send(chat, "MTProto-прокси не включён. Включить: программа → «Эксперименты» → «MTProto-прокси».")
+        link = "tg://proxy?server=%s&port=%s&secret=%s" % (kv.get("HOST_SAVED"), kv.get("PORT_SAVED"), kv["SECRET_SAVED"])
+        web = "https://t.me/proxy?server=%s&port=%s&secret=%s" % (kv.get("HOST_SAVED"), kv.get("PORT_SAVED"), kv["SECRET_SAVED"])
+        self.tg.send(chat, "MTProto-прокси для Telegram. Откройте ссылку на телефоне — Telegram предложит подключить прокси:\n%s\n\n<code>%s</code>" % (esc(web), esc(link)))
+
     def cmd_status(self, chat):
         def active(u):
             return subprocess.run(["systemctl", "is-active", "--quiet", u]).returncode == 0
@@ -302,6 +318,8 @@ class Bot:
                 return self.cmd_users(chat)
             if cmd == "/status":
                 return self.cmd_status(chat)
+            if cmd == "/proxy":
+                return self.cmd_proxy(chat)
             if cmd == "/get":
                 if not args:
                     return self.cmd_users(chat)
@@ -398,6 +416,7 @@ def main():
             {"command": "get", "description": "QR-код и файл подключения"},
             {"command": "del", "description": "Удалить пользователя"},
             {"command": "status", "description": "Состояние каскада"},
+            {"command": "proxy", "description": "Ссылка на MTProto-прокси"},
             {"command": "help", "description": "Помощь"}]})
     except RuntimeError as e:
         log("setMyCommands: %s" % e)

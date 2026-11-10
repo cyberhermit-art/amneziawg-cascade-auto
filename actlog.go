@@ -53,6 +53,7 @@ var actionNames = map[string]string{
 	"/api/m/exits-remove":   "Выходы: удаление резервного выхода",
 	"/api/m/exits-warp":     "Выходы: WARP",
 	"/api/m/eu-auto":        "«Через EU»: автосписок заблокированного",
+	"/api/m/mtproto-set":    "MTProto-прокси: включение / выключение",
 }
 
 var taskNames = map[string]string{"update": "обновление пакетов", "uninstall": "удаление VPN"}

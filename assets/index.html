@@ -557,11 +557,17 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)} u.ex{background:var(--ex)}
           <div class="tablewrap"><table class="tbl" id="limTable"><thead><tr><th>Пользователь</th><th class="r">В этом месяце</th><th class="r">Лимит, ГБ</th></tr></thead><tbody></tbody></table></div>
           <div class="toolbar" style="margin:10px 0 0"><button class="btn small" id="limSave">Сохранить лимиты</button><span class="note" id="limNote">Пусто или 0 — без лимита.</span></div>
           <div class="err" id="limErr"></div>
-          <h2 style="margin-top:20px">Скоро в «Экспериментах»</h2>
-          <ul class="note" style="padding-left:18px;line-height:1.55;margin:6px 0 0">
-            <li>Несколько выходов с автоматическим переключением, если один упал или попал в блокировку.</li>
-            <li>MTProto-прокси для Telegram на сервере RU.</li>
-          </ul>
+          <h2 style="margin-top:20px;display:flex;align-items:center;gap:8px">MTProto-прокси для Telegram <span class="pill" id="mpState"><i class="dot"></i><span>…</span></span></h2>
+          <p class="hint">Прокси на сервере RU: телефон подключается к российскому адресу (его не блокируют), а дальше трафик к Telegram идёт через выход каскада. Работает без VPN — например, у близких, которым VPN не нужен. Маскировка FakeTLS: для наблюдателя это HTTPS к выбранному сайту.</p>
+          <div class="row"><div><label for="mpPort">Порт</label><input type="number" id="mpPort" value="443" min="1" max="65535"></div><div><label for="mpDomain">Сайт для маскировки</label><input type="text" id="mpDomain" value="ya.ru" spellcheck="false"></div></div>
+          <div class="toolbar" style="margin:10px 0 0"><button class="btn small" id="mpOn">Включить</button><button class="btn ghost small danger hidden" id="mpOff">Выключить</button></div>
+          <div class="err" id="mpErr"></div>
+          <div id="mpLink" class="hidden" style="margin-top:10px">
+            <img id="mpQr" alt="QR-код прокси" style="width:180px;height:180px;image-rendering:pixelated;background:#fff;border-radius:8px;padding:4px;display:block;margin:0 0 8px">
+            <label>Ссылка для подключения</label><textarea id="mpUri" class="bta" readonly style="height:60px"></textarea>
+            <div class="toolbar" style="margin:6px 0 0"><button class="btn ghost small" id="mpCopy">Копировать ссылку</button><span class="note" id="mpInfo"></span></div>
+          </div>
+          <p class="note" style="margin-top:8px">Ссылку можно отправить кому угодно: она даёт доступ только к Telegram. Бот присылает её по команде /proxy. Смена сайта для маскировки меняет секрет — старые ссылки перестанут работать.</p>
         </div>
       </div>
     </div>
@@ -1449,8 +1455,26 @@ async function loadExp(){
     $("agOff").classList.toggle("hidden",!r.configured); $("agTest").disabled=!r.configured; $("agBak").disabled=!r.configured;
     $("agInfo").textContent = "Агент ставится на серверы: "+(r.servers||[]).map(x=>SRVNAME[x]).join(", ")+"."+(r.configured&&r.lastRunAge>=0?" Последняя проверка на RU: "+fmtAgo(r.lastRunAge)+".":"")+(r.bot?(r.botActive?" Бот работает.":" Бот включён, но не запущен — нажмите «Сохранить и включить» ещё раз."):"")+(r.lastError?" Последняя ошибка Telegram: "+r.lastError:"");
   } catch(e){ $("agInfo").textContent=""; $("agErr").textContent=e.message; $("agErr").classList.add("on"); }
-  loadLimits();
+  loadLimits(); loadMTP();
 }
+async function loadMTP(){
+  const id=cur.id; $("mpErr").classList.remove("on");
+  try { const r=await call("/api/m/mtproto-get",{id}); if(!cur||cur.id!==id) return; mtpShow(r); }
+  catch(e){ $("mpErr").textContent=e.message; $("mpErr").classList.add("on"); }
+}
+function mtpShow(r){
+  const pill=$("mpState"); pill.className="pill "+(r.enabled?(r.active?"ok":"err"):""); pill.querySelector("span").textContent=r.enabled?(r.active?"работает":"не работает"):"выключен";
+  if (r.enabled){ $("mpPort").value=r.port; $("mpDomain").value=r.domain; }
+  $("mpOn").textContent=r.enabled?"Сохранить":"Включить"; $("mpOff").classList.toggle("hidden",!r.enabled);
+  $("mpLink").classList.toggle("hidden",!r.link); $("mpUri").value=r.link||"";
+  if (r.qr) $("mpQr").src="data:image/png;base64,"+r.qr; $("mpQr").classList.toggle("hidden",!r.qr);
+  $("mpInfo").textContent = r.enabled ? "Сейчас подключений: "+(r.conns||0) : "";
+}
+$("mpOn").onclick=async()=>{ const b=$("mpOn"), t=b.textContent; b.disabled=true; b.innerHTML='<span class="spin"></span> Ставлю прокси…'; $("mpErr").classList.remove("on");
+  try { const r=await call("/api/m/mtproto-set",{id:cur.id, enable:true, port:parseInt($("mpPort").value)||443, domain:$("mpDomain").value.trim()}); mtpShow(r); toast("MTProto-прокси работает. Отправьте ссылку или QR-код на телефон."); }
+  catch(e){ $("mpErr").textContent=e.message; $("mpErr").classList.add("on"); } finally { b.disabled=false; if(b.textContent.includes("Ставлю")) b.textContent=t; } };
+$("mpOff").onclick=()=>confirmBox("Выключить MTProto-прокси?","Прокси будет удалён с сервера RU, ссылки на него перестанут работать.","Выключить",async()=>{ await call("/api/m/mtproto-set",{id:cur.id, enable:false}); toast("Прокси выключен"); loadMTP(); },true);
+$("mpCopy").onclick=async()=>{ try{ await navigator.clipboard.writeText($("mpUri").value); }catch(_){ $("mpUri").select(); document.execCommand("copy"); } toast("Ссылка скопирована"); };
 function agBody(){ const lh=+$("agHour").value; return {id:cur.id, token:$("agToken").value.trim(), chat:$("agChat").value.trim(), health:$("agHealth").checked,
   expiry:$("agExpOn").checked?+$("agExp").value:0, limits:$("agLimits").checked, rep:$("agRep").checked, bot:$("agBot").checked, backup:$("agBackup").value, hourUtc:((lh-tzOff)%24+24)%24}; }
 async function agDo(btn, busy, url, body, okMsg){

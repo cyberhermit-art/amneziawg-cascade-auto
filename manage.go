@@ -456,7 +456,7 @@ R=/root/awg/awg-routing.sh; S=ipdeny
 grep -q '^RU_ZONE_EXTRA_URL="h' $R 2>/dev/null && S="$S + MaxMind"
 grep -q '^RU_ZONE_EXTRA2_URL="h' $R 2>/dev/null && { S="$S + DB-IP"; grep -q 'KS_TABLE' $R && echo "@@XL 1"; }
 echo "@@SRC $S"
-echo "@@FF $(systemctl is-active --quiet awgc-dns 2>/dev/null && echo -n 'dns ')$([ -s /root/awg/awgc-eu.txt ] && echo -n 'eu ')$([ -s /root/awg/awgc-exclude.txt ] && echo -n 'excl ')$(systemctl is-active --quiet awgc-agent.timer 2>/dev/null && echo -n 'agent')"
+echo "@@FF $(systemctl is-active --quiet awgc-dns 2>/dev/null && echo -n 'dns ')$([ -s /root/awg/awgc-eu.txt ] && echo -n 'eu ')$([ -s /root/awg/awgc-exclude.txt ] && echo -n 'excl ')$(systemctl is-active --quiet awgc-agent.timer 2>/dev/null && echo -n 'agent ')$(systemctl is-active --quiet awgc-mtproto 2>/dev/null && echo -n 'mtproto')"
 F=/etc/amnezia/amneziawg/awg1.conf; [ -f $F ] && { grep -qi '^[[:space:]]*HeaderProtectionKey[[:space:]]*=' $F && echo "@@EUP 3.1" || echo "@@EUP 2.0"; }
 `+protoMarker, nil, 60*time.Second)
 	st.PingMs = int(time.Since(t0).Milliseconds())
@@ -1085,6 +1085,7 @@ func registerManage(mux *http.ServeMux) {
 		registerViaEU(mux)
 		registerAgent(mux)
 		registerExits(mux)
+		registerMTProto(mux)
 	}
 	mux.HandleFunc("/api/m/routing-update", mapi(mRoutingUpdate))
 }
