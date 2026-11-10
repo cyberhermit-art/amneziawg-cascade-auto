@@ -330,8 +330,8 @@ func transitStatus(p *Profile) *transitInfo {
 	}
 	out, _, _, err := c.lockedRun(`XH=`+shq(p.EX.Host)+`; XP=`+strconv.Itoa(orPort(p.EX.Port))+`; F=/etc/amnezia/amneziawg/awg1.conf
 echo "@@CONF $([ -f $F ] && echo 1 || echo 0)"
-echo "@@ACTIVE $(systemctl is-active awg-quick@$XI 2>/dev/null)"
 XI=$(cat /root/awg/awgc-exits/current 2>/dev/null); ip link show "${XI:-none}" >/dev/null 2>&1 || XI=awg1
+echo "@@ACTIVE $(systemctl is-active awg-quick@$XI 2>/dev/null)"
 echo "@@XI $XI"
 H=$(awg show $XI latest-handshakes 2>/dev/null | awk 'NR==1{print $2}'); N=$(date +%s)
 if [ -n "$H" ] && [ "$H" != 0 ]; then echo "@@AGE $((N-H))"; else echo "@@AGE -1"; fi

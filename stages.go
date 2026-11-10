@@ -184,6 +184,9 @@ func (j *Job) run(res *FinalResult) error {
 	if err := j.stage("cascade", func() error { return j.cascade(ru, eu) }); err != nil {
 		return err
 	}
+	if ex != nil {
+		j.logf("", "Каскад из трёх серверов: ifconfig.me на устройстве покажет адрес выхода (%s), а не транзита.", j.in.EX.Host)
+	}
 	if err := j.stage("clients", func() error { return j.clients(ru, res) }); err != nil {
 		return err
 	}
