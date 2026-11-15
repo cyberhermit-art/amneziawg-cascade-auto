@@ -208,7 +208,7 @@ func actionLog(next http.Handler) http.Handler {
 		if json.Unmarshal(cw.buf.Bytes(), &out) == nil || cw.buf.Len() >= 8192 {
 			switch {
 			case out.Error != "":
-				res = "ОШИБКА: " + out.Error
+				res = "ОШИБКА: " + hkMarkRe.ReplaceAllString(out.Error, "")
 			case out.NeedForce:
 				res = "НЕ ВЫПОЛНЕНО: " + out.Reason
 			}

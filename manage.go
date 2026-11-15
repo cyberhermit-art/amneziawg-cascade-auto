@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -135,6 +136,33 @@ type mctx struct {
 }
 
 // mapi: разбирает запрос, находит профиль, ловит ошибки и отдаёт JSON.
+// papi — обёртка запросов вида {"id": "<профиль>", ...}: читает запрос типа T,
+// находит профиль и возвращает результат или {"error": …}.
+func papi[T any](f func(m *mctx, r T) (any, error)) http.HandlerFunc {
+	return api(func(w http.ResponseWriter, r *http.Request) {
+		var q T
+		var id struct {
+			ID string `json:"id"`
+		}
+		b, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<17))
+		if err != nil || json.Unmarshal(b, &q) != nil || json.Unmarshal(b, &id) != nil {
+			writeJSON(w, map[string]string{"error": "неверный запрос"})
+			return
+		}
+		p, err := getProfile(id.ID)
+		if err != nil {
+			writeJSON(w, map[string]string{"error": err.Error()})
+			return
+		}
+		res, err := f(&mctx{p: p}, q)
+		if err != nil {
+			writeJSON(w, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, res)
+	})
+}
+
 func mapi(f func(m *mctx) (any, error)) http.HandlerFunc {
 	return api(func(w http.ResponseWriter, r *http.Request) {
 		var req mreq
@@ -156,10 +184,8 @@ func mapi(f func(m *mctx) (any, error)) http.HandlerFunc {
 	})
 }
 
-var clientNameRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,32}$`)
-
 func checkName(n string) error {
-	if !clientNameRe.MatchString(n) {
+	if !nameRe.MatchString(n) {
 		return errors.New("имя: только латинские буквы, цифры, _ и - (до 32 символов)")
 	}
 	return nil

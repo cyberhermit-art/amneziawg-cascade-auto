@@ -393,29 +393,8 @@ func logLine(s string) {
 	logMu.Unlock()
 }
 
-func ipapi(f func(m *mctx, r ipReq) (any, error)) func(w http.ResponseWriter, r *http.Request) {
-	return api(func(w http.ResponseWriter, r *http.Request) {
-		var ir ipReq
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&ir); err != nil {
-			writeJSON(w, map[string]string{"error": "неверный запрос"})
-			return
-		}
-		p, err := getProfile(ir.ID)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		res, err := f(&mctx{p: p}, ir)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		writeJSON(w, res)
-	})
-}
-
 func registerIPChange(mux *http.ServeMux) {
-	mux.HandleFunc("/api/m/ip-change", ipapi(handleIPChange))
+	mux.HandleFunc("/api/m/ip-change", papi(handleIPChange))
 	// открыть папку внутри папки профиля (например, с новыми файлами после смены IP)
 	mux.HandleFunc("/api/m/open-folder", api(func(w http.ResponseWriter, r *http.Request) {
 		var req struct{ ID, Dir string }

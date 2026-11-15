@@ -161,6 +161,13 @@ func (r *Remote) sshConfig() (*ssh.ClientConfig, error) {
 			r.mu.Lock()
 			defer r.mu.Unlock()
 			if r.hostKey == "" {
+				// ключ, запомненный в прошлые запуски программы
+				addr := r.cfg.addr()
+				if known := knownHostKey(addr); known != "" && known != fp {
+					return hostKeyErr(addr, known, fp)
+				} else if known == "" {
+					_ = setHostKey(addr, fp)
+				}
 				r.hostKey = fp
 				r.log("Ключ сервера: " + fp)
 				return nil
@@ -432,13 +439,19 @@ func isFatalSSH(err error) bool {
 	return errors.As(err, &f)
 }
 
+// hostKeyErr — ключ сервера не совпал с запомненным. Метка [[HOSTKEY адрес]]
+// нужна интерфейсу: он спросит, доверять ли новому ключу (сервер переустановлен).
+func hostKeyErr(addr, want, got string) error {
+	return fmt.Errorf("ключ сервера изменился (%s, ожидался %s) — подключение остановлено из соображений безопасности. Если вы переустанавливали систему на сервере %s, это нормально [[HOSTKEY %s]]", got, want, addr, addr)
+}
+
 func humanSSHError(err error) error {
 	m := err.Error()
 	switch {
 	case strings.Contains(m, "unable to authenticate"):
 		return fatalErr{errors.New("неверный логин, пароль или ключ")}
 	case strings.Contains(m, "ключ сервера изменился"):
-		return fatalErr{err}
+		return fatalErr{errors.New(strings.TrimPrefix(m, "ssh: handshake failed: "))}
 	case strings.Contains(m, "connection refused"):
 		return errors.New("порт SSH закрыт (сервер ещё загружается или указан не тот порт)")
 	case strings.Contains(m, "i/o timeout"), strings.Contains(m, "no route"):

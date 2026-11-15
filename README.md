@@ -116,8 +116,9 @@
 
 ```bash
 go mod tidy
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.0" -o AmneziaWG-Cascade.exe .
-GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.0" -o AmneziaWG-Cascade-Lite.exe .
+go test ./...      # тесты: проверка формы, ключи SSH, переключение выходов (нужен bash)
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.1" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.1" -o AmneziaWG-Cascade-Lite.exe .
 ```
 
 Файл `rsrc_windows_amd64.syso` (иконка и сведения о версии) собран из [`winres/`](winres) командой
@@ -138,6 +139,7 @@ GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui 
 | `actlog.go` | журнал действий в log.txt |
 | `mtproto.go`, `assets/awgc-mtproto.sh` | MTProto-прокси для Telegram на сервере RU (mtg) |
 | `servertools.go`, `assets/awgc-exitip.sh` | Второй IP для выхода, смена порта, исправления безопасности серверов |
+| `*_test.go` | Тесты (`go test ./...`) |
 | `exits.go`, `assets/awgc-exits.sh` | несколько выходов и автоматическое переключение, WARP |
 | `agent.go`, `assets/awgc-agent.sh`, `assets/awgc-bot.py` | «Эксперименты»: агент на серверах, Telegram, копии по расписанию, лимиты |
 | `ipcheck.go` | проверка адресов серверов по базам RIPE, MaxMind, DB-IP и ipinfo.io |

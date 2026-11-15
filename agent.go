@@ -448,34 +448,13 @@ func handleLimitsSet(m *mctx, r agentReq) (any, error) {
 	return map[string]any{"ok": true}, nil
 }
 
-func aapi(f func(m *mctx, r agentReq) (any, error)) func(w http.ResponseWriter, r *http.Request) {
-	return api(func(w http.ResponseWriter, r *http.Request) {
-		var ar agentReq
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&ar); err != nil {
-			writeJSON(w, map[string]string{"error": "неверный запрос"})
-			return
-		}
-		p, err := getProfile(ar.ID)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		res, err := f(&mctx{p: p}, ar)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		writeJSON(w, res)
-	})
-}
-
 func registerAgent(mux *http.ServeMux) {
-	mux.HandleFunc("/api/m/agent-get", aapi(handleAgentGet))
-	mux.HandleFunc("/api/m/agent-set", aapi(handleAgentSet))
-	mux.HandleFunc("/api/m/agent-off", aapi(handleAgentOff))
-	mux.HandleFunc("/api/m/agent-test", aapi(handleAgentTest))
-	mux.HandleFunc("/api/m/agent-backup", aapi(handleAgentBackup))
-	mux.HandleFunc("/api/m/agent-chat", aapi(handleAgentChat))
-	mux.HandleFunc("/api/m/limits-get", aapi(handleLimitsGet))
-	mux.HandleFunc("/api/m/limits-set", aapi(handleLimitsSet))
+	mux.HandleFunc("/api/m/agent-get", papi(handleAgentGet))
+	mux.HandleFunc("/api/m/agent-set", papi(handleAgentSet))
+	mux.HandleFunc("/api/m/agent-off", papi(handleAgentOff))
+	mux.HandleFunc("/api/m/agent-test", papi(handleAgentTest))
+	mux.HandleFunc("/api/m/agent-backup", papi(handleAgentBackup))
+	mux.HandleFunc("/api/m/agent-chat", papi(handleAgentChat))
+	mux.HandleFunc("/api/m/limits-get", papi(handleLimitsGet))
+	mux.HandleFunc("/api/m/limits-set", papi(handleLimitsSet))
 }

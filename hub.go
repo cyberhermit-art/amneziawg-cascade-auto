@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -48,7 +49,9 @@ type Hub struct {
 	subs    map[chan []byte]struct{}
 	running bool
 	lastSub time.Time
-	logSink func(string)
+	// inflight — сколько запросов к API выполняется сейчас
+	inflight atomic.Int32
+	logSink  func(string)
 }
 
 func NewHub() *Hub {
@@ -57,8 +60,11 @@ func NewHub() *Hub {
 
 var ansiRe = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]`)
 
+// hkMarkRe — служебная метка ошибки ключа SSH (см. hostKeyErr): в журналах не нужна.
+var hkMarkRe = regexp.MustCompile(`\s*\[\[HOSTKEY [^\]]+\]\]`)
+
 func clean(s string) string {
-	s = ansiRe.ReplaceAllString(s, "")
+	s = hkMarkRe.ReplaceAllString(ansiRe.ReplaceAllString(s, ""), "")
 	if i := strings.LastIndex(s, "\r"); i >= 0 {
 		s = s[i+1:]
 	}
@@ -135,7 +141,7 @@ func (h *Hub) Unsubscribe(c chan []byte) {
 func (h *Hub) Idle(d time.Duration) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	return len(h.subs) == 0 && !h.running && time.Since(h.lastSub) > d
+	return len(h.subs) == 0 && !h.running && h.inflight.Load() == 0 && time.Since(h.lastSub) > d
 }
 
 func (h *Hub) SetRunning(v bool) bool {

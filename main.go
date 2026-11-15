@@ -19,7 +19,7 @@ import (
 )
 
 // version задаётся при сборке: -ldflags "-X main.version=1.4.0"
-var version = "1.17.0"
+var version = "1.17.1"
 
 var (
 	token   string
@@ -75,6 +75,20 @@ func main() {
 	mux.HandleFunc("/api/open-log", api(handleOpenLog))
 	mux.HandleFunc("/api/ipcheck", api(handleIPCheck))
 	registerManage(mux)
+	// «Доверять новому ключу»: сервер переустановлен, его SSH-ключ сменился.
+	mux.HandleFunc("/api/hostkey-forget", api(func(w http.ResponseWriter, r *http.Request) {
+		var q struct{ Addr string }
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<12)).Decode(&q) != nil || q.Addr == "" {
+			writeJSON(w, map[string]string{"error": "неверный запрос"})
+			return
+		}
+		if err := setHostKey(q.Addr, ""); err != nil {
+			writeJSON(w, map[string]string{"error": err.Error()})
+			return
+		}
+		logLine("[SSH] новый ключ сервера " + q.Addr + " будет принят при следующем подключении")
+		writeJSON(w, map[string]any{"ok": true})
+	}))
 	mux.HandleFunc("/api/state", api(func(w http.ResponseWriter, r *http.Request) {
 		hub.mu.Lock()
 		running := hub.running
@@ -169,6 +183,9 @@ func api(f http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
+		// пока запрос выполняется (смена порта, исправления…), программа не закрывается
+		hub.inflight.Add(1)
+		defer hub.inflight.Add(-1)
 		f(w, r)
 	}
 }

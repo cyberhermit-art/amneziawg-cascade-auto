@@ -679,9 +679,20 @@ function server(r){
     password:$(r+"-pass").value, key:$(r+"-usekey").checked ? keys[r] : "", keyPass:$(r+"-usekey").checked ? $(r+"-keypass").value : "" };
 }
 
-async function post(url, body){
+// Ключ SSH сервера не совпал с запомненным: спросить, доверять ли новому (сервер переустановлен).
+const HK_RE=/\s*\[\[HOSTKEY ([^\]]+)\]\]/;
+async function hostKeyAsk(msg){
+  const m=HK_RE.exec(msg||""); if(!m) return false;
+  if(!confirm(msg.replace(HK_RE,"")+"\n\nДоверять новому ключу сервера "+m[1]+"?\nНажимайте «ОК», только если сами переустанавливали систему на этом сервере или сменили VPS с тем же адресом.")) return false;
+  await fetch("/api/hostkey-forget",{method:"POST",headers:{"X-Token":TOKEN,"Content-Type":"application/json"},body:JSON.stringify({addr:m[1]})});
+  return true;
+}
+async function post(url, body, again){
   const r = await fetch(url,{method:"POST",headers:{"X-Token":TOKEN,"Content-Type":"application/json"},body:body?JSON.stringify(body):"{}"});
-  return r.json();
+  const j = await r.json();
+  if (j && j.error && !again && await hostKeyAsk(j.error)) return post(url, body, true);
+  if (j && typeof j.error==="string") j.error=j.error.replace(HK_RE,"");
+  return j;
 }
 
 // ===== проверка адресов серверов =====
@@ -834,7 +845,9 @@ function connect(){
     if (e.t==="reset"){ resetRun(); installActive = true; showRun(); return; }
     if (e.t==="log"){ if(!startedAt){ resetRun(); showRun(); running=false; } if (e.src==="EX") runLayout(true); addLine(e); }
     else if (e.t==="stage"){ if (/^rx-/.test(e.id) && runMode!=="add-exit") rxLayout(true); setStage(e.id,e.state); }
-    else if (e.t==="finish"){ running=true; finish(e); if (e.ok && e.result && e.result.profile) loadProfiles(); }
+    else if (e.t==="finish"){ running=true; const er=e.result&&e.result.error;
+      if (er && HK_RE.test(er)){ e.result.error=er.replace(HK_RE,""); setTimeout(async()=>{ if(await hostKeyAsk(er)) alert("Новый ключ будет принят. Запустите установку ещё раз."); },50); }
+      finish(e); if (e.ok && e.result && e.result.profile) loadProfiles(); }
   };
 }
 

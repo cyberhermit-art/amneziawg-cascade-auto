@@ -10,7 +10,6 @@ package main
 
 import (
 	_ "embed"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -146,28 +145,7 @@ bash %s %s 2>&1`, shq(strings.Join(doms, "\n")+"\n"), tlds, dnsScriptPath, r.Act
 	return res, nil
 }
 
-func dapi(f func(m *mctx, r dnsReq) (any, error)) func(w http.ResponseWriter, r *http.Request) {
-	return api(func(w http.ResponseWriter, r *http.Request) {
-		var dr dnsReq
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<17)).Decode(&dr); err != nil {
-			writeJSON(w, map[string]string{"error": "неверный запрос"})
-			return
-		}
-		p, err := getProfile(dr.ID)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		res, err := f(&mctx{p: p}, dr)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		writeJSON(w, res)
-	})
-}
-
 func registerDNS(mux *http.ServeMux) {
-	mux.HandleFunc("/api/m/dns-get", dapi(handleDNSGet))
-	mux.HandleFunc("/api/m/dns-set", dapi(handleDNSSet))
+	mux.HandleFunc("/api/m/dns-get", papi(handleDNSGet))
+	mux.HandleFunc("/api/m/dns-set", papi(handleDNSSet))
 }

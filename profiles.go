@@ -74,6 +74,9 @@ type storeFile struct {
 	Scheme   string          `json:"scheme"`
 	Last     string          `json:"last,omitempty"`
 	Profiles []storedProfile `json:"profiles"`
+	// HostKeys — отпечатки SSH-ключей серверов («адрес:порт» → SHA256:…),
+	// чтобы подмену сервера замечать и после перезапуска программы.
+	HostKeys map[string]string `json:"hostKeys,omitempty"`
 }
 
 type secrets struct {
@@ -414,4 +417,34 @@ func publicExits(es []ExitCfg) []publicExit {
 		out = append(out, publicExit{Host: e.Host, Iface: e.Iface})
 	}
 	return out
+}
+
+// knownHostKey — запомненный отпечаток ключа сервера ("" — ещё не подключались).
+func knownHostKey(addr string) string {
+	profMu.Lock()
+	defer profMu.Unlock()
+	sf, err := loadStore()
+	if err != nil {
+		return ""
+	}
+	return sf.HostKeys[addr]
+}
+
+// setHostKey запоминает отпечаток ключа сервера; fp == "" — забыть.
+func setHostKey(addr, fp string) error {
+	profMu.Lock()
+	defer profMu.Unlock()
+	sf, err := loadStore()
+	if err != nil {
+		return err
+	}
+	if sf.HostKeys == nil {
+		sf.HostKeys = map[string]string{}
+	}
+	if fp == "" {
+		delete(sf.HostKeys, addr)
+	} else {
+		sf.HostKeys[addr] = fp
+	}
+	return saveStore(sf)
 }

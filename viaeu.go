@@ -114,7 +114,7 @@ func handleEUAuto(m *mctx, r exclReq) (any, error) {
 }
 
 func registerViaEU(mux *http.ServeMux) {
-	mux.HandleFunc("/api/m/eu-auto", xapi(handleEUAuto))
-	mux.HandleFunc("/api/m/eu-get", xapi(handleEUGet))
-	mux.HandleFunc("/api/m/eu-set", xapi(handleEUSet))
+	mux.HandleFunc("/api/m/eu-auto", papi(handleEUAuto))
+	mux.HandleFunc("/api/m/eu-get", papi(handleEUGet))
+	mux.HandleFunc("/api/m/eu-set", papi(handleEUSet))
 }

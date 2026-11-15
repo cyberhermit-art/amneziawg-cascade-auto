@@ -9,7 +9,6 @@ package main
 // перезапуск SSH или закрытие программы задачу не прерывают.
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -283,29 +282,9 @@ func handleServerReboot(m *mctx, tr taskReq) (any, error) {
 }
 
 // tapi — как mapi, но для запросов задач обслуживания.
-func tapi(f func(m *mctx, tr taskReq) (any, error)) func(w http.ResponseWriter, r *http.Request) {
-	return api(func(w http.ResponseWriter, r *http.Request) {
-		var tr taskReq
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&tr); err != nil {
-			writeJSON(w, map[string]string{"error": "неверный запрос"})
-			return
-		}
-		p, err := getProfile(tr.ID)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		res, err := f(&mctx{p: p}, tr)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		writeJSON(w, res)
-	})
-}
 
 func registerTasks(mux *http.ServeMux) {
-	mux.HandleFunc("/api/m/task-start", tapi(handleTaskStart))
-	mux.HandleFunc("/api/m/task-poll", tapi(handleTaskPoll))
-	mux.HandleFunc("/api/m/server-reboot", tapi(handleServerReboot))
+	mux.HandleFunc("/api/m/task-start", papi(handleTaskStart))
+	mux.HandleFunc("/api/m/task-poll", papi(handleTaskPoll))
+	mux.HandleFunc("/api/m/server-reboot", papi(handleServerReboot))
 }

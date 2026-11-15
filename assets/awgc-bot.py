@@ -234,6 +234,10 @@ class Bot:
                 self.tg.send(chat, "Ссылка для импорта:\n<code>%s</code>" % esc(u))
 
     def do_add(self, chat, name, expiry):
+        # срок приходит и из данных кнопки, которые можно подделать: проверяем снова
+        expiry = parse_expiry(expiry)
+        if expiry is None:
+            return self.tg.send(chat, "Не понял срок. Примеры: 30d, 2w, 12h или число дней.")
         if not NAME_RE.match(name) or name in RESERVED:
             return self.tg.send(chat, "Имя: латинские буквы, цифры, _ и - (до 32 символов). Попробуйте ещё раз: /add")
         if exists(name):
@@ -246,7 +250,7 @@ class Bot:
         except OSError:
             pass
         cmd = "bash %s --yes --no-color%s%s add %s" % (
-            MANAGE, (" --expires=" + expiry) if expiry else "", (" " + shlex.quote(aip)) if aip else "", shlex.quote(name))
+            MANAGE, (" --expires=" + shlex.quote(expiry)) if expiry else "", (" " + shlex.quote(aip)) if aip else "", shlex.quote(name))
         rc, out, err = sh(cmd)
         if rc != 0 or not exists(name):
             tail = "\n".join((out + err).strip().splitlines()[-4:])

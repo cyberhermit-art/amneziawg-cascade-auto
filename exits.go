@@ -14,7 +14,6 @@ package main
 
 import (
 	_ "embed"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -207,31 +206,10 @@ type exitsReq struct {
 	Enable bool   `json:"enable"`
 }
 
-func eapi(f func(m *mctx, r exitsReq) (any, error)) func(w http.ResponseWriter, r *http.Request) {
-	return api(func(w http.ResponseWriter, r *http.Request) {
-		var er exitsReq
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&er); err != nil {
-			writeJSON(w, map[string]string{"error": "неверный запрос"})
-			return
-		}
-		p, err := getProfile(er.ID)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		res, err := f(&mctx{p: p}, er)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		writeJSON(w, res)
-	})
-}
-
 func registerExits(mux *http.ServeMux) {
-	mux.HandleFunc("/api/m/exits-get", eapi(handleExitsGet))
-	mux.HandleFunc("/api/m/exits-remove", eapi(handleExitsRemove))
-	mux.HandleFunc("/api/m/exits-warp", eapi(handleExitsWarp))
+	mux.HandleFunc("/api/m/exits-get", papi(handleExitsGet))
+	mux.HandleFunc("/api/m/exits-remove", papi(handleExitsRemove))
+	mux.HandleFunc("/api/m/exits-warp", papi(handleExitsWarp))
 }
 
 // ---------- установка резервного выхода (задача, как установка каскада) ----------

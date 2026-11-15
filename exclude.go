@@ -12,7 +12,6 @@ package main
 // минус исключения. Сервер при этом ничего не меняет.
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -356,29 +355,8 @@ echo "@@CURL $(curl -4 -m 12 -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Apple
 // Используется как: allowedPre + "\n" + "bash manage ... ${AIP:+\"$AIP\"} add NAME".
 const allowedPre = `AIP=; [ -s ` + exclAllowed + ` ] && AIP="--allowed-ips=$(cat ` + exclAllowed + `)"`
 
-func xapi(f func(m *mctx, r exclReq) (any, error)) func(w http.ResponseWriter, r *http.Request) {
-	return api(func(w http.ResponseWriter, r *http.Request) {
-		var xr exclReq
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&xr); err != nil {
-			writeJSON(w, map[string]string{"error": "неверный запрос"})
-			return
-		}
-		p, err := getProfile(xr.ID)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		res, err := f(&mctx{p: p}, xr)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		writeJSON(w, res)
-	})
-}
-
 func registerExclude(mux *http.ServeMux) {
-	mux.HandleFunc("/api/m/excl-get", xapi(handleExclGet))
-	mux.HandleFunc("/api/m/excl-set", xapi(handleExclSet))
-	mux.HandleFunc("/api/m/check-site", xapi(handleCheckSite))
+	mux.HandleFunc("/api/m/excl-get", papi(handleExclGet))
+	mux.HandleFunc("/api/m/excl-set", papi(handleExclSet))
+	mux.HandleFunc("/api/m/check-site", papi(handleCheckSite))
 }

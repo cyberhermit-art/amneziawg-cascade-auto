@@ -14,7 +14,6 @@ package main
 
 import (
 	_ "embed"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -112,6 +111,22 @@ curl -s -m 15 --interface $I https://api.ipify.org 2>/dev/null || curl -s -m 15 
 
 var unknownCmdRe = regexp.MustCompile(`(?i)неизвестн|unknown command|usage:|использование:`)
 
+// portPeer — кто подключается к серверу role (ему нужен новый порт в Endpoint),
+// где лежат его конфиги и как перезапустить туннель. Для RU peer == "":
+// к нему подключаются пользователи.
+func portPeer(role string) (peer, conf, extra, restart string) {
+	switch role {
+	case "EU":
+		// на RU у awg1 нет PostUp: маршрут в таблицу 100 ставит служба awg-routing,
+		// без её перезапуска зарубежный трафик упрётся в защиту от утечек
+		return "RU", "/etc/amnezia/amneziawg/awg1.conf", "/root/ru_host.conf", "systemctl restart awg-quick@awg1; systemctl restart awg-routing"
+	case "EX":
+		// на транзите маршруты возвращает PostUp туннеля (awgc-transit.sh postup)
+		return "EU", "/etc/amnezia/amneziawg/awg1.conf", "/root/mid_host.conf", "systemctl restart awg-quick@awg1"
+	}
+	return "", "", "", ""
+}
+
 func handlePortSet(m *mctx, r toolReq) (any, error) {
 	role, err := roleOf(r.Target)
 	if err != nil {
@@ -130,6 +145,9 @@ func handlePortSet(m *mctx, r toolReq) (any, error) {
 		return nil, fmt.Errorf("сервер %s: %v", role, err)
 	}
 	old, _ := strconv.Atoi(strings.TrimSpace(out))
+	if old == 0 {
+		return nil, fmt.Errorf("сервер %s: не удалось прочитать текущий порт AmneziaWG", role)
+	}
 	if old == r.Port {
 		return nil, errors.New("сервер уже работает на этом порту")
 	}
@@ -150,14 +168,7 @@ func handlePortSet(m *mctx, r toolReq) (any, error) {
 	if _, err := setPort(r.Port); err != nil {
 		return nil, fmt.Errorf("сервер %s: %v", role, err)
 	}
-	// Кто подключается к этому серверу — тому новый порт в Endpoint.
-	var peer, peerConf, extra string
-	switch {
-	case role == "EU":
-		peer, peerConf, extra = "RU", "/etc/amnezia/amneziawg/awg1.conf", "/root/ru_host.conf"
-	case role == "EX":
-		peer, peerConf, extra = "EU", "/etc/amnezia/amneziawg/awg1.conf", "/root/mid_host.conf"
-	}
+	peer, peerConf, extra, restart := portPeer(role)
 	if peer == "" { // сервер RU: к нему подключаются пользователи
 		logLine(fmt.Sprintf("[Порт] «%s»: RU %d → %d", m.p.Name, old, r.Port))
 		return map[string]any{"ok": true, "old": old, "new": r.Port, "reimport": true}, nil
@@ -170,18 +181,18 @@ func handlePortSet(m *mctx, r toolReq) (any, error) {
 	out, _, _, err = pc.lockedRun(fmt.Sprintf(`set -u
 C=%[1]s; X=%[2]s; P=%[3]d
 for f in $C $X; do [ -f $f ] && sed -i -E "s|^(Endpoint[[:space:]]*=[[:space:]]*[^:]+):[0-9]+|\1:$P|" $f; done
-systemctl restart awg-quick@awg1
+%[4]s
 for i in $(seq 1 15); do
   ping -c1 -W1 -I awg1 1.1.1.1 >/dev/null 2>&1
   h=$(awg show awg1 latest-handshakes 2>/dev/null | awk 'NR==1{print $2}'); t=$(date +%%s)
   if [ -n "$h" ] && [ "$h" != 0 ] && [ $((t-h)) -lt 60 ]; then echo "@@OK"; exit 0; fi
   sleep 2
 done
-echo "@@NOHS"`, peerConf, extra, r.Port), nil, 2*time.Minute)
+echo "@@NOHS"`, peerConf, extra, r.Port, restart), nil, 2*time.Minute)
 	if err != nil || !strings.Contains(out, "@@OK") {
 		// откат: старый порт на обоих концах
 		_, _ = setPort(old)
-		_, _, _, _ = pc.lockedRun(fmt.Sprintf(`for f in %s %s; do [ -f $f ] && sed -i -E "s|^(Endpoint[[:space:]]*=[[:space:]]*[^:]+):[0-9]+|\1:%d|" $f; done; systemctl restart awg-quick@awg1`, peerConf, extra, old), nil, time.Minute)
+		_, _, _, _ = pc.lockedRun(fmt.Sprintf(`for f in %s %s; do [ -f $f ] && sed -i -E "s|^(Endpoint[[:space:]]*=[[:space:]]*[^:]+):[0-9]+|\1:%d|" $f; done; %s`, peerConf, extra, old, restart), nil, time.Minute)
 		why := "туннель на новом порту не установил связь (возможно, порт закрыт у хостера)"
 		if err != nil {
 			why = err.Error()
@@ -273,31 +284,10 @@ apt-get -q -o Acquire::Retries=0 -o DPkg::Lock::Timeout=600 update >/dev/null 2>
 	return map[string]any{"ok": kv["IPG"] == "enabled", "guard": kv["IPG"] == "enabled", "apt": kv["APT"], "log": log}, nil
 }
 
-func tapi2(f func(m *mctx, r toolReq) (any, error)) func(w http.ResponseWriter, r *http.Request) {
-	return api(func(w http.ResponseWriter, r *http.Request) {
-		var q toolReq
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&q); err != nil {
-			writeJSON(w, map[string]string{"error": "неверный запрос"})
-			return
-		}
-		p, err := getProfile(q.ID)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		res, err := f(&mctx{p: p}, q)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		writeJSON(w, res)
-	})
-}
-
 func registerServerTools(mux *http.ServeMux) {
-	mux.HandleFunc("/api/m/exitip-get", tapi2(handleExitIPGet))
-	mux.HandleFunc("/api/m/exitip-set", tapi2(handleExitIPSet))
-	mux.HandleFunc("/api/m/port-set", tapi2(handlePortSet))
-	mux.HandleFunc("/api/m/sec-get", tapi2(handleSecGet))
-	mux.HandleFunc("/api/m/sec-fix", tapi2(handleSecFix))
+	mux.HandleFunc("/api/m/exitip-get", papi(handleExitIPGet))
+	mux.HandleFunc("/api/m/exitip-set", papi(handleExitIPSet))
+	mux.HandleFunc("/api/m/port-set", papi(handlePortSet))
+	mux.HandleFunc("/api/m/sec-get", papi(handleSecGet))
+	mux.HandleFunc("/api/m/sec-fix", papi(handleSecFix))
 }

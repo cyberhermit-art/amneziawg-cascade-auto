@@ -477,7 +477,9 @@ ru: {
   pfEUnote:"Нужен для обслуживания и резервных копий. Можно оставить пустым.", pfEXnote:"Только для каскада из трёх серверов. Иначе оставьте пустым.",
   pfSave:"Проверить и сохранить", pfBusy:"Проверяю подключение…", pfSaved:"Профиль сохранён", pfDel:"Удалить профиль",
   pfDelQ:"Удалить профиль «{0}»?", pfDelText:"Удаляется только запись в этой программе (данные для входа). Сами серверы и пользователи VPN не затрагиваются, резервные копии останутся.",
-  noApp:"программа не отвечает — возможно, она закрыта", logEmpty:"журнал ещё пуст",
+  noApp:"программа не отвечает — возможно, она закрыта",
+  hkAsk:"Доверять новому ключу сервера {0}?\nНажимайте «ОК», только если сами переустанавливали систему на этом сервере или сменили VPS с тем же адресом.",
+  hkAgain:"Новый ключ будет принят. Запустите установку ещё раз.", logEmpty:"журнал ещё пуст",
   agoNow:"только что", agoMin:"{0} мин назад", agoH:"{0} ч назад", agoD:"{0} дн назад", durMin:"{0} мин", durH:"{0} ч {1} мин", upD:"{0} дн {1} ч", upH:"{0} ч {1} мин",
   units:["Б","КБ","МБ","ГБ","ТБ"]
 },
@@ -604,7 +606,9 @@ en: {
   pfEUnote:"Needed for maintenance and backups. Can be left empty.", pfEXnote:"Only for a three-server cascade. Otherwise leave empty.",
   pfSave:"Check and save", pfBusy:"Checking the connection…", pfSaved:"Profile saved", pfDel:"Remove profile",
   pfDelQ:"Remove profile “{0}”?", pfDelText:"Only the record in this app (login details) is removed. The servers and VPN users are not affected; backups stay.",
-  noApp:"the app is not responding — it may have been closed", logEmpty:"the log is empty",
+  noApp:"the app is not responding — it may have been closed",
+  hkAsk:"Trust the new key of server {0}?\nPress OK only if you reinstalled the system on this server yourself or replaced the VPS keeping the same address.",
+  hkAgain:"The new key will be accepted. Start the installation again.", logEmpty:"the log is empty",
   agoNow:"just now", agoMin:"{0} min ago", agoH:"{0} h ago", agoD:"{0} days ago", durMin:"{0} min", durH:"{0} h {1} min", upD:"{0} d {1} h", upH:"{0} h {1} min",
   units:["B","KB","MB","GB","TB"]
 }};
@@ -621,6 +625,7 @@ const TR_EN = [
   [/порт SSH закрыт \(сервер ещё загружается или указан не тот порт\)/g, "SSH port is closed (the server is still booting or the port is wrong)"],
   [/сервер не отвечает \(проверьте IP-адрес\)/g, "the server is not responding (check the IP address)"],
   [/сервер не отвечает (\d+) мин: /g, "the server has not responded for $1 min: "],
+  [/\. Если вы переустанавливали систему на сервере (\S+), это нормально/g, ". If you reinstalled the system on server $1, this is expected"],
   [/ключ сервера изменился \(([^,]*), ожидался ([^)]*)\) — подключение остановлено из соображений безопасности/g, "the server key changed ($1, expected $2) — connection stopped for security reasons"],
   [/связь с сервером прервалась, попробуйте ещё раз/g, "the connection to the server dropped, please try again"],
   [/соединение потеряно/g, "connection lost"], [/сервер не ответил вовремя/g, "the server did not answer in time"],
@@ -716,9 +721,20 @@ function fmtBytes(n){ n = +n || 0; const u = T("units"); let i = 0; while (n >= 
 function fmtAgo(sec){ if (sec < 60) return T("agoNow"); if (sec < 3600) return T("agoMin", Math.floor(sec/60)); if (sec < 86400) return T("agoH", Math.floor(sec/3600)); return T("agoD", Math.floor(sec/86400)); }
 function fmtDur(sec){ const m = Math.floor(sec/60); return m < 60 ? T("durMin", m) : T("durH", Math.floor(m/60), m%60); }
 function fmtUp(s){ const d = Math.floor(s/86400), h = Math.floor(s%86400/3600), m = Math.floor(s%3600/60); return d ? T("upD", d, h) : T("upH", h, m); }
-async function post(url, body){
+// Ключ SSH сервера не совпал с запомненным: спросить, доверять ли новому (сервер переустановлен).
+const HK_RE = /\s*\[\[HOSTKEY ([^\]]+)\]\]/;
+async function hostKeyAsk(msg){
+  const m = HK_RE.exec(msg || ""); if (!m) return false;
+  if (!confirm(tr(msg.replace(HK_RE, "")) + "\n\n" + T("hkAsk", m[1]))) return false;
+  await fetch("/api/hostkey-forget", {method:"POST", headers:{"X-Token":TOKEN, "Content-Type":"application/json"}, body: JSON.stringify({addr: m[1]})});
+  return true;
+}
+async function post(url, body, again){
   const r = await fetch(url, {method:"POST", headers:{"X-Token":TOKEN, "Content-Type":"application/json"}, body: JSON.stringify(body || {})});
-  return r.json();
+  const j = await r.json();
+  if (j && j.error && !again && await hostKeyAsk(j.error)) return post(url, body, true);
+  if (j && typeof j.error === "string") j.error = j.error.replace(HK_RE, "");
+  return j;
 }
 async function call(url, body){
   let r; try { r = await post(url, body); } catch(e){ throw new Error(T("noApp")); }
@@ -1006,6 +1022,8 @@ function connectEvents(){
     if (e.t === "stage"){ if (/^(ex-|transit)/.test(e.id)) three = true; stages[e.id] = e.state; if (curView === "progress") renderProgress(); return; }
     if (e.t === "finish"){
       installing = false; finished = {ok: !!e.ok, error: e.result && e.result.error, at: Date.now()};
+      if (finished.error && HK_RE.test(finished.error)){ const er = finished.error; finished.error = er.replace(HK_RE, "");
+        setTimeout(async () => { if (await hostKeyAsk(er)) alert(T("hkAgain")); }, 50); }
       if (!follow) return;
       if (e.ok){ lastResult = e.result || {}; loadProfiles().catch(() => {}); renderDone(lastResult); view("done"); }
       else renderProgress();

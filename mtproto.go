@@ -162,28 +162,7 @@ func handleMTPSet(m *mctx, r mtpReq) (any, error) {
 	return handleMTPGet(m, r)
 }
 
-func mtpapi(f func(m *mctx, r mtpReq) (any, error)) func(w http.ResponseWriter, r *http.Request) {
-	return api(func(w http.ResponseWriter, r *http.Request) {
-		var q mtpReq
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&q); err != nil {
-			writeJSON(w, map[string]string{"error": "неверный запрос"})
-			return
-		}
-		p, err := getProfile(q.ID)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		res, err := f(&mctx{p: p}, q)
-		if err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		writeJSON(w, res)
-	})
-}
-
 func registerMTProto(mux *http.ServeMux) {
-	mux.HandleFunc("/api/m/mtproto-get", mtpapi(handleMTPGet))
-	mux.HandleFunc("/api/m/mtproto-set", mtpapi(handleMTPSet))
+	mux.HandleFunc("/api/m/mtproto-get", papi(handleMTPGet))
+	mux.HandleFunc("/api/m/mtproto-set", papi(handleMTPSet))
 }
