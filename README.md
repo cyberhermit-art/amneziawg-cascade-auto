@@ -49,6 +49,7 @@
 - **Через EU вместо RU:** российские сервисы, которые не пускают адрес сервера RU, можно отправлять через сервер EU — без изменений на устройствах.
 - **Три сервера (по желанию):** вход RU → транзит → выход. Сайты видят только адрес выхода; если он попадёт в чёрные списки, меняется только выход — сервер RU и ключи пользователей остаются прежними.
 - **Несколько выходов:** до двух резервных выходов и (для трёх серверов) Cloudflare WARP с автоматическим переключением, если выход упал или заблокирован.
+- **Устойчивость выхода и безопасность:** второй IP для выхода (туннель приходит на основной адрес, в интернет — со второго; при блокировке меняется только второй), смена порта AmneziaWG на любом сервере с перенастройкой туннеля, исправления безопасности для серверов, поставленных старыми версиями установщика.
 - **Эксперименты:** агент на серверах с уведомлениями в Telegram (сбои, сроки пользователей, лимиты трафика, репутация адресов), резервные копии по расписанию в Telegram и Telegram-бот, который добавляет пользователей и присылает их QR-коды, MTProto-прокси для Telegram на сервере RU.
 - **Проверка адресов серверов:** перед установкой и на работающем каскаде — считается ли адрес RU российским, а EU зарубежным в базах RIPE, MaxMind и DB-IP, кто владелец сети.
 - **Мимо VPN:** сайты, которые не пускают адреса хостингов (например, **Госуслуги**), открываются с устройства напрямую — готовый набор и свои сети; проверка сайта с сервера RU (каким путём идёт и открывается ли).
@@ -115,8 +116,8 @@
 
 ```bash
 go mod tidy
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.16.0" -o AmneziaWG-Cascade.exe .
-GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.16.0" -o AmneziaWG-Cascade-Lite.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.0" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.0" -o AmneziaWG-Cascade-Lite.exe .
 ```
 
 Файл `rsrc_windows_amd64.syso` (иконка и сведения о версии) собран из [`winres/`](winres) командой
@@ -136,6 +137,7 @@ GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui 
 | `assets/awgc-transit.sh` | Транзит для каскада из трёх серверов: туннель к выходу и правило «от RU — к выходу» |
 | `actlog.go` | журнал действий в log.txt |
 | `mtproto.go`, `assets/awgc-mtproto.sh` | MTProto-прокси для Telegram на сервере RU (mtg) |
+| `servertools.go`, `assets/awgc-exitip.sh` | Второй IP для выхода, смена порта, исправления безопасности серверов |
 | `exits.go`, `assets/awgc-exits.sh` | несколько выходов и автоматическое переключение, WARP |
 | `agent.go`, `assets/awgc-agent.sh`, `assets/awgc-bot.py` | «Эксперименты»: агент на серверах, Telegram, копии по расписанию, лимиты |
 | `ipcheck.go` | проверка адресов серверов по базам RIPE, MaxMind, DB-IP и ipinfo.io |

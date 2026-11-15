@@ -8,7 +8,7 @@
 export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a NEEDRESTART_SUSPEND=1 APT_LISTCHANGES_FRONTEND=none
 DONE=${AWGC_DONE:-/root/.awgc-update-done}
 # Таймауты сети: без них одно зависшее зеркало вешает apt на часы.
-APT="apt-get -q -o DPkg::Lock::Timeout=1800 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::ftp::Timeout=30 -o Acquire::Retries=3 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
+APT="apt-get -q -o DPkg::Lock::Timeout=1800 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::ftp::Timeout=30 -o Acquire::Retries=0 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
 
 echo "== Проверяю, не прервана ли прошлая установка пакетов"
 dpkg --configure -a

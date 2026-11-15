@@ -16,7 +16,7 @@ One connection on the device, and both local and international services behave a
 ## Two editions
 
 - **Lite** (`AmneziaWG-Cascade-Lite.exe`) — for people who just want a working cascade: a step-by-step wizard for 2 or 3 servers, users and QR codes, server status and maintenance (update, reboot, IP change, removal), backups, server address check. **English and Russian interface.**
-- **Full** (`AmneziaWG-Cascade.exe`) — everything below plus “Experiments” (an agent on the servers with Telegram alerts, traffic limits, address reputation checks and scheduled backups to Telegram, and a Telegram bot that adds users and sends their QR codes), including Russian-domain routing, “Bypass VPN”, “Via EU”, per-day statistics and advanced install options. Russian interface.
+- **Full** (`AmneziaWG-Cascade.exe`) — everything below plus “Experiments” (an agent on the servers with Telegram alerts, traffic limits, address reputation checks and scheduled backups to Telegram, and a Telegram bot that adds users and sends their QR codes; a second exit IP, AmneziaWG port change and security fixes for older servers), including Russian-domain routing, “Bypass VPN”, “Via EU”, per-day statistics and advanced install options. Russian interface.
 
 Both are built from the same code (Lite with the `lite` build tag), share profiles and can run side by side. Lite leaves full-edition features on a cascade untouched and tells you they are enabled.
 
@@ -94,8 +94,8 @@ Go 1.24+:
 
 ```bash
 go mod tidy
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.16.0" -o AmneziaWG-Cascade.exe .
-GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.16.0" -o AmneziaWG-Cascade-Lite.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.0" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.0" -o AmneziaWG-Cascade-Lite.exe .
 ```
 
 `rsrc_windows_amd64.syso` (icon and version info) is built from [`winres/`](winres) with `x86_64-w64-mingw32-windres -O coff -o ../rsrc_windows_amd64.syso app.rc`.

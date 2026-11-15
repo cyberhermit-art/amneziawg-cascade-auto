@@ -109,6 +109,7 @@ rm -f /root/awgc-* /root/.awgc-* /root/cascade-setup.sh /root/ru_host.conf /root
 exit $rc`
 
 const uninstallEU = `set +e
+[ -f /root/awg/awgc-exitip.sh ] && bash /root/awg/awgc-exitip.sh off >/dev/null 2>&1
 ` + agentUninst + `
 [ -f /root/awg/awgc-exits.sh ] && { echo "== Убираю резервные выходы и переключатель"; bash /root/awg/awgc-exits.sh uninstall >/dev/null 2>&1; }
 if [ -f /etc/amnezia/amneziawg/awg1.conf ]; then

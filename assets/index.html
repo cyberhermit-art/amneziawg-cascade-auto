@@ -419,20 +419,30 @@ u.ru{background:var(--ru)} u.eu{background:var(--eu)} u.ex{background:var(--ex)}
           <div class="mrow"><div><b>Обновить маршрутизацию</b><span>Свежий скрипт и объединённый список российских сетей (ipdeny + MaxMind + DB-IP). Настройки и свои сети сохраняются.</span></div><button class="btn ghost small" data-mt="routing" data-s="ru">Обновить</button></div>
           <div class="mrow"><div><b>Проверить адреса серверов</b><span>Считается ли адрес RU российским, а адрес EU — зарубежным, в базах RIPE, MaxMind, DB-IP; кто владелец сети.</span></div><button class="btn ghost small" id="mtIPChk">Проверить</button></div>
           <div class="mrow"><div><b>Сервер сменил IP-адрес</b><span>Хостер поменял адрес или его пришлось сменить из-за блокировки. Ключи сохраняются, пользователям нужно заново импортировать подключение.</span></div><button class="btn ghost small" data-mt="ip" data-s="ru">Сменить IP…</button></div>
+          <div class="mrow"><div><b>Сменить порт</b><span>Порт AmneziaWG для пользователей. Помогает, если у оператора режется именно этот порт. После смены все подключения нужно импортировать заново.</span></div><button class="btn ghost small" data-mt="port" data-s="ru">Сменить порт…</button></div>
           <div class="mrow"><div><b>Удалить VPN с сервера</b><span>Отключает каскад и полностью удаляет AmneziaWG, пользователей и ключи.</span></div><button class="btn ghost small danger" data-mt="uninstall" data-s="ru">Удалить…</button></div>
         </div>
         <div class="mcard"><h3><span class="tag eu">EU</span> <span id="mtEuTitle">Выходной сервер</span> <span class="note" id="mtEuHost"></span></h3>
           <div class="mrow"><div><b>Обновить пакеты</b><span>apt update + upgrade. Перезагрузка — только если вы разрешите.</span></div><button class="btn ghost small" data-mt="update" data-s="eu">Обновить</button></div>
           <div class="mrow"><div><b>Перезагрузить сервер</b><span>Каскад будет недоступен 1–3 минуты.</span></div><button class="btn ghost small" data-mt="reboot" data-s="eu">Перезагрузить</button></div>
           <div class="mrow"><div><b>Сервер сменил IP-адрес</b><span id="mtEuIPText">Программа перенастроит туннель с сервера RU. Пользователям ничего делать не нужно.</span></div><button class="btn ghost small" data-mt="ip" data-s="eu">Сменить IP…</button></div>
+          <div class="mrow"><div><b>Сменить порт</b><span>Порт, к которому подключается сервер RU. Программа перенастроит обе стороны и проверит связь; пользователям ничего делать не нужно.</span></div><button class="btn ghost small" data-mt="port" data-s="eu">Сменить порт…</button></div>
+          <div class="mrow" data-exitip="eu"><div><b>Второй IP для выхода</b><span class="xip-text">Туннель приходит на основной адрес, а в интернет трафик уходит со второго, который выдал хостер. Если адрес выхода заблокируют в России, туннель продолжит работать — достаточно сменить второй адрес.</span></div><button class="btn ghost small" data-mt="exitip" data-s="eu">Настроить…</button></div>
           <div class="mrow"><div><b>Удалить VPN с сервера</b><span>Полностью удаляет AmneziaWG. Каскад перестанет работать.</span></div><button class="btn ghost small danger" data-mt="uninstall" data-s="eu">Удалить…</button></div>
         </div>
         <div class="mcard hidden" id="mcard-ex"><h3><span class="tag ex">EX</span> Сервер-выход <span class="note" id="mtExHost"></span></h3>
           <div class="mrow"><div><b>Обновить пакеты</b><span>apt update + upgrade. Перезагрузка — только если вы разрешите.</span></div><button class="btn ghost small" data-mt="update" data-s="ex">Обновить</button></div>
           <div class="mrow"><div><b>Перезагрузить сервер</b><span>Зарубежный трафик будет недоступен 1–3 минуты.</span></div><button class="btn ghost small" data-mt="reboot" data-s="ex">Перезагрузить</button></div>
           <div class="mrow"><div><b>Сервер сменил IP-адрес</b><span>Программа перенастроит туннель на транзите. Сервер RU и пользователей это не касается.</span></div><button class="btn ghost small" data-mt="ip" data-s="ex">Сменить IP…</button></div>
+          <div class="mrow"><div><b>Сменить порт</b><span>Порт, к которому подключается транзит. Программа перенастроит обе стороны; пользователям ничего делать не нужно.</span></div><button class="btn ghost small" data-mt="port" data-s="ex">Сменить порт…</button></div>
+          <div class="mrow" data-exitip="ex"><div><b>Второй IP для выхода</b><span class="xip-text">Туннель приходит на основной адрес, а в интернет трафик уходит со второго, который выдал хостер. Если адрес выхода заблокируют в России, туннель продолжит работать — достаточно сменить второй адрес.</span></div><button class="btn ghost small" data-mt="exitip" data-s="ex">Настроить…</button></div>
           <div class="mrow"><div><b>Удалить VPN с сервера</b><span>Полностью удаляет AmneziaWG. Зарубежный трафик перестанет работать.</span></div><button class="btn ghost small danger" data-mt="uninstall" data-s="ex">Удалить…</button></div>
         </div>
+      </div>
+      <h2 class="sect">Исправления безопасности</h2>
+      <div class="card">
+        <p class="hint">Серверы, поставленные до 3 ноября 2026, не получили защиту от уязвимости ядра CVE-2026-98432 (правило, отбрасывающее TCP-пакеты с IP-опциями) и обновление apt против CVE-2026-109518. Программа поставит их на работающий сервер — VPN не прерывается.</p>
+        <div class="tablewrap"><table class="tbl" id="secTable"><thead><tr><th>Сервер</th><th>Защита ядра (ipopts-guard)</th><th>Версия apt</th><th class="r"></th></tr></thead><tbody><tr><td colspan="4" class="empty">Проверяю…</td></tr></tbody></table></div>
       </div>
       <div class="dzone"><div><b>Удалить весь каскад</b><span id="mtAllText">VPN будет удалён с обоих серверов (сначала RU, затем EU). Серверы вернутся к состоянию до установки, сами VPS останутся.</span></div><button class="btn small danger solid" id="mtAll">Удалить каскад…</button></div>
     </div>
@@ -946,7 +956,10 @@ function renderMaint(){ if(!cur) return; $("mtRuHost").textContent=cur.ruHost; $
   $("mtEuTitle").textContent = cur.exHost ? "Транзитный сервер" : "Выходной сервер";
   $("mtEuIPText").textContent = cur.exHost ? "Программа перенастроит туннель с сервера RU. Пользователям и выходу ничего делать не нужно." : "Программа перенастроит туннель с сервера RU. Пользователям ничего делать не нужно.";
   $("mtAllText").textContent = cur.exHost ? "VPN будет удалён со всех трёх серверов (RU, транзит, выход). Серверы вернутся к состоянию до установки, сами VPS останутся." : "VPN будет удалён с обоих серверов (сначала RU, затем EU). Серверы вернутся к состоянию до установки, сами VPS останутся.";
-  document.querySelectorAll('[data-s="eu"]').forEach(b=>b.disabled=!cur.euHost); }
+  document.querySelectorAll('[data-s="eu"]').forEach(b=>b.disabled=!cur.euHost);
+  // «Второй IP» — только у сервера, с которого трафик выходит в интернет
+  document.querySelectorAll('[data-exitip]').forEach(r=>r.classList.toggle("hidden", r.dataset.exitip !== (cur.exHost?"ex":"eu")));
+  loadSec(); }
 document.querySelector(".maint").onclick = e => {
   const b=e.target.closest("button[data-mt]"); if(!b||!cur) return;
   const t=b.dataset.s, act=b.dataset.mt;
@@ -956,6 +969,8 @@ document.querySelector(".maint").onclick = e => {
     const r=await call("/api/m/routing-update",{id:cur.id}); const tn=(r.log||[]).find(x=>x.startsWith("Транзит")); toast("Маршрутизация обновлена: российских сетей — "+r.nets+(tn?". "+tn:""), !!(tn&&!tn.startsWith("Транзит обновлён"))); refreshStatus(false); });
   if (act==="uninstall") askUninstall([t]);
   if (act==="ip") askIPChange(t);
+  if (act==="port") askPort(t);
+  if (act==="exitip") askExitIP();
 };
 function askIPChange(t){
   const ru = t==="ru";
@@ -1396,6 +1411,57 @@ $("eApply").onclick=async()=>{
 
 // ================= домены РФ =================
 let dnsState=null;
+// ================= инструменты серверов =================
+const SRVN = t => t==="ru"?"RU":t==="ex"?"выход":(cur&&cur.exHost?"транзит":"EU");
+async function loadSec(){
+  if (!cur) return; const id=cur.id, tb=$("secTable").tBodies[0];
+  try { const r=await call("/api/m/sec-get",{id}); if(!cur||cur.id!==id) return;
+    tb.innerHTML=r.rows.map(x=>{ const t=x.role.toLowerCase();
+      return '<tr><td><b>'+esc(SRVN(t))+'</b> <span class="note">'+esc(hostOf(t)||"")+'</span></td><td>'+(x.error?'<span class="note">'+esc(x.error)+'</span>':x.guard?'<span style="color:var(--ok)">есть</span>':'<span style="color:var(--err)">нет</span>')+'</td><td>'+esc(x.apt||"—")+'</td><td class="r">'+(x.error?'':'<button class="btn '+(x.guard?'ghost ':'')+'small" data-sec="'+t+'">'+(x.guard?'Применить ещё раз':'Применить')+'</button>')+'</td></tr>'; }).join("");
+  } catch(e){ tb.innerHTML='<tr><td colspan="4" class="empty">'+esc(e.message)+'</td></tr>'; }
+}
+$("secTable").onclick=e=>{ const b=e.target.closest("button[data-sec]"); if(!b) return; const t=b.dataset.sec;
+  runSimple("Исправления безопасности: "+SRVN(t), "Скачиваю свежий установщик, ставлю защиту и обновляю apt…", async()=>{ const r=await call("/api/m/sec-fix",{id:cur.id,target:t}); loadSec();
+    return {ok:r.guard, text:(r.guard?"Защита установлена. ":"Защита не установилась — подробности ниже. ")+"apt: "+(r.apt||"?"), log:(r.log||[]).join("\n")}; }); };
+// окно с итогом долгой операции
+async function runSimple(title, busy, fn){
+  modal('<h2>'+esc(title)+'</h2><p class="note" id="rsBusy"><span class="spin"></span> '+esc(busy)+'</p><div id="rsOut"></div><div class="actions"><button class="btn ghost" id="rsClose">Закрыть</button></div>'); $("mBody").parentElement.classList.add("wide");
+  $("rsClose").onclick=closeModal;
+  try { const r=await fn(); if(!$("rsOut")) return; $("rsBusy").remove();
+    $("rsOut").innerHTML='<div class="'+(r.ok?'hintbox':'err on')+'">'+esc(r.text)+'</div>'+(r.log?'<pre class="tasklog" style="max-height:240px">'+esc(r.log)+'</pre>':''); }
+  catch(e){ if(!$("rsOut")) return; $("rsBusy").remove(); $("rsOut").innerHTML='<div class="err on">'+esc(e.message)+'</div>'; }
+}
+function askPort(t){
+  const ru=t==="ru";
+  modal('<h2>Сменить порт: '+esc(SRVN(t))+'</h2><p>'+(ru?'Порт, на который подключаются устройства пользователей. После смены <b>все подключения нужно импортировать заново</b> (QR-код или .conf во вкладке «Пользователи»): ключи останутся прежними.':'Программа сменит порт на сервере и в туннеле того, кто к нему подключается, и проверит связь. Не получится — вернёт прежний. Пользователям ничего делать не нужно.')+'</p>'+
+    '<p class="note">Нужен установщик AmneziaWG 6.3.0 или новее на сервере (поставленные после 10 ноября 2026). Популярный совет для мобильных сетей — 443.</p>'+
+    '<label>Новый порт (UDP)</label><input type="number" id="pNew" min="1" max="65535" placeholder="например 443">'+
+    '<div class="err" id="pErr"></div><div class="actions"><button class="btn" id="pGo">Сменить</button><button class="btn ghost" id="pNo">Отмена</button></div>');
+  $("pNo").onclick=closeModal;
+  $("pGo").onclick=async()=>{ const b=$("pGo"), er=$("pErr"); er.classList.remove("on"); b.disabled=true; b.innerHTML='<span class="spin"></span> Меняю порт и проверяю связь…';
+    try { const r=await call("/api/m/port-set",{id:cur.id,target:t,port:parseInt($("pNew").value)||0}); closeModal();
+      if (r.reimport){ modal('<h2>Порт сервера RU изменён</h2><p>'+r.old+' → <b>'+r.new+'</b>.</p><div class="hintbox"><b>Что сделать на устройствах:</b> заново импортировать подключение — QR-код или файл .conf во вкладке «Пользователи» → «QR и ключ». Можно и просто поменять порт в настройках подключения в приложении на '+r.new+'.</div><div class="actions"><button class="btn" id="pDone">Понятно</button></div>'); $("pDone").onclick=()=>{ closeModal(); showTab("users"); }; }
+      else toast("Порт изменён: "+r.old+" → "+r.new+". Туннель работает."); refreshStatus(false); }
+    catch(e){ er.textContent=e.message; er.classList.add("on"); b.disabled=false; b.textContent="Сменить"; } };
+}
+async function askExitIP(){
+  const t=cur.exHost?"ex":"eu";
+  modal('<h2>Второй IP для выхода</h2><p class="note"><span class="spin"></span> Проверяю сервер…</p>');
+  let st; try { st=await call("/api/m/exitip-get",{id:cur.id}); } catch(e){ modal('<h2>Второй IP для выхода</h2><div class="err on">'+esc(e.message)+'</div>'); return; }
+  modal('<h2>Второй IP для выхода: '+esc(SRVN(t))+'</h2><p>Основной адрес сервера <b>'+esc(st.main||hostOf(t))+'</b> остаётся для туннеля, а сайты будут видеть второй. Если второй адрес заблокируют в России, туннель продолжит работать — просто укажите новый второй адрес. Файлы подключения не меняются.</p>'+
+    '<p class="note">Второй IPv4 нужно заказать у хостера для этого же сервера (обычно 1–3 € в месяц). Добавлять его в настройки сети не обязательно — программа сделает это сама и проверит, что адрес работает.</p>'+
+    (st.ip?'<div class="hintbox">Сейчас трафик выходит с адреса <b>'+esc(st.ip)+'</b>'+(st.active?'':' — но правило сейчас не действует, нажмите «Сохранить»')+'.</div>':'')+
+    '<label>Второй IP-адрес</label><input type="text" id="xiNew" spellcheck="false" value="'+esc(st.ip||"")+'" placeholder="например 203.0.113.77">'+
+    '<div class="err" id="xiErr"></div><div class="actions"><button class="btn" id="xiGo">Сохранить</button>'+(st.ip?'<button class="btn ghost danger" id="xiOff">Выключить</button>':'')+'<button class="btn ghost" id="xiNo">Отмена</button></div>');
+  $("xiNo").onclick=closeModal;
+  const run=async ip=>{ const er=$("xiErr"); er.classList.remove("on"); const b=$("xiGo"); b.disabled=true; b.innerHTML='<span class="spin"></span> Настраиваю и проверяю…';
+    try { const r=await call("/api/m/exitip-set",{id:cur.id,ip}); closeModal();
+      toast(ip ? ("Второй адрес выхода включён"+(r.seen?". Через каскад сайты видят: "+r.seen:"")) : "Второй адрес выхода выключен", !!(ip && r.seen && r.seen!==ip)); refreshStatus(false); }
+    catch(e){ er.textContent=e.message; er.classList.add("on"); b.disabled=false; b.textContent="Сохранить"; } };
+  $("xiGo").onclick=()=>run($("xiNew").value.trim());
+  if (st.ip) $("xiOff").onclick=()=>run("");
+}
+
 // ================= выходы и переключение =================
 let xoState=null;
 async function loadExits(){

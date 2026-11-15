@@ -175,7 +175,7 @@ systemctl daemon-reload && systemctl enable --now awgc-agent.timer >/dev/null 2>
 
 const botOffCmd = `systemctl disable --now awgc-bot.service >/dev/null 2>&1; rm -f /etc/systemd/system/awgc-bot.service ` + botPath + `; systemctl daemon-reload`
 
-const botOnCmd = `command -v python3 >/dev/null 2>&1 || { export DEBIAN_FRONTEND=noninteractive; apt-get install -y -q python3-minimal >/dev/null 2>&1 || { apt-get update -q >/dev/null 2>&1; apt-get install -y -q python3-minimal >/dev/null 2>&1; }; }
+const botOnCmd = `command -v python3 >/dev/null 2>&1 || { export DEBIAN_FRONTEND=noninteractive; apt-get -o Acquire::Retries=0 install -y -q python3-minimal >/dev/null 2>&1 || { apt-get -o Acquire::Retries=0 update -q >/dev/null 2>&1; apt-get -o Acquire::Retries=0 install -y -q python3-minimal >/dev/null 2>&1; }; }
 command -v python3 >/dev/null 2>&1 || { echo "на сервере нет python3, и установить его не удалось"; exit 1; }
 cat > /etc/systemd/system/awgc-bot.service <<'UNIT'
 [Unit]
