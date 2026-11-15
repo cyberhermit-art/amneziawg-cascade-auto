@@ -112,7 +112,7 @@ func TestHostKeyRemembered(t *testing.T) {
 
 // Пока запрос к API выполняется, программа не должна закрываться сама.
 func TestIdleWaitsForRequests(t *testing.T) {
-	token = "t"
+	token, session = "t", "s"
 	h := &Hub{subs: map[chan []byte]struct{}{}, lastSub: time.Now().Add(-time.Hour)}
 	old := hub
 	hub = h
@@ -122,6 +122,7 @@ func TestIdleWaitsForRequests(t *testing.T) {
 	defer srv.Close()
 	req, _ := http.NewRequest(http.MethodPost, srv.URL, nil)
 	req.Header.Set("X-Token", "t")
+	req.AddCookie(&http.Cookie{Name: cookieName(), Value: session})
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -137,7 +138,7 @@ func TestIdleWaitsForRequests(t *testing.T) {
 
 func TestPapi(t *testing.T) {
 	t.Setenv("AWGC_DATA", t.TempDir())
-	token = "t"
+	token, session = "t", "s"
 	p, err := saveProfile(Profile{Name: "Тест", RU: ServerCfg{Host: "1.1.1.1", Password: "x"}, EU: ServerCfg{Host: "2.2.2.2", Password: "y"}})
 	if err != nil {
 		t.Fatal(err)
@@ -149,6 +150,7 @@ func TestPapi(t *testing.T) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 		req.Header.Set("X-Token", "t")
+		req.AddCookie(&http.Cookie{Name: cookieName(), Value: "s"})
 		h(w, req)
 		return strings.TrimSpace(w.Body.String())
 	}
@@ -174,5 +176,42 @@ func TestPortPeer(t *testing.T) {
 	}
 	if peer, _, _, _ := portPeer("RU"); peer != "" {
 		t.Fatalf("RU: peer=%s", peer)
+	}
+}
+
+// Страница с токеном открывается только с ключом запуска (он лежит в папке
+// пользователя), другая учётная запись Windows токен не получит.
+func TestIndexNeedsLaunchKey(t *testing.T) {
+	token, launchKey, session = "tok123", "key456", "sess789"
+	get := func(url string, c *http.Cookie) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, url, nil)
+		if c != nil {
+			req.AddCookie(c)
+		}
+		handleIndex(w, req)
+		return w
+	}
+	if w := get("/", nil); w.Code != http.StatusForbidden || strings.Contains(w.Body.String(), "tok123") {
+		t.Fatalf("без ключа: %d", w.Code)
+	}
+	if w := get("/?k=wrong", nil); w.Code != http.StatusForbidden || len(w.Result().Cookies()) != 0 {
+		t.Fatalf("неверный ключ: %d", w.Code)
+	}
+	w := get("/?k=key456", nil)
+	cs := w.Result().Cookies()
+	if w.Code != http.StatusSeeOther || len(cs) != 1 || cs[0].Value != "sess789" || !cs[0].HttpOnly || cs[0].SameSite != http.SameSiteStrictMode {
+		t.Fatalf("верный ключ: %d %+v", w.Code, cs)
+	}
+	if w := get("/", cs[0]); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "tok123") {
+		t.Fatalf("с cookie: %d", w.Code)
+	}
+	// API без cookie не работает даже с верным токеном
+	rw := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/state", nil)
+	req.Header.Set("X-Token", "tok123")
+	api(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })(rw, req)
+	if rw.Code != http.StatusForbidden {
+		t.Fatalf("API без cookie: %d", rw.Code)
 	}
 }

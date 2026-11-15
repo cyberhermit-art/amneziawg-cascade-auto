@@ -207,6 +207,9 @@ true`, ip, manageSh), nil, 15*time.Minute)
 	} else {
 		nm := &mctx{p: saved}
 		for _, n := range okN {
+			if !nameRe.MatchString(n) { // имя с сервера станет именем файла
+				continue
+			}
 			cf, err := nm.fetchClient(n)
 			if err != nil {
 				saveErr = err.Error()

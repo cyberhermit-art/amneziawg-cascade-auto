@@ -93,3 +93,38 @@ func killIfOurs(pid uint32) bool {
 	_, _ = windows.WaitForSingleObject(h, 5000)
 	return true
 }
+
+// listenerIsMine — порт программы слушает процесс этого же пользователя Windows.
+// Если порт занят чужой учётной записью, открывать браузер на него нельзя:
+// там может быть поддельная страница.
+func listenerIsMine(port int) bool {
+	pid := listenerPID(port)
+	if pid == 0 {
+		return true // слушателя не видно — проверять нечего
+	}
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+	if err != nil {
+		return false
+	}
+	defer windows.CloseHandle(h)
+	var tok windows.Token
+	if windows.OpenProcessToken(h, windows.TOKEN_QUERY, &tok) != nil {
+		return false
+	}
+	defer tok.Close()
+	theirs, err := tok.GetTokenUser()
+	if err != nil {
+		return false
+	}
+	mine, err := windows.GetCurrentProcessToken().GetTokenUser()
+	if err != nil {
+		return false
+	}
+	return theirs.User.Sid.Equals(mine.User.Sid)
+}
+
+func showError(title, text string) {
+	t, _ := windows.UTF16PtrFromString(title)
+	m, _ := windows.UTF16PtrFromString(text)
+	_, _ = windows.MessageBox(0, m, t, windows.MB_OK|windows.MB_ICONERROR)
+}

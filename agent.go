@@ -10,7 +10,9 @@ package main
 // а программа только настраивает агент.
 
 import (
+	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -82,7 +84,23 @@ func readKV(out string) map[string]string {
 	return kv
 }
 
+// refreshIfInstalled обновляет на сервере скрипт программы, если он там уже
+// есть и отличается (исправления доезжают без повторного включения функции).
+func refreshIfInstalled(c *conn, path string, data []byte, unit string) {
+	sum := sha256.Sum256(data)
+	out, _, _, err := c.lockedRun(`[ -f `+path+` ] && sha256sum `+path+` | cut -d' ' -f1`, nil, 30*time.Second)
+	if o := strings.TrimSpace(out); err != nil || o == "" || o == hex.EncodeToString(sum[:]) {
+		return
+	}
+	if c.upload(path, data, "700") == nil && unit != "" {
+		_, _, _, _ = c.lockedRun(`systemctl try-restart `+unit, nil, 30*time.Second)
+	}
+}
+
 func handleAgentGet(m *mctx, _ agentReq) (any, error) {
+	c := getConn(m.p, "RU")
+	refreshIfInstalled(c, agentPath, agentScript, "")
+	refreshIfInstalled(c, botPath, botScript, "awgc-bot")
 	out, _, _, err := m.ruCmd(`cat `+agentConf+` 2>/dev/null; echo "@@S"; [ -f `+agentPath+` ] && bash `+agentPath+` status; echo "@@BOT $(systemctl is-active awgc-bot 2>/dev/null)"; echo "@@T"; cat /root/awg/awgc-agent/last-error 2>/dev/null | head -c 300`, nil, time.Minute)
 	if err != nil {
 		return nil, err
@@ -327,15 +345,16 @@ func handleAgentChat(m *mctx, r agentReq) (any, error) {
 		return nil, errors.New("сначала вставьте токен бота")
 	}
 	// Бот сам читает getUpdates — на время поиска его останавливаем.
-	out, _, _, err := m.ruCmd(`T=`+shq(tok)+`
+	// токен — через stdin: командная строка видна всем пользователям сервера в ps
+	out, _, _, err := m.ruCmd(`read -r T
 B=0; systemctl is-active --quiet awgc-bot 2>/dev/null && { B=1; systemctl stop awgc-bot; sleep 1; }
 trap '[ $B = 1 ] && systemctl start awgc-bot' EXIT
 for i in awg1 ""; do
   if [ -n "$i" ]; then ip link show "$i" >/dev/null 2>&1 || continue; fi
-  o=$(curl -s -m 30 ${i:+--interface $i} "https://api.telegram.org/bot$T/getUpdates") || continue
+  o=$(curl -s -m 30 ${i:+--interface $i} -K <(printf 'url = "https://api.telegram.org/bot%s/getUpdates"\n' "$T")) || continue
   case "$o" in *'"ok":true'*) printf '%s' "$o"; exit 0;; esac
   echo "@@ERR $o" | head -c 300
-done`, nil, 2*time.Minute)
+done`, []byte(tok+"\n"), 2*time.Minute)
 	if err != nil {
 		return nil, err
 	}

@@ -41,7 +41,8 @@ tgcurl() {
     local i out
     for i in "$XIF" ""; do
         if [ -n "$i" ]; then ip link show "$i" >/dev/null 2>&1 || continue; fi
-        out=$(curl -s -m 40 ${i:+--interface $i} "https://api.telegram.org/bot$TG_TOKEN/$m" "$@" 2>/dev/null) || continue
+        # адрес с токеном — через -K из канала, а не аргументом: аргументы видны всем в ps
+        out=$(curl -s -m 40 ${i:+--interface $i} -K <(printf 'url = "https://api.telegram.org/bot%s/%s"\n' "$TG_TOKEN" "$m") "$@" 2>/dev/null) || continue
         case "$out" in *'"ok":true'*) printf '%s' "$out"; return 0 ;; esac
         printf '%s' "$out" > "$ST/last-error"
     done

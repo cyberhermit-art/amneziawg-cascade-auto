@@ -47,7 +47,7 @@ tg() { # сообщение через агент (если он настрое�
     [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || return 0
     for i in "$(cur)" ""; do
         if [ -n "$i" ]; then ip link show "$i" >/dev/null 2>&1 || continue; fi
-        curl -s -m 30 ${i:+--interface $i} "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+        curl -s -m 30 ${i:+--interface $i} -K <(printf 'url = "https://api.telegram.org/bot%s/sendMessage"\n' "$TG_TOKEN") \
             --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text=[$NAME] $1" 2>/dev/null | grep -q '"ok":true' && return 0
     done
 }

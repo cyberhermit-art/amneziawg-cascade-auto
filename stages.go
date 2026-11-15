@@ -914,7 +914,7 @@ func (j *Job) clients(ru *Remote, res *FinalResult) error {
 			return fmt.Errorf("не удалось создать клиента %s", n)
 		}
 	}
-	out, _, err := j.exec(ru, `cd /root/awg 2>/dev/null && for f in *.conf; do [ -f "$f" ] || continue; n=${f%.conf}; echo "@@NAME $n"; echo "@@CONF"; base64 -w0 "$f"; echo; if [ -f "$n.vpnuri" ]; then echo "@@URI"; base64 -w0 "$n.vpnuri"; echo; fi; if [ -f "$n.png" ]; then echo "@@PNG"; base64 -w0 "$n.png"; echo; fi; done`, nil, 3*time.Minute)
+	out, _, err := j.exec(ru, `cd /root/awg 2>/dev/null && for f in *.conf; do [ -f "$f" ] || continue; n=${f%.conf}; grep -qxF "#_Name = $n" /etc/amnezia/amneziawg/awg0.conf || continue; echo "@@NAME $n"; echo "@@CONF"; base64 -w0 "$f"; echo; if [ -f "$n.vpnuri" ]; then echo "@@URI"; base64 -w0 "$n.vpnuri"; echo; fi; if [ -f "$n.png" ]; then echo "@@PNG"; base64 -w0 "$n.png"; echo; fi; done`, nil, 3*time.Minute)
 	if err != nil {
 		return err
 	}
@@ -936,7 +936,11 @@ func (j *Job) clients(ru *Remote, res *FinalResult) error {
 			if cur != nil {
 				list = append(list, *cur)
 			}
-			cur = &ClientFile{Name: strings.TrimPrefix(l, "@@NAME ")}
+			cur = nil
+			// имя станет именем файла на этом компьютере: только безопасные символы
+			if n := strings.TrimPrefix(l, "@@NAME "); nameRe.MatchString(n) {
+				cur = &ClientFile{Name: n}
+			}
 		case l == "@@CONF" && cur != nil:
 			cur.Conf = string(next())
 		case l == "@@URI" && cur != nil:

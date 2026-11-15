@@ -91,9 +91,11 @@ class TG:
             args += ["-F", "%s=@%s" % (k, path)]
         last = None
         for r in self._routes():
-            cmd = ["curl", "-s", "-m", str(timeout)] + (["--interface", r] if r else []) + args + [self.base + method]
+            # адрес с токеном передаём через stdin (-K -): аргументы процесса видны всем в ps
+            cmd = ["curl", "-s", "-m", str(timeout)] + (["--interface", r] if r else []) + args + ["-K", "-"]
+            cfg = ('url = "%s%s"\n' % (self.base, method)).encode()
             try:
-                out = subprocess.run(cmd, capture_output=True, timeout=timeout + 10).stdout
+                out = subprocess.run(cmd, input=cfg, capture_output=True, timeout=timeout + 10).stdout
                 res = json.loads(out.decode("utf-8", "replace") or "{}")
             except (subprocess.SubprocessError, ValueError, OSError) as e:
                 last = str(e)

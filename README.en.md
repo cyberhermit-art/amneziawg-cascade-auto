@@ -72,7 +72,7 @@ The app connects over SSH and performs the steps from [CASCADE.md](https://githu
 - optional domain routing: dnsmasq on the RU server puts addresses of Russian service domains (list from [amnezia-tunneling-ru](https://github.com/lib4u/amnezia-tunneling-ru)) into a separate ipset that is routed directly;
 - users are managed through the stock `manage_amneziawg.sh`.
 
-The UI is a local web page: the app listens on `127.0.0.1` only and every request carries a random token.
+The UI is a local web page: the app listens on `127.0.0.1` only every request carries a random token, and the page itself opens only from the app via a launch key stored in your Windows profile (so other users of the computer cannot open it).
 
 ## Security
 
@@ -95,8 +95,8 @@ Go 1.24+:
 ```bash
 go mod tidy
 go test ./...      # tests: form validation, SSH host keys, exit failover (needs bash)
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.1" -o AmneziaWG-Cascade.exe .
-GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.1" -o AmneziaWG-Cascade-Lite.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.2" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.2" -o AmneziaWG-Cascade-Lite.exe .
 ```
 
 `rsrc_windows_amd64.syso` (icon and version info) is built from [`winres/`](winres) with `x86_64-w64-mingw32-windres -O coff -o ../rsrc_windows_amd64.syso app.rc`.

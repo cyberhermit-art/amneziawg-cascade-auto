@@ -44,7 +44,7 @@ func handleMTPGet(m *mctx, _ mtpReq) (any, error) {
 	if err := c.upload(mtprotoPath, mtprotoScript, "700"); err != nil {
 		return nil, fmt.Errorf("сервер RU: %v", err)
 	}
-	out, _, _, err := m.ruCmd(`bash `+mtprotoPath+` status`, nil, time.Minute)
+	out, _, _, err := m.ruCmd(`bash `+mtprotoPath+` upgrade >/dev/null 2>&1; bash `+mtprotoPath+` status`, nil, time.Minute)
 	if err != nil {
 		return nil, err
 	}

@@ -93,7 +93,7 @@
 - по желанию — маршрутизация по доменам: на сервере RU работает dnsmasq, адреса доменов российских сервисов из списка [amnezia-tunneling-ru](https://github.com/lib4u/amnezia-tunneling-ru) попадают в отдельный набор ipset и идут напрямую;
 - пользователями программа управляет через штатный `manage_amneziawg.sh`.
 
-Интерфейс — локальная веб-страница: программа слушает только `127.0.0.1`, а каждый запрос защищён случайным токеном, чтобы им не могли управлять другие сайты.
+Интерфейс — локальная веб-страница: программа слушает только `127.0.0.1`, каждый запрос защищён случайным токеном (чтобы программой не могли управлять другие сайты), а сама страница открывается только из программы — по ключу запуска из папки вашей учётной записи (чтобы её не открыли другие пользователи компьютера).
 
 ## Безопасность
 
@@ -117,8 +117,8 @@
 ```bash
 go mod tidy
 go test ./...      # тесты: проверка формы, ключи SSH, переключение выходов (нужен bash)
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.1" -o AmneziaWG-Cascade.exe .
-GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.1" -o AmneziaWG-Cascade-Lite.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.2" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.2" -o AmneziaWG-Cascade-Lite.exe .
 ```
 
 Файл `rsrc_windows_amd64.syso` (иконка и сведения о версии) собран из [`winres/`](winres) командой

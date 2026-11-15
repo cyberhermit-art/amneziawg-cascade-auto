@@ -182,7 +182,7 @@ func (c *capWriter) Flush() {
 func actionLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		title, ok := actionNames[r.URL.Path]
-		if !ok || r.Method != http.MethodPost || r.Header.Get("X-Token") != token {
+		if !ok || r.Method != http.MethodPost || !eq(r.Header.Get("X-Token"), token) || !hasSession(r) {
 			next.ServeHTTP(w, r)
 			return
 		}

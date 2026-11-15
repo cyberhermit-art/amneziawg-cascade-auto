@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -19,16 +20,21 @@ import (
 )
 
 // version задаётся при сборке: -ldflags "-X main.version=1.4.0"
-var version = "1.17.1"
+var version = "1.17.2"
 
 var (
-	token   string
-	hub     = NewHub()
-	jobMu   sync.Mutex
-	jobStop context.CancelFunc
-	lastDir string
-	logFile *os.File
-	logMu   sync.Mutex
+	token string
+	// launchKey — одноразовый ключ запуска в адресе страницы (?k=…); хранится в
+	// папке пользователя, поэтому другая учётная запись Windows его не узнает.
+	// session — значение cookie, которое страница получает в обмен на ключ.
+	launchKey string
+	session   string
+	hub       = NewHub()
+	jobMu     sync.Mutex
+	jobStop   context.CancelFunc
+	lastDir   string
+	logFile   *os.File
+	logMu     sync.Mutex
 )
 
 func main() {
@@ -38,10 +44,15 @@ func main() {
 	}
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
+		// Порт занят процессом другой учётной записи — это не наша программа.
+		if !listenerIsMine(appPort) {
+			showError(appTitle, fmt.Sprintf("Порт %d на этом компьютере занят программой другого пользователя Windows. Откройте AmneziaWG Cascade после её закрытия или из своей учётной записи, где программа ещё не запущена.", appPort))
+			return
+		}
 		// Программа уже запущена. Та же версия — просто открываем её окно ещё раз;
 		// другая (например, старая после обновления) — закрываем её и запускаемся сами.
 		if rv := runningVersion(addr); (rv != "" && !versionLess(rv, version)) || !stopOldInstance(appPort) {
-			openBrowser("http://" + addr + "/")
+			openBrowser(launchURL(addr, readLaunchKey()))
 			return
 		}
 		for i := 0; i < 50; i++ {
@@ -51,13 +62,12 @@ func main() {
 			time.Sleep(100 * time.Millisecond)
 		}
 		if err != nil {
-			openBrowser("http://" + addr + "/")
+			openBrowser(launchURL(addr, readLaunchKey()))
 			return
 		}
 	}
-	b := make([]byte, 16)
-	_, _ = rand.Read(b)
-	token = hex.EncodeToString(b)
+	token, launchKey, session = randHex(16), randHex(16), randHex(16)
+	writeLaunchKey(launchKey)
 
 	setupLogFile()
 	logLine(fmt.Sprintf("======== Запуск программы %s v%s ========", appTitle, version))
@@ -97,7 +107,7 @@ func main() {
 	}))
 
 	srv := &http.Server{Handler: hostGuard(addr, actionLog(mux))}
-	url := "http://" + addr + "/"
+	url := launchURL(addr, launchKey)
 	if os.Getenv("AWGC_NO_BROWSER") == "" {
 		go func() { time.Sleep(300 * time.Millisecond); openBrowser(url) }()
 	}
@@ -112,6 +122,44 @@ func main() {
 		}
 	}()
 	_ = srv.Serve(ln)
+}
+
+func randHex(n int) string {
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+func launchKeyPath() string {
+	return filepath.Join(appDataDir(), fmt.Sprintf("launch-%d.key", appPort))
+}
+
+func writeLaunchKey(k string) {
+	if os.MkdirAll(appDataDir(), 0o700) == nil {
+		_ = os.WriteFile(launchKeyPath(), []byte(k), 0o600)
+	}
+}
+
+func readLaunchKey() string {
+	b, _ := os.ReadFile(launchKeyPath())
+	return strings.TrimSpace(string(b))
+}
+
+func launchURL(addr, k string) string {
+	if k == "" {
+		return "http://" + addr + "/"
+	}
+	return "http://" + addr + "/?k=" + k
+}
+
+func cookieName() string { return fmt.Sprintf("awgc%d", appPort) } // у Lite свой порт и своя cookie
+
+func eq(a, b string) bool { return a != "" && subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1 }
+
+// hasSession — запрос пришёл из страницы, открытой с ключом запуска.
+func hasSession(r *http.Request) bool {
+	c, err := r.Cookie(cookieName())
+	return err == nil && eq(c.Value, session)
 }
 
 // runningVersion — версия уже запущенной копии ("" — старая, до 1.5.1, или не ответила).
@@ -179,7 +227,7 @@ func hostGuard(addr string, h http.Handler) http.Handler {
 // api требует секретный токен из страницы — чужие сайты не смогут управлять программой.
 func api(f http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.Header.Get("X-Token") != token {
+		if r.Method != http.MethodPost || !eq(r.Header.Get("X-Token"), token) || !hasSession(r) {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
@@ -193,6 +241,22 @@ func api(f http.HandlerFunc) http.HandlerFunc {
 func handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
+		return
+	}
+	// Ключ запуска → cookie сеанса и адрес без ключа.
+	if k := r.URL.Query().Get("k"); k != "" {
+		if eq(k, launchKey) {
+			http.SetCookie(w, &http.Cookie{Name: cookieName(), Value: session, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
+	}
+	if !hasSession(r) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprintf(w, `<!doctype html><meta charset="utf-8"><title>%s</title><body style="font:16px system-ui;padding:40px;max-width:640px">
+<h2>Откройте программу заново</h2><p>Эта страница открывается только из самой программы. Запустите %s ещё раз — окно откроется само.</p>
+<p style="color:#777">Open the app again: this page only opens from the app itself.</p>`, appTitle, appTitle)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -282,7 +346,7 @@ func handleOpenFolder(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleEvents(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Query().Get("token") != token {
+	if !eq(r.URL.Query().Get("token"), token) || !hasSession(r) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}

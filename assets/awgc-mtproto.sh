@@ -58,6 +58,40 @@ get_bin() {
     echo "@@NEEDBIN $arch"; exit 3
 }
 
+# служба mtg с ограничениями (PORT и SECRET задаёт вызывающий код)
+write_unit() {
+cat > "$UNIT" <<EOF
+[Unit]
+Description=AmneziaWG Cascade: MTProto proxy for Telegram (mtg), upstream via the cascade exit
+After=network-online.target awg-routing.service
+
+[Service]
+User=$USR
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+# прокси смотрит в интернет: если его взломают, он не должен видеть
+# другие процессы (в их аргументах бывают секреты) и писать на диск
+NoNewPrivileges=yes
+ProtectProc=invisible
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+ExecStartPre=+/bin/bash $A/awgc-mtproto.sh rules-add
+ExecStart=$BIN simple-run 0.0.0.0:$PORT $SECRET
+ExecStopPost=+/bin/bash $A/awgc-mtproto.sh rules-del
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+}
+
 case "${1:-}" in
 on)
     PORT=${2:?}; DOMAIN=${3:?}; HOST=${4:?}
@@ -79,23 +113,7 @@ on)
     fi
     umask 077
     printf 'PORT_SAVED=%s\nDOMAIN_SAVED=%s\nSECRET_SAVED=%s\nHOST_SAVED=%s\n' "$PORT" "$DOMAIN" "$SECRET" "$HOST" > "$CONF"
-    cat > "$UNIT" <<EOF
-[Unit]
-Description=AmneziaWG Cascade: MTProto proxy for Telegram (mtg), upstream via the cascade exit
-After=network-online.target awg-routing.service
-
-[Service]
-User=$USR
-AmbientCapabilities=CAP_NET_BIND_SERVICE
-ExecStartPre=+/bin/bash $A/awgc-mtproto.sh rules-add
-ExecStart=$BIN simple-run 0.0.0.0:$PORT $SECRET
-ExecStopPost=+/bin/bash $A/awgc-mtproto.sh rules-del
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
+    write_unit
     systemctl daemon-reload
     systemctl enable awgc-mtproto >/dev/null 2>&1
     systemctl restart awgc-mtproto || die "служба не запустилась: $(journalctl -u awgc-mtproto -n 5 --no-pager -o cat | tr '\n' ' ')"
@@ -116,6 +134,13 @@ off)
     if [ -n "${PORT_SAVED:-}" ] && command -v ufw >/dev/null; then ufw delete allow "$PORT_SAVED"/tcp >/dev/null 2>&1; fi
     rm -f "$CONF"
     echo "@@OK"
+    ;;
+upgrade) # служба, поставленная старой версией программы, — без ограничений
+    if [ -f "$CONF" ] && [ -f "$UNIT" ] && ! grep -q '^ProtectProc=' "$UNIT"; then
+        # shellcheck disable=SC1090
+        . "$CONF"; PORT=$PORT_SAVED SECRET=$SECRET_SAVED
+        write_unit; systemctl daemon-reload; systemctl try-restart awgc-mtproto
+    fi
     ;;
 rules-add) rules -A ;;
 rules-del) rules -D ;;
