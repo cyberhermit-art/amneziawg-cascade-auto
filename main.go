@@ -14,13 +14,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
 // version задаётся при сборке: -ldflags "-X main.version=1.4.0"
-var version = "1.17.2"
+var version = "1.17.3"
 
 var (
 	token string
@@ -39,11 +40,12 @@ var (
 
 func main() {
 	addr := fmt.Sprintf("127.0.0.1:%d", appPort)
-	if v := os.Getenv("AWGC_ADDR"); v != "" { // для тестов
-		addr = v
+	fixed := os.Getenv("AWGC_ADDR") != "" // для тестов
+	if fixed {
+		addr = os.Getenv("AWGC_ADDR")
 	}
 	ln, err := net.Listen("tcp", addr)
-	if err != nil {
+	if err != nil && portAnswers(addr) {
 		// Порт занят процессом другой учётной записи — это не наша программа.
 		if !listenerIsMine(appPort) {
 			showError(appTitle, fmt.Sprintf("Порт %d на этом компьютере занят программой другого пользователя Windows. Откройте AmneziaWG Cascade после её закрытия или из своей учётной записи, где программа ещё не запущена.", appPort))
@@ -65,7 +67,28 @@ func main() {
 			openBrowser(launchURL(addr, readLaunchKey()))
 			return
 		}
+	} else if err != nil && !fixed {
+		// Порт никто не слушает, но Windows его не даёт: он попал в диапазон,
+		// зарезервированный системой (Hyper-V, WSL, Docker, песочница Windows).
+		// Тогда работаем на любом свободном порту; адрес — в файле, чтобы
+		// следующий запуск нашёл уже открытую программу.
+		if alt := readSavedAddr(); alt != "" && alt != addr && portAnswers(alt) {
+			if rv := runningVersion(alt); rv != "" && listenerIsMine(portOf(alt)) {
+				if !versionLess(rv, version) || !stopOldInstance(portOf(alt)) {
+					openBrowser(launchURL(alt, readLaunchKey()))
+					return
+				}
+			}
+		}
+		if ln, err = net.Listen("tcp", "127.0.0.1:0"); err == nil {
+			addr = ln.Addr().String()
+		}
 	}
+	if err != nil {
+		showError(appTitle, "Не удалось открыть локальный порт для окна программы: "+err.Error())
+		return
+	}
+	saveAddr(addr)
 	token, launchKey, session = randHex(16), randHex(16), randHex(16)
 	writeLaunchKey(launchKey)
 
@@ -143,6 +166,41 @@ func writeLaunchKey(k string) {
 func readLaunchKey() string {
 	b, _ := os.ReadFile(launchKeyPath())
 	return strings.TrimSpace(string(b))
+}
+
+// portAnswers — на адресе кто-то принимает соединения.
+func portAnswers(addr string) bool {
+	c, err := net.DialTimeout("tcp", addr, 700*time.Millisecond)
+	if err != nil {
+		return false
+	}
+	c.Close()
+	return true
+}
+
+func portOf(addr string) int {
+	_, p, _ := net.SplitHostPort(addr)
+	n, _ := strconv.Atoi(p)
+	return n
+}
+
+// Адрес, на котором работает программа (обычно 127.0.0.1:47821, но может быть
+// запасной, если Windows зарезервировала основной порт).
+func addrPath() string { return filepath.Join(appDataDir(), fmt.Sprintf("addr-%d.txt", appPort)) }
+
+func saveAddr(a string) {
+	if os.MkdirAll(appDataDir(), 0o700) == nil {
+		_ = os.WriteFile(addrPath(), []byte(a), 0o600)
+	}
+}
+
+func readSavedAddr() string {
+	b, _ := os.ReadFile(addrPath())
+	a := strings.TrimSpace(string(b))
+	if h, _, err := net.SplitHostPort(a); err != nil || h != "127.0.0.1" {
+		return ""
+	}
+	return a
 }
 
 func launchURL(addr, k string) string {
