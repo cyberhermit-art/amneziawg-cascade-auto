@@ -21,7 +21,7 @@ import (
 )
 
 // version задаётся при сборке: -ldflags "-X main.version=1.4.0"
-var version = "1.17.3"
+var version = "1.18.0"
 
 var (
 	token string

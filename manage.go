@@ -1113,6 +1113,7 @@ func registerManage(mux *http.ServeMux) {
 		registerExits(mux)
 		registerMTProto(mux)
 		registerServerTools(mux)
+		registerRegenFiles(mux)
 	}
 	mux.HandleFunc("/api/m/routing-update", mapi(mRoutingUpdate))
 }

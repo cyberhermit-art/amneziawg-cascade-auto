@@ -55,6 +55,7 @@ var actionNames = map[string]string{
 	"/api/m/eu-auto":        "«Через EU»: автосписок заблокированного",
 	"/api/m/mtproto-set":    "MTProto-прокси: включение / выключение",
 	"/api/m/exitip-set":     "Второй IP для выхода",
+	"/api/m/regen-files":    "Обновление файлов подключения",
 	"/api/m/port-set":       "Смена порта AmneziaWG",
 	"/api/m/sec-fix":        "Исправления безопасности",
 }

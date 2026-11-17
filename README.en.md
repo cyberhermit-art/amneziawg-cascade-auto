@@ -33,7 +33,7 @@ Both are built from the same code (Lite with the `lite` build tag), share profil
 
 **Management**
 
-- **Users:** online status, traffic, expiry; add, QR code and key, rename without changing the key, re-issue key, delete.
+- **Users:** online status, traffic, expiry; add, QR code and key, rename without changing the key, re-issue key, delete; bulk refresh of connection files for all or selected users (e.g. after changing “Bypass VPN”).
 - **Statistics:** traffic per day and per user for 1/7/30/90 days, collected on the server every 5 minutes and kept across reboots.
 - **Server:** health of the RU server, the tunnel to EU, routing, EU reachability; restart VPN.
 - **Maintenance:** routing update on a running cascade, package updates, reboot and VPN removal for RU and EU separately, plus removal of the whole cascade (with a backup first).
@@ -95,8 +95,8 @@ Go 1.24+:
 ```bash
 go mod tidy
 go test ./...      # tests: form validation, SSH host keys, exit failover (needs bash)
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.3" -o AmneziaWG-Cascade.exe .
-GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.3" -o AmneziaWG-Cascade-Lite.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.18.0" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.18.0" -o AmneziaWG-Cascade-Lite.exe .
 ```
 
 `rsrc_windows_amd64.syso` (icon and version info) is built from [`winres/`](winres) with `x86_64-w64-mingw32-windres -O coff -o ../rsrc_windows_amd64.syso app.rc`.

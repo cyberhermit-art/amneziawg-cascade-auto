@@ -41,7 +41,7 @@
 
 **Управление**
 
-- **Пользователи:** статус (в сети / когда был), трафик, срок действия; добавление, QR-код и ключ, переименование без смены ключа, перевыпуск ключа, удаление.
+- **Пользователи:** статус (в сети / когда был), трафик, срок действия; добавление, QR-код и ключ, переименование без смены ключа, перевыпуск ключа, удаление; массовое обновление файлов подключения (всех или выбранных пользователей) — например, после изменения «Мимо VPN».
 - **Статистика:** трафик по дням и по пользователям за 1/7/30/90 дней. Собирается на сервере каждые 5 минут и не теряется при перезагрузках.
 - **Сервер:** проверка сервера RU, туннеля до EU, маршрутизации и доступности EU; перезапуск VPN.
 - **Обслуживание:** обновление маршрутизации на работающем каскаде, обновление пакетов, перезагрузка и удаление VPN — отдельно для RU и EU, а также удаление всего каскада (с резервной копией перед удалением).
@@ -117,8 +117,8 @@
 ```bash
 go mod tidy
 go test ./...      # тесты: проверка формы, ключи SSH, переключение выходов (нужен bash)
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.3" -o AmneziaWG-Cascade.exe .
-GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.17.3" -o AmneziaWG-Cascade-Lite.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.18.0" -o AmneziaWG-Cascade.exe .
+GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui -s -w -X main.version=1.18.0" -o AmneziaWG-Cascade-Lite.exe .
 ```
 
 Файл `rsrc_windows_amd64.syso` (иконка и сведения о версии) собран из [`winres/`](winres) командой
@@ -139,6 +139,7 @@ GOOS=windows GOARCH=amd64 go build -tags lite -trimpath -ldflags "-H=windowsgui 
 | `actlog.go` | журнал действий в log.txt |
 | `mtproto.go`, `assets/awgc-mtproto.sh` | MTProto-прокси для Telegram на сервере RU (mtg) |
 | `servertools.go`, `assets/awgc-exitip.sh` | Второй IP для выхода, смена порта, исправления безопасности серверов |
+| `regenfiles.go` | Массовое обновление файлов подключения пользователей |
 | `*_test.go` | Тесты (`go test ./...`) |
 | `exits.go`, `assets/awgc-exits.sh` | несколько выходов и автоматическое переключение, WARP |
 | `agent.go`, `assets/awgc-agent.sh`, `assets/awgc-bot.py` | «Эксперименты»: агент на серверах, Telegram, копии по расписанию, лимиты |
